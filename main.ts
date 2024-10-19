@@ -5,16 +5,16 @@ import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
 
 import { CinematicCamera } from 'three/addons/cameras/CinematicCamera.js';
 
-let camera, scene, raycaster, renderer, stats;
+let camera: CinematicCamera, scene: THREE.Scene, raycaster: THREE.Raycaster, renderer: THREE.WebGLRenderer, stats: Stats;
 
-const mouse = new THREE.Vector2();
-let INTERSECTED;
-const radius = 100;
-let theta = 0;
+const mouse: THREE.Vector2 = new THREE.Vector2();
+let INTERSECTED: THREE.Mesh | null;
+const radius: number = 100;
+let theta: number = 0;
 
 init();
 
-function init() {
+function init(): void {
 
     camera = new CinematicCamera(60, window.innerWidth / window.innerHeight, 1, 1000);
     camera.setLens(5);
@@ -29,18 +29,19 @@ function init() {
     light.position.set(1, 1, 1).normalize();
     scene.add(light);
 
-    const geometry = new THREE.BoxGeometry(20, 20, 20);
+    const geometry: THREE.BoxGeometry = new THREE.BoxGeometry(20, 20, 20);
 
-    for (let i = 0; i < 1500; i++) {
-
-        const object = new THREE.Mesh(geometry, new THREE.MeshLambertMaterial({ color: Math.random() * 0xffffff }));
+    for (let i: number = 0; i < 1500; i++) {
+        const object: THREE.Mesh = new THREE.Mesh(
+            geometry,
+            new THREE.MeshLambertMaterial({ color: Math.random() * 0xffffff })
+        );
 
         object.position.x = Math.random() * 800 - 400;
         object.position.y = Math.random() * 800 - 400;
         object.position.z = Math.random() * 800 - 400;
 
         scene.add(object);
-
     }
 
     raycaster = new THREE.Raycaster();
@@ -58,56 +59,32 @@ function init() {
 
     window.addEventListener('resize', onWindowResize);
 
-    const effectController = {
-
+    const effectController: {
+        focalLength: number;
+        fstop: number;
+        showFocus: boolean;
+        focalDepth: number;
+    } = {
         focalLength: 15,
-        // jsDepthCalculation: true,
-        // shaderFocus: false,
-        //
         fstop: 2.8,
-        // maxblur: 1.0,
-        //
         showFocus: false,
         focalDepth: 3,
-        // manualdof: false,
-        // vignetting: false,
-        // depthblur: false,
-        //
-        // threshold: 0.5,
-        // gain: 2.0,
-        // bias: 0.5,
-        // fringe: 0.7,
-        //
-        // focalLength: 35,
-        // noise: true,
-        // pentagon: false,
-        //
-        // dithering: 0.0001
-
     };
 
-    const matChanger = function () {
-
+    const matChanger = (): void => {
         for (const e in effectController) {
-
             if (e in camera.postprocessing.bokeh_uniforms) {
-
-                camera.postprocessing.bokeh_uniforms[e].value = effectController[e];
-
+                camera.postprocessing.bokeh_uniforms[e].value = effectController[e as keyof typeof effectController];
             }
-
         }
 
         camera.postprocessing.bokeh_uniforms['znear'].value = camera.near;
         camera.postprocessing.bokeh_uniforms['zfar'].value = camera.far;
         camera.setLens(effectController.focalLength, camera.frameHeight, effectController.fstop, camera.coc);
         effectController['focalDepth'] = camera.postprocessing.bokeh_uniforms['focalDepth'].value;
-
     };
 
-    //
-
-    const gui = new GUI();
+    const gui: GUI = new GUI();
 
     gui.add(effectController, 'focalLength', 1, 135, 0.01).onChange(matChanger);
     gui.add(effectController, 'fstop', 1.8, 22, 0.01).onChange(matChanger);
@@ -118,34 +95,26 @@ function init() {
 
 }
 
-function onWindowResize() {
-
+function onWindowResize(): void {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
 
     renderer.setSize(window.innerWidth, window.innerHeight);
-
 }
 
-function onDocumentMouseMove(event) {
-
+function onDocumentMouseMove(event: MouseEvent): void {
     event.preventDefault();
 
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-    mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
-
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 }
 
-function animate() {
-
+function animate(): void {
     render();
     stats.update();
-
 }
 
-
-function render() {
-
+function render(): void {
     theta += 0.1;
 
     camera.position.x = radius * Math.sin(THREE.MathUtils.degToRad(theta));
@@ -156,48 +125,38 @@ function render() {
     camera.updateMatrixWorld();
 
     // find intersections
-
     raycaster.setFromCamera(mouse, camera);
 
-    const intersects = raycaster.intersectObjects(scene.children, false);
+    const intersects: THREE.Intersection[] = raycaster.intersectObjects(scene.children, false);
 
     if (intersects.length > 0) {
-
-        const targetDistance = intersects[0].distance;
+        const targetDistance: number = intersects[0].distance;
 
         camera.focusAt(targetDistance); // using Cinematic camera focusAt method
 
-        if (INTERSECTED != intersects[0].object) {
+        if (INTERSECTED !== intersects[0].object) {
+            if (INTERSECTED) {
+                (INTERSECTED.material as THREE.MeshLambertMaterial).emissive.setHex(INTERSECTED.currentHex);
+            }
 
-            if (INTERSECTED) INTERSECTED.material.emissive.setHex(INTERSECTED.currentHex);
-
-            INTERSECTED = intersects[0].object;
-            INTERSECTED.currentHex = INTERSECTED.material.emissive.getHex();
-            INTERSECTED.material.emissive.setHex(0xff0000);
-
+            INTERSECTED = intersects[0].object as THREE.Mesh;
+            INTERSECTED.currentHex = (INTERSECTED.material as THREE.MeshLambertMaterial).emissive.getHex();
+            (INTERSECTED.material as THREE.MeshLambertMaterial).emissive.setHex(0xff0000);
+        }
+    } else {
+        if (INTERSECTED) {
+            (INTERSECTED.material as THREE.MeshLambertMaterial).emissive.setHex(INTERSECTED.currentHex);
         }
 
-    } else {
-
-        if (INTERSECTED) INTERSECTED.material.emissive.setHex(INTERSECTED.currentHex);
-
         INTERSECTED = null;
-
     }
 
-    //
-
     if (camera.postprocessing.enabled) {
-
         camera.renderCinematic(scene, renderer);
-
     } else {
-
         scene.overrideMaterial = null;
 
         renderer.clear();
         renderer.render(scene, camera);
-
     }
-
 }

@@ -14,10 +14,15 @@ let controls: TrackballControls;
 
 const mouse: THREE.Vector2 = new THREE.Vector2();
 let INTERSECTED: CustomMesh | null;
-const radius: number = 100;
-let theta: number = 0;
 
 init();
+
+function createBook(): THREE.Mesh {
+    const geometry: THREE.BoxGeometry = new THREE.BoxGeometry(20, 20, 20);
+    const material: THREE.MeshLambertMaterial = new THREE.MeshLambertMaterial({ color: Math.random() * 0xffffff });
+    const mesh: THREE.Mesh = new THREE.Mesh(geometry, material);
+    return mesh;
+}
 
 function init(): void {
 
@@ -33,20 +38,8 @@ function init(): void {
     light.position.set(1, 1, 1).normalize();
     scene.add(light);
 
-    const geometry: THREE.BoxGeometry = new THREE.BoxGeometry(20, 20, 20);
-
-    for (let i: number = 0; i < 1500; i++) {
-        const object: THREE.Mesh = new THREE.Mesh(
-            geometry,
-            new THREE.MeshLambertMaterial({ color: Math.random() * 0xffffff })
-        );
-
-        object.position.x = Math.random() * 800 - 400;
-        object.position.y = Math.random() * 800 - 400;
-        object.position.z = Math.random() * 800 - 400;
-
-        scene.add(object);
-    }
+    const object: THREE.Mesh = createBook();
+    scene.add(object);
 
     raycaster = new THREE.Raycaster();
 

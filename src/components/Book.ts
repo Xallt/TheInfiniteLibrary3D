@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
 // Add this new class for the singleton texture loader
-class TextureLoader {
+export class TextureLoader {
     private static instance: TextureLoader;
     private loader: THREE.TextureLoader;
     private cache: Map<string, THREE.Texture>;
@@ -39,10 +39,12 @@ export type BookMeshParams = {
 export class Book {
     private params: BookMeshParams;
     private texturePath: string;
+    private bookMesh: THREE.Mesh;
 
     constructor(params: BookMeshParams, texturePath: string) {
         this.params = params;
         this.texturePath = texturePath;
+        this.bookMesh = this.createBookMesh();
     }
 
     private createBox(boxCenter: THREE.Vector3, boxSize: THREE.Vector3): THREE.Mesh {
@@ -61,7 +63,7 @@ export class Book {
         return page;
     }
 
-    public getMesh(): THREE.Mesh {
+    private createBookMesh(): THREE.Mesh {
         const { bookThickness, bookWidth, bookHeight, coverWidth, numPages } = this.params;
 
         const cover = this.createBox(
@@ -96,5 +98,9 @@ export class Book {
         book.add(rightSide);
         pages.forEach(page => book.add(page));
         return book;
+    }
+
+    public getMesh(): THREE.Mesh {
+        return this.bookMesh;
     }
 }

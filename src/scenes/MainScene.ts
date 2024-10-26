@@ -3,6 +3,7 @@ import { Book, BookMeshParams } from '../components/Book';
 import { createControls } from '../components/Controls';
 import Stats from 'three/examples/jsm/libs/stats.module.js';
 import { TrackballControls } from 'three/examples/jsm/controls/TrackballControls.js';
+import { Bookshelf, BookshelfParams } from '../components/Bookshelf';
 
 export class MainScene {
     private camera!: THREE.PerspectiveCamera;
@@ -11,9 +12,11 @@ export class MainScene {
     private controls!: TrackballControls;
     private stats!: Stats;
     private bookParams!: BookMeshParams;
+    private bookshelfParams!: BookshelfParams;
 
-    constructor(numBooks: number, bookParams: BookMeshParams) {
+    constructor(numBooks: number, bookParams: BookMeshParams, bookshelfParams: BookshelfParams) {
         this.bookParams = bookParams;
+        this.bookshelfParams = bookshelfParams;
         this.init(numBooks);
     }
 
@@ -26,6 +29,7 @@ export class MainScene {
         this.initStats();
         this.addEventListeners();
 
+        this.initBookshelf();
         this.initBooks(numBooks);
     }
 
@@ -44,6 +48,16 @@ export class MainScene {
         const light = new THREE.DirectionalLight(0xffffff);
         light.position.set(1, 1, 1).normalize();
         this.scene.add(light);
+    }
+
+    private initBookshelf(): void {
+        const bookshelf = new Bookshelf(this.bookshelfParams, "assets/wood.jpeg");
+        const bookshelfMesh = bookshelf.getMesh();
+
+        // Place the bookshelf at the center of the scene
+        bookshelfMesh.position.set(0, 0, 0);
+
+        this.scene.add(bookshelfMesh);
     }
 
     private initBooks(numBooks: number): void {

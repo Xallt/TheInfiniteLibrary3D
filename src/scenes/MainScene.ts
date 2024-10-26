@@ -2,7 +2,6 @@ import * as THREE from 'three';
 import { createBookMesh, BookMeshParams } from '../components/Book';
 import { createControls } from '../components/Controls';
 import Stats from 'three/examples/jsm/libs/stats.module.js';
-import { GUI } from 'three/examples/jsm/libs/lil-gui.module.min.js';
 import { TrackballControls } from 'three/examples/jsm/controls/TrackballControls.js';
 
 export class MainScene {
@@ -12,26 +11,27 @@ export class MainScene {
     private controls: TrackballControls;
     private stats: Stats;
     private book: THREE.Mesh;
+    private bookParams: BookMeshParams;
 
-    constructor() {
-        this.init();
+    constructor(numBooks: number) {
+        this.init(numBooks);
     }
 
-    private init(): void {
+    private init(numBooks: number): void {
         this.initCamera();
         this.initScene();
         this.initLighting();
-        this.initObjects();
         this.initRenderer();
         this.initControls();
         this.initStats();
-        this.initGUI();
         this.addEventListeners();
+
+        this.initBooks(numBooks);
     }
 
     private initCamera(): void {
         this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000);
-        this.camera.position.set(2, 1, 500);
+        this.camera.position.set(2, 1, 50);
     }
 
     private initScene(): void {
@@ -46,15 +46,31 @@ export class MainScene {
         this.scene.add(light);
     }
 
-    private initObjects(): void {
-        const bookParams: BookMeshParams = {
+    private initBooks(numBooks: number): void {
+        this.bookParams = {
             bookThickness: 1,
             bookWidth: 15,
             bookHeight: 20,
             coverWidth: 4,
+            numPages: 100,
         };
-        this.book = createBookMesh(bookParams, '59661342.jpg');
-        this.scene.add(this.book);
+
+        const sampleRadius = 100;
+
+        for (let i = 0; i < numBooks; i++) {
+            const book = createBookMesh(this.bookParams, "assets/book-cover.jpg");
+            this.scene.add(book);
+
+            // Random translation
+            book.position.x = Math.random() * sampleRadius - sampleRadius / 2;
+            book.position.y = Math.random() * sampleRadius - sampleRadius / 2;
+            book.position.z = Math.random() * sampleRadius - sampleRadius / 2;
+
+            // Random rotation
+            book.rotation.x = Math.random() * Math.PI;
+            book.rotation.y = Math.random() * Math.PI;
+            book.rotation.z = Math.random() * Math.PI;
+        }
     }
 
     private initRenderer(): void {
@@ -72,14 +88,6 @@ export class MainScene {
     private initStats(): void {
         this.stats = new Stats();
         document.body.appendChild(this.stats.dom);
-    }
-
-    private initGUI(): void {
-        const gui = new GUI();
-        gui.add(this.camera, 'fov', 1, 180, 0.01);
-        gui.add(this.camera, 'aspect', 1, 10, 0.01);
-        gui.add(this.camera, 'near', 0.1, 1000, 0.01);
-        gui.add(this.camera, 'far', 0.1, 1000, 0.01);
     }
 
     private addEventListeners(): void {

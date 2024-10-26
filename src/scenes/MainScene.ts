@@ -1,17 +1,16 @@
 import * as THREE from 'three';
-import { createBookMesh, BookMeshParams } from '../components/Book';
+import { Book, BookMeshParams } from '../components/Book';
 import { createControls } from '../components/Controls';
 import Stats from 'three/examples/jsm/libs/stats.module.js';
 import { TrackballControls } from 'three/examples/jsm/controls/TrackballControls.js';
 
 export class MainScene {
-    private camera: THREE.PerspectiveCamera;
-    private scene: THREE.Scene;
-    private renderer: THREE.WebGLRenderer;
-    private controls: TrackballControls;
-    private stats: Stats;
-    private book: THREE.Mesh;
-    private bookParams: BookMeshParams;
+    private camera!: THREE.PerspectiveCamera;
+    private scene!: THREE.Scene;
+    private renderer!: THREE.WebGLRenderer;
+    private controls!: TrackballControls;
+    private stats!: Stats;
+    private bookParams!: BookMeshParams;
 
     constructor(numBooks: number) {
         this.init(numBooks);
@@ -58,18 +57,19 @@ export class MainScene {
         const sampleRadius = 100;
 
         for (let i = 0; i < numBooks; i++) {
-            const book = createBookMesh(this.bookParams, "assets/book-cover.jpg");
-            this.scene.add(book);
+            const book = new Book(this.bookParams, "assets/book-cover.jpg");
+            const bookMesh = book.getMesh();
+            this.scene.add(bookMesh);
 
             // Random translation
-            book.position.x = Math.random() * sampleRadius - sampleRadius / 2;
-            book.position.y = Math.random() * sampleRadius - sampleRadius / 2;
-            book.position.z = Math.random() * sampleRadius - sampleRadius / 2;
+            bookMesh.position.x = Math.random() * sampleRadius - sampleRadius / 2;
+            bookMesh.position.y = Math.random() * sampleRadius - sampleRadius / 2;
+            bookMesh.position.z = Math.random() * sampleRadius - sampleRadius / 2;
 
             // Random rotation
-            book.rotation.x = Math.random() * Math.PI;
-            book.rotation.y = Math.random() * Math.PI;
-            book.rotation.z = Math.random() * Math.PI;
+            bookMesh.rotation.x = Math.random() * Math.PI;
+            bookMesh.rotation.y = Math.random() * Math.PI;
+            bookMesh.rotation.z = Math.random() * Math.PI;
         }
     }
 

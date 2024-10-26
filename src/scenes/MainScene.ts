@@ -12,7 +12,8 @@ export class MainScene {
     private stats!: Stats;
     private bookParams!: BookMeshParams;
 
-    constructor(numBooks: number) {
+    constructor(numBooks: number, bookParams: BookMeshParams) {
+        this.bookParams = bookParams;
         this.init(numBooks);
     }
 
@@ -46,14 +47,6 @@ export class MainScene {
     }
 
     private initBooks(numBooks: number): void {
-        this.bookParams = {
-            bookThickness: 1,
-            bookWidth: 15,
-            bookHeight: 20,
-            coverWidth: 4,
-            numPages: 100,
-        };
-
         const sampleRadius = 100;
 
         for (let i = 0; i < numBooks; i++) {

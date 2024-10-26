@@ -17,14 +17,6 @@
     "noEmit": true,
     "jsx": "preserve",
     "baseUrl": "./",
-    "paths": {
-      "three": [
-        "./node_modules/three/src/Three"
-      ],
-      "three/addons/*": [
-        "./node_modules/three/examples/jsm/*"
-      ]
-    }
   },
   "include": [
     "src/**/*.ts",

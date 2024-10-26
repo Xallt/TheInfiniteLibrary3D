@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { TextureLoader } from './Book';
+import { TextureLoader, Book } from './Book';
 
 export type BookshelfParams = {
     cellHeight: number;
@@ -14,10 +14,29 @@ export type BookshelfParams = {
     backWallThickness: number;
 };
 
+type Cell = {
+    mesh: THREE.Mesh;
+    upperLeftFarCorner: THREE.Vector3;
+    outerSize: THREE.Vector3;
+    size: THREE.Vector3;
+    availableX: number;
+    leftSideThickness: number;
+    rightSideThickness: number;
+    backSideThickness: number;
+    upSideThickness: number;
+    downSideThickness: number;
+};
+
+type Row = {
+    mesh: THREE.Mesh;
+    cells: Cell[];
+};
+
 export class Bookshelf {
     private params: BookshelfParams;
     private texturePath: string;
     private bookshelfMesh: THREE.Mesh;
+    private rows: Row[] = [];
 
     constructor(params: BookshelfParams, texturePath: string) {
         this.params = params;
@@ -53,7 +72,7 @@ export class Bookshelf {
         cellThicknessBack: number,
         cellThicknessUp: number,
         cellThicknessDown: number,
-    ): THREE.Mesh {
+    ): Cell {
         const outerSize = new THREE.Vector3(
             cellThicknessLeft + cellSize.x + cellThicknessRight,
             cellThicknessDown + cellSize.y + cellThicknessUp,
@@ -105,15 +124,26 @@ export class Bookshelf {
         cell.add(downWall);
         cell.add(leftWall);
         cell.add(rightWall);
-        return cell;
+        return {
+            mesh: cell,
+            upperLeftFarCorner: cellUpperLeftFarCorner.clone(),
+            outerSize: outerSize,
+            size: cellSize,
+            availableX: 0,
+            leftSideThickness: cellThicknessLeft,
+            rightSideThickness: cellThicknessRight,
+            backSideThickness: cellThicknessBack,
+            upSideThickness: cellThicknessUp,
+            downSideThickness: cellThicknessDown
+        };
     }
 
     private createRow(
         rowUpperLeftFarCorner: THREE.Vector3,
         upperThickness: number,
         bottomThickness: number
-    ): THREE.Mesh {
-        const cells: THREE.Mesh[] = [];
+    ): Row {
+        const cells: Cell[] = [];
         let curCorner = rowUpperLeftFarCorner.clone();
         const cellSize = new THREE.Vector3(this.params.cellWidth, this.params.cellHeight, this.params.cellDepth);
         for (let j = 0; j < this.params.numColumns; j++) {
@@ -140,12 +170,14 @@ export class Bookshelf {
         }
 
         const row = new THREE.Mesh();
-        cells.forEach(cell => row.add(cell));
-        return row;
+        cells.forEach(cell => row.add(cell.mesh));
+        return {
+            mesh: row,
+            cells: cells
+        };
     }
 
     private createBookshelfMesh(): THREE.Mesh {
-        const rows: THREE.Mesh[] = [];
         let curCorner = new THREE.Vector3(0, 0, 0);
         for (let i = 0; i < this.params.numRows; i++) {
             let curUpperThickness = this.params.interFloorThickness / 2;
@@ -161,16 +193,45 @@ export class Bookshelf {
                 curUpperThickness,
                 curBottomThickness
             );
-            rows.push(row);
+            this.rows.push(row);
             curCorner.y -= this.params.cellHeight + curUpperThickness + curBottomThickness;
         }
 
         const bookshelf = new THREE.Mesh();
-        rows.forEach(row => bookshelf.add(row));
+        this.rows.forEach(row => bookshelf.add(row.mesh));
         return bookshelf;
     }
 
     public getMesh(): THREE.Mesh {
         return this.bookshelfMesh;
+    }
+
+    public addBook(book: Book): boolean {
+        const bookSize = book.getOuterSize();
+
+        if (bookSize.x > this.params.cellWidth || bookSize.y > this.params.cellHeight || bookSize.z > this.params.cellDepth) {
+            console.error("Book dimensions exceed cell size.");
+            return false;
+        }
+
+        for (const row of this.rows) {
+            for (const cell of row.cells) {
+                if (cell.availableX + bookSize.x <= this.params.cellWidth) {
+                    const newBookPosition = new THREE.Vector3(
+                        cell.upperLeftFarCorner.x + cell.availableX + cell.leftSideThickness + bookSize.x / 2,
+                        cell.upperLeftFarCorner.y - cell.upSideThickness - cell.size.y + bookSize.y / 2,
+                        cell.upperLeftFarCorner.z - cell.backSideThickness - cell.size.z + bookSize.z / 2
+                    );
+                    book.setPosition(newBookPosition);
+                    const bookMesh = book.getMesh();
+
+
+                    this.bookshelfMesh.add(book.getMesh());
+                    cell.availableX += bookSize.x;
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 }

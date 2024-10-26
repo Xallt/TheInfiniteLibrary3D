@@ -14,6 +14,8 @@ export class MainScene {
     private bookParams!: BookMeshParams;
     private bookshelfParams!: BookshelfParams;
 
+    private bookshelf!: Bookshelf;
+
     constructor(numBooks: number, bookParams: BookMeshParams, bookshelfParams: BookshelfParams) {
         this.bookParams = bookParams;
         this.bookshelfParams = bookshelfParams;
@@ -34,7 +36,12 @@ export class MainScene {
     }
 
     private initCamera(): void {
-        this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000);
+        this.camera = new THREE.PerspectiveCamera(
+            60,
+            window.innerWidth / window.innerHeight,
+            1,
+            5000
+        );
         this.camera.position.set(2, 1, 50);
     }
 
@@ -51,8 +58,8 @@ export class MainScene {
     }
 
     private initBookshelf(): void {
-        const bookshelf = new Bookshelf(this.bookshelfParams, "assets/wood.jpeg");
-        const bookshelfMesh = bookshelf.getMesh();
+        this.bookshelf = new Bookshelf(this.bookshelfParams, "assets/wood.jpeg");
+        const bookshelfMesh = this.bookshelf.getMesh();
 
         // Place the bookshelf at the center of the scene
         bookshelfMesh.position.set(0, 0, 0);
@@ -61,22 +68,9 @@ export class MainScene {
     }
 
     private initBooks(numBooks: number): void {
-        const sampleRadius = 100;
-
         for (let i = 0; i < numBooks; i++) {
             const book = new Book(this.bookParams, "assets/book-cover.jpg");
-            const bookMesh = book.getMesh();
-            this.scene.add(bookMesh);
-
-            // Random translation
-            bookMesh.position.x = Math.random() * sampleRadius - sampleRadius / 2;
-            bookMesh.position.y = Math.random() * sampleRadius - sampleRadius / 2;
-            bookMesh.position.z = Math.random() * sampleRadius - sampleRadius / 2;
-
-            // Random rotation
-            bookMesh.rotation.x = Math.random() * Math.PI;
-            bookMesh.rotation.y = Math.random() * Math.PI;
-            bookMesh.rotation.z = Math.random() * Math.PI;
+            this.bookshelf.addBook(book);
         }
     }
 

@@ -100,7 +100,20 @@ export class Book {
         return book;
     }
 
+    public getOuterSize(): THREE.Vector3 {
+        const { bookThickness, bookWidth, bookHeight, coverWidth } = this.params;
+        return new THREE.Vector3(
+            coverWidth + bookThickness * 2,
+            bookHeight,
+            bookWidth + bookThickness
+        );
+    }
+
     public getMesh(): THREE.Mesh {
         return this.bookMesh;
+    }
+
+    public setPosition(position: THREE.Vector3): void {
+        this.bookMesh.position.set(position.x, position.y, position.z);
     }
 }

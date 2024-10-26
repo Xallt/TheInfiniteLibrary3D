@@ -12,9 +12,9 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const defaultBookshelfParams: BookshelfParams = {
-        cellHeight: 10,
-        cellWidth: 15,
-        cellDepth: 10,
+        cellHeight: 30,
+        cellWidth: 45,
+        cellDepth: 30,
         numColumns: 5,
         numRows: 4,
         sideWallThickness: 1,
@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     new MainScene(
-        10,
+        100,
         defaultBookParams,
         defaultBookshelfParams
     );

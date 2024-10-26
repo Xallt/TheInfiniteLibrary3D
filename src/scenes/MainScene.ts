@@ -48,7 +48,7 @@ export class MainScene {
 
     private initObjects(): void {
         const bookParams: BookMeshParams = {
-            bookThickness: 2,
+            bookThickness: 1,
             bookWidth: 15,
             bookHeight: 20,
             coverWidth: 4,

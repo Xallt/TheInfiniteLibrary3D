@@ -229,16 +229,18 @@ export class Bookshelf {
         for (const row of this.rows) {
             for (const cell of row.cells) {
                 if (cell.availableX + bookSize.x <= this.params.cellWidth) {
+                    const bookMesh = book.getMesh().clone();
+                    bookMesh.rotateY(Math.PI);
+
                     const newBookPosition = new THREE.Vector3(
                         cell.upperLeftFarCorner.x + cell.availableX + cell.leftSideThickness + bookSize.x / 2,
                         cell.upperLeftFarCorner.y - cell.upSideThickness - cell.size.y + bookSize.y / 2,
-                        cell.upperLeftFarCorner.z - cell.backSideThickness - cell.size.z + bookSize.z / 2
+                        cell.upperLeftFarCorner.z - cell.backSideThickness - cell.size.z + bookSize.z
                     );
-                    book.setPosition(newBookPosition);
-                    const bookMesh = book.getMesh();
 
+                    bookMesh.position.set(newBookPosition.x, newBookPosition.y, newBookPosition.z);
 
-                    this.bookshelfMesh.add(book.getMesh());
+                    this.bookshelfMesh.add(bookMesh);
                     cell.availableX += bookSize.x;
                     return true;
                 }

@@ -42,7 +42,7 @@ export class MainScene {
             1,
             5000
         );
-        this.camera.position.set(2, 1, 150);
+        this.camera.position.set(0, 0, 150);
     }
 
     private initScene(): void {

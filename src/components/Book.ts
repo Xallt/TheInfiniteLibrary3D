@@ -112,8 +112,4 @@ export class Book {
     public getMesh(): THREE.Mesh {
         return this.bookMesh;
     }
-
-    public setPosition(position: THREE.Vector3): void {
-        this.bookMesh.position.set(position.x, position.y, position.z);
-    }
 }

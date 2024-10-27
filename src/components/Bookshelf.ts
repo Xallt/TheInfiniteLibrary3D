@@ -30,6 +30,7 @@ type Cell = {
 type Row = {
     mesh: THREE.Mesh;
     cells: Cell[];
+    outerSize: THREE.Vector3;
 };
 
 export class Bookshelf {
@@ -42,6 +43,12 @@ export class Bookshelf {
         this.params = params;
         this.texturePath = texturePath;
         this.bookshelfMesh = this.createBookshelfMesh();
+    }
+
+    public getOuterSize(): THREE.Vector3 {
+        const rowHeights = this.rows.map(row => row.outerSize.y);
+        const sumHeights = rowHeights.reduce((a, b) => a + b, 0);
+        return new THREE.Vector3(this.rows[0].outerSize.x, sumHeights, this.rows[0].outerSize.z);
     }
 
     private createBox(boxCenter: THREE.Vector3, boxSize: THREE.Vector3): THREE.Mesh {
@@ -173,7 +180,12 @@ export class Bookshelf {
         cells.forEach(cell => row.add(cell.mesh));
         return {
             mesh: row,
-            cells: cells
+            cells: cells,
+            outerSize: new THREE.Vector3(
+                curCorner.x - rowUpperLeftFarCorner.x,
+                cells[0].outerSize.y,
+                cells[0].outerSize.z
+            )
         };
     }
 

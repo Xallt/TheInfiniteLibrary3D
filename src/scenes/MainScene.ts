@@ -42,7 +42,7 @@ export class MainScene {
             1,
             5000
         );
-        this.camera.position.set(2, 1, 50);
+        this.camera.position.set(2, 1, 150);
     }
 
     private initScene(): void {
@@ -61,8 +61,11 @@ export class MainScene {
         this.bookshelf = new Bookshelf(this.bookshelfParams, "assets/wood.jpeg");
         const bookshelfMesh = this.bookshelf.getMesh();
 
+        const bookshelfOuterSize = this.bookshelf.getOuterSize();
+
+
         // Place the bookshelf at the center of the scene
-        bookshelfMesh.position.set(0, 0, 0);
+        bookshelfMesh.position.set(-bookshelfOuterSize.x / 2, bookshelfOuterSize.y / 2, 0);
 
         this.scene.add(bookshelfMesh);
     }

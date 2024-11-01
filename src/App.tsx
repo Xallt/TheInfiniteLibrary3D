@@ -10,7 +10,6 @@ export const defaultBookParams: BookMeshParams = {
     bookWidth: 15,
     bookHeight: 20,
     coverWidth: 4,
-    numPages: 100,
 };
 
 export const defaultBookshelfParams: BookshelfParams = {

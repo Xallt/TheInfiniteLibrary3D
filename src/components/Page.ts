@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { TextureLoader } from './Book';
+import { PdfPage } from '../utils/pdfParser';
 
 export interface PageParams {
     width: number;
@@ -77,5 +78,19 @@ export class Page {
             { width, height, position, rotation },
             imageData
         );
+    }
+
+    public static fromPdfPage(pdfPage: PdfPage, params: PageParams): Page {
+        // Create ImageData from the Uint8Array
+        const blob = new Blob([pdfPage.imageData], { type: 'image/png' });
+        const imageUrl = URL.createObjectURL(blob);
+
+        // Create the page
+        const page = new Page(params, imageUrl);
+
+        // Clean up the URL after the texture is loaded
+        setTimeout(() => URL.revokeObjectURL(imageUrl), 1000);
+
+        return page;
     }
 } 

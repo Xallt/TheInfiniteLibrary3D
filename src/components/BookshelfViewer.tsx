@@ -27,7 +27,6 @@ export function BookshelfViewer() {
         // Initialize new scene with default parameters
         sceneRef.current = new MainScene(
             containerRef.current,  // Pass the container element
-            0, // Start with 0 books
             defaultBookParams,
             defaultBookshelfParams
         );
@@ -47,11 +46,36 @@ export function BookshelfViewer() {
         };
     }, []); // Empty dependency array means this runs once on mount
 
-    const handleAddBook = () => {
-        if (sceneRef.current) {
-            sceneRef.current.addBook();
-            setBookCount(sceneRef.current.getBookCount());
-        }
+    const handleAddBook = async () => {
+        // Create a hidden file input element
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.pdf';
+        
+        // Handle file selection
+        input.onchange = async (event) => {
+            const file = (event.target as HTMLInputElement).files?.[0];
+            if (!file) return;
+
+            // Read file as ArrayBuffer
+            const arrayBuffer = await file.arrayBuffer();
+
+            // Parse PDF
+            const parser = PdfParser.getInstance();
+            const pages = await parser.parsePdfToImages(arrayBuffer, {
+                imageFormat: 'png',
+                scale: 2.0
+            });
+
+            // Add book with PDF pages
+            if (sceneRef.current && pages.length > 0) {
+                sceneRef.current.addBook(pages);
+                setBookCount(sceneRef.current.getBookCount());
+            }
+        };
+
+        // Trigger file selection
+        input.click();
     };
 
     const handleViewBook = () => {
@@ -74,40 +98,6 @@ export function BookshelfViewer() {
     const handleNextBook = () => {
         if (sceneRef.current) {
             sceneRef.current.selectNextBook();
-        }
-    };
-
-    const handlePdfUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (!file) return;
-
-        // Read file as ArrayBuffer
-        const arrayBuffer = await file.arrayBuffer();
-
-        // Parse PDF
-        const parser = PdfParser.getInstance();
-        const pages = await parser.parsePdfToImages(arrayBuffer, {
-            imageFormat: 'png',
-            scale: 2.0
-        });
-
-        if (pages.length > 0) {
-            // Create blob from the first page's image data
-            const blob = new Blob([pages[0].imageData], { type: 'image/png' });
-            
-            // Create download link
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = 'page1.png';
-            
-            // Trigger download
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            
-            // Clean up
-            URL.revokeObjectURL(url);
         }
     };
 
@@ -142,15 +132,6 @@ export function BookshelfViewer() {
                 >
                     Next Book
                 </button>
-                <label className="parse-pdf-button">
-                    Parse PDF
-                    <input
-                        type="file"
-                        accept=".pdf"
-                        onChange={handlePdfUpload}
-                        style={{ display: 'none' }}
-                    />
-                </label>
             </div>
         </div>
     );

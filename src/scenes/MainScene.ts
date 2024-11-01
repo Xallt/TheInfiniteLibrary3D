@@ -4,6 +4,7 @@ import { createControls } from '../components/Controls';
 import Stats from 'three/examples/jsm/libs/stats.module.js';
 import { TrackballControls } from 'three/examples/jsm/controls/TrackballControls.js';
 import { Bookshelf, BookshelfParams } from '../components/Bookshelf';
+import { PdfPage } from 'src/utils/pdfParser';
 
 export class MainScene {
     private camera!: THREE.PerspectiveCamera;
@@ -25,7 +26,6 @@ export class MainScene {
 
     constructor(
         container: HTMLElement,
-        numBooks: number,
         bookParams: BookMeshParams,
         bookshelfParams: BookshelfParams
     ) {
@@ -43,10 +43,10 @@ export class MainScene {
         this.selectionIndicator = new THREE.Mesh(geometry, material);
         this.selectionIndicator.visible = false;
 
-        this.init(container, numBooks);
+        this.init(container);
     }
 
-    private init(container: HTMLElement, numBooks: number): void {
+    private init(container: HTMLElement): void {
         this.initCamera();
         this.initScene();
         this.initLighting();
@@ -56,7 +56,6 @@ export class MainScene {
         this.addEventListeners();
 
         this.initBookshelf();
-        this.initBooks(numBooks);
 
         this.scene.add(this.selectionIndicator);
     }
@@ -94,19 +93,6 @@ export class MainScene {
         bookshelfMesh.position.set(-bookshelfOuterSize.x / 2, bookshelfOuterSize.y / 2, 0);
 
         this.scene.add(bookshelfMesh);
-    }
-
-    private initBooks(numBooks: number): void {
-        for (let i = 0; i < numBooks; i++) {
-            const book = new Book(this.bookParams, "assets/book-cover.jpg");
-            const added = this.bookshelf.addBook(book);
-            if (added) {
-                this.books.push(book);
-            }
-        }
-        if (this.books.length > 0) {
-            this.selectBook(0);
-        }
     }
 
     private initRenderer(container: HTMLElement): void {
@@ -149,17 +135,19 @@ export class MainScene {
         this.renderer.render(this.scene, this.camera);
     }
 
-    public addBook(): void {
-        const book = new Book(this.bookParams, "assets/book-cover.jpg");
+    public addBook(pdfPages: PdfPage[] = []): void {
+        const book = new Book(
+            this.bookParams,
+            "assets/book-cover.jpg",
+            pdfPages
+        );
         const added = this.bookshelf.addBook(book);
         if (added) {
             this.books.push(book);
-            // Wait a frame for the book to be properly positioned
-            requestAnimationFrame(() => {
-                this.selectBook(this.books.length - 1);
-            });
-        } else {
-            console.warn("Could not add book - bookshelf is full");
+            // If this is the first book, select it
+            if (this.books.length === 1) {
+                this.selectBook(0);
+            }
         }
     }
 
@@ -207,6 +195,7 @@ export class MainScene {
 
         // Create and position a copy of the book
         const bookCopy = originalBook.copy();
+        bookCopy.setCoverAngles(Math.PI / 2);
         const viewingMesh = bookCopy.getMesh();
         viewingMesh.position.set(0, 0, 50);  // In front of camera
         this.scene.add(viewingMesh);

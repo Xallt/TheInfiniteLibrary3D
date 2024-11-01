@@ -34,7 +34,7 @@ export class PdfParser {
         options: PdfParseOptions
     ): Promise<PdfPage[]> {
         const {
-            scale = 2.0, // Higher scale = better quality
+            scale = 2.0,
             imageFormat = 'png'
         } = options;
 
@@ -43,43 +43,46 @@ export class PdfParser {
         const pdf = await loadingTask.promise;
         const pages: PdfPage[] = [];
 
-        // Get the first page
-        const page = await pdf.getPage(1);
+        // Process all pages
+        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+            // Get the page
+            const page = await pdf.getPage(pageNum);
 
-        // Calculate viewport dimensions
-        const viewport = page.getViewport({ scale });
+            // Calculate viewport dimensions
+            const viewport = page.getViewport({ scale });
 
-        // Create canvas
-        const canvas = document.createElement('canvas');
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
+            // Create canvas
+            const canvas = document.createElement('canvas');
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
 
-        // Prepare canvas for rendering
-        const context = canvas.getContext('2d')!;
-        const renderContext = {
-            canvasContext: context,
-            viewport: viewport
-        };
+            // Prepare canvas for rendering
+            const context = canvas.getContext('2d')!;
+            const renderContext = {
+                canvasContext: context,
+                viewport: viewport
+            };
 
-        // Render page to canvas
-        await page.render(renderContext).promise;
+            // Render page to canvas
+            await page.render(renderContext).promise;
 
-        // Convert canvas to blob
-        const blob = await new Promise<Blob>((resolve) =>
-            canvas.toBlob(
-                (blob) => resolve(blob!),
-                `image/${imageFormat}`,
-                1.0
-            )
-        );
+            // Convert canvas to blob
+            const blob = await new Promise<Blob>((resolve) =>
+                canvas.toBlob(
+                    (blob) => resolve(blob!),
+                    `image/${imageFormat}`,
+                    1.0
+                )
+            );
 
-        // Convert blob to Uint8Array
-        const imageData = new Uint8Array(await blob.arrayBuffer());
+            // Convert blob to Uint8Array
+            const imageData = new Uint8Array(await blob.arrayBuffer());
 
-        pages.push({
-            imageData,
-            pageNumber: 1
-        });
+            pages.push({
+                imageData,
+                pageNumber: pageNum
+            });
+        }
 
         return pages;
     }

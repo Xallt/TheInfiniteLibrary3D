@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { Page } from './Page';
+import { PdfPage } from 'src/utils/pdfParser';
 
 // Add this new class for the singleton texture loader
 export class TextureLoader {
@@ -34,7 +35,6 @@ export type BookMeshParams = {
     bookWidth: number;
     bookHeight: number;
     coverWidth: number;
-    numPages: number;
 };
 
 export class Book {
@@ -45,11 +45,12 @@ export class Book {
     private rightSideMesh!: THREE.Mesh;
     private bookMesh: THREE.Mesh;
     private pages: Page[] = [];  // Store Page instances
-
-    constructor(params: BookMeshParams, texturePath: string) {
+    private _pdfPages: PdfPage[] = [];
+    constructor(params: BookMeshParams, texturePath: string, pdfPages: PdfPage[]) {
+        this._pdfPages = pdfPages;
         this.params = params;
         this.texturePath = texturePath;
-        this.bookMesh = this.createBookMesh();
+        this.bookMesh = this.createBookMesh(pdfPages);
     }
 
     private createBox(boxCenter: THREE.Vector3, boxSize: THREE.Vector3): THREE.Mesh {
@@ -65,8 +66,8 @@ export class Book {
         this.rightSideMesh.rotation.y = angle;
     }
 
-    private createBookMesh(): THREE.Mesh {
-        const { bookThickness, bookWidth, bookHeight, coverWidth, numPages } = this.params;
+    private createBookMesh(pdfPages: PdfPage[]): THREE.Mesh {
+        const { bookThickness, bookWidth, bookHeight, coverWidth } = this.params;
 
         this.coverMesh = this.createBox(
             new THREE.Vector3(0, 0, 0),
@@ -88,20 +89,22 @@ export class Book {
 
         // Create pages using the Page class
         const pageWidth = (bookWidth - bookThickness) * 0.95;
-        for (let i = 0; i < numPages; i++) {
+        for (let i = 0; i < pdfPages.length; i++) {
             const pagePosition = new THREE.Vector3(
-                -coverWidth / 2 + i * (coverWidth / numPages) + (coverWidth / numPages) / 2,
+                -coverWidth / 2 + i * (coverWidth / pdfPages.length) + (coverWidth / pdfPages.length) / 2,
                 0,
                 pageWidth / 2 + bookThickness / 2
             );
             const pageRotation = new THREE.Euler(0, Math.PI / 2, 0);
 
-            const page = Page.fromTexturePath(
-                pageWidth,
-                bookHeight,
-                "assets/page.jpg",
-                pagePosition,
-                pageRotation
+            const page = Page.fromPdfPage(
+                pdfPages[i],
+                {
+                    width: pageWidth,
+                    height: bookHeight,
+                    position: pagePosition,
+                    rotation: pageRotation
+                }
             );
             this.pages.push(page);
         }
@@ -130,7 +133,7 @@ export class Book {
     }
 
     public copy(): Book {
-        const newBook = new Book(this.params, this.texturePath);
+        const newBook = new Book(this.params, this.texturePath, this._pdfPages);
         return newBook;
     }
 

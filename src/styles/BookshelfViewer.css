@@ -59,4 +59,20 @@
 .add-book-button:disabled {
     background-color: #ccc;
     cursor: not-allowed;
+}
+
+.parse-pdf-button {
+    padding: 12px 24px;
+    font-size: 16px;
+    color: white;
+    background-color: #FF5722;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    transition: background-color 0.3s;
+}
+
+.parse-pdf-button:hover {
+    background-color: #F4511E;
 } 

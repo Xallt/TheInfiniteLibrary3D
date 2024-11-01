@@ -1,14 +1,19 @@
-import { PDFDocument } from 'pdf-lib';
-import sharp from 'sharp';
+import * as pdfjsLib from 'pdfjs-dist';
+
+// Initialize PDF.js worker
+const workerUrl = new URL(
+    'pdfjs-dist/build/pdf.worker.min.mjs',
+    import.meta.url
+);
+pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl.href;
 
 export interface PdfParseOptions {
     imageFormat: 'png' | 'jpeg';
-    dpi?: number;
-    prefix?: string;
+    scale?: number;
 }
 
 export interface PdfPage {
-    imageData: Buffer;
+    imageData: Uint8Array;
     pageNumber: number;
 }
 
@@ -29,49 +34,52 @@ export class PdfParser {
         options: PdfParseOptions
     ): Promise<PdfPage[]> {
         const {
-            imageFormat = 'png',
-            dpi = 300,
-            prefix = 'page'
+            scale = 2.0, // Higher scale = better quality
+            imageFormat = 'png'
         } = options;
 
-        // Parse PDF
-        const pdfDoc = await PDFDocument.load(pdfFile);
-        const pageCount = pdfDoc.getPageCount();
+        // Load the PDF document
+        const loadingTask = pdfjsLib.getDocument({ data: pdfFile });
+        const pdf = await loadingTask.promise;
         const pages: PdfPage[] = [];
 
-        // Process each page
-        for (let i = 0; i < pageCount; i++) {
-            const pageNum = i + 1;
+        // Get the first page
+        const page = await pdf.getPage(1);
 
-            // Create a new document with just this page
-            const singlePageDoc = await PDFDocument.create();
-            const [page] = await singlePageDoc.copyPages(pdfDoc, [i]);
-            singlePageDoc.addPage(page);
+        // Calculate viewport dimensions
+        const viewport = page.getViewport({ scale });
 
-            // Save the single page as PDF
-            const pageBytes = await singlePageDoc.save();
+        // Create canvas
+        const canvas = document.createElement('canvas');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
 
-            // Convert PDF page to image using sharp
-            const image = sharp(Buffer.from(pageBytes))
-                .resize(undefined, undefined, {
-                    fit: 'contain',
-                    background: { r: 255, g: 255, b: 255, alpha: 1 }
-                })
-                .flatten({ background: '#ffffff' });
+        // Prepare canvas for rendering
+        const context = canvas.getContext('2d')!;
+        const renderContext = {
+            canvasContext: context,
+            viewport: viewport
+        };
 
-            // Set DPI
-            image.withMetadata({
-                density: dpi
-            });
+        // Render page to canvas
+        await page.render(renderContext).promise;
 
-            // Get image data as buffer
-            const imageData = await image.toFormat(imageFormat).toBuffer();
+        // Convert canvas to blob
+        const blob = await new Promise<Blob>((resolve) =>
+            canvas.toBlob(
+                (blob) => resolve(blob!),
+                `image/${imageFormat}`,
+                1.0
+            )
+        );
 
-            pages.push({
-                imageData,
-                pageNumber: pageNum
-            });
-        }
+        // Convert blob to Uint8Array
+        const imageData = new Uint8Array(await blob.arrayBuffer());
+
+        pages.push({
+            imageData,
+            pageNumber: 1
+        });
 
         return pages;
     }

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { MainScene } from '../scenes/MainScene';
 import { defaultBookParams, defaultBookshelfParams } from '../App';
+import { PdfParser } from '../utils/pdfParser';
 
 export function BookshelfViewer() {
     const sceneRef = useRef<MainScene | null>(null);
@@ -76,6 +77,40 @@ export function BookshelfViewer() {
         }
     };
 
+    const handlePdfUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        // Read file as ArrayBuffer
+        const arrayBuffer = await file.arrayBuffer();
+
+        // Parse PDF
+        const parser = PdfParser.getInstance();
+        const pages = await parser.parsePdfToImages(arrayBuffer, {
+            imageFormat: 'png',
+            scale: 2.0
+        });
+
+        if (pages.length > 0) {
+            // Create blob from the first page's image data
+            const blob = new Blob([pages[0].imageData], { type: 'image/png' });
+            
+            // Create download link
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'page1.png';
+            
+            // Trigger download
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            // Clean up
+            URL.revokeObjectURL(url);
+        }
+    };
+
     return (
         <div className="bookshelf-viewer">
             <div ref={containerRef} className="scene-container" />
@@ -97,7 +132,6 @@ export function BookshelfViewer() {
                 <button 
                     className="add-book-button"
                     onClick={handleAddBook}
-                    disabled={isViewingBook}
                 >
                     Add Book
                 </button>
@@ -108,6 +142,15 @@ export function BookshelfViewer() {
                 >
                     Next Book
                 </button>
+                <label className="parse-pdf-button">
+                    Parse PDF
+                    <input
+                        type="file"
+                        accept=".pdf"
+                        onChange={handlePdfUpload}
+                        style={{ display: 'none' }}
+                    />
+                </label>
             </div>
         </div>
     );

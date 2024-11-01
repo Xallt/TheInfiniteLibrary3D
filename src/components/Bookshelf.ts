@@ -256,7 +256,9 @@ export class Bookshelf {
 
     public getBookPosition(index: number): THREE.Vector3 | null {
         if (index >= 0 && index < this.books.length) {
-            return this.books[index].position.clone();
+            const localPosition = this.books[index].position.clone();
+            const absolutePosition = localPosition.applyMatrix4(this.bookshelfMesh.matrixWorld);
+            return absolutePosition;
         }
         return null;
     }

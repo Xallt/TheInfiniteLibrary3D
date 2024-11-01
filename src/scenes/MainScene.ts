@@ -184,7 +184,7 @@ export class MainScene {
 
     public selectPreviousBook(): void {
         if (this.books.length === 0) return;
-        const prevIndex = this.selectedBookIndex <= 0 ? this.books.length - 1 : this.selectedBookIndex - 1;
+        const prevIndex = (this.selectedBookIndex + this.books.length - 1) % this.books.length;
         this.selectBook(prevIndex);
     }
 

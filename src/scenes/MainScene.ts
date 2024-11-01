@@ -15,6 +15,9 @@ export class MainScene {
     private bookshelfParams!: BookshelfParams;
 
     private bookshelf!: Bookshelf;
+    private books: Book[] = [];
+    private selectedBookIndex: number = -1;
+    private selectionIndicator: THREE.Mesh;
 
     constructor(
         container: HTMLElement,
@@ -24,6 +27,18 @@ export class MainScene {
     ) {
         this.bookParams = bookParams;
         this.bookshelfParams = bookshelfParams;
+
+        // Create selection indicator first
+        const geometry = new THREE.SphereGeometry(2, 32, 32);
+        const material = new THREE.MeshBasicMaterial({
+            color: 0xff0000,
+            transparent: true,
+            opacity: 0.5,
+            depthTest: false  // Make sure it's always visible
+        });
+        this.selectionIndicator = new THREE.Mesh(geometry, material);
+        this.selectionIndicator.visible = false;
+
         this.init(container, numBooks);
     }
 
@@ -38,6 +53,8 @@ export class MainScene {
 
         this.initBookshelf();
         this.initBooks(numBooks);
+
+        this.scene.add(this.selectionIndicator);
     }
 
     private initCamera(): void {
@@ -78,12 +95,14 @@ export class MainScene {
     private initBooks(numBooks: number): void {
         for (let i = 0; i < numBooks; i++) {
             const book = new Book(this.bookParams, "assets/book-cover.jpg");
-            this.bookshelf.addBook(book);
+            const added = this.bookshelf.addBook(book);
+            if (added) {
+                this.books.push(book);
+            }
         }
-        const book = new Book(this.bookParams, "assets/book-cover.jpg");
-        const bookMesh = book.getMesh();
-        bookMesh.position.set(0, 0, 40);
-        this.scene.add(bookMesh);
+        if (this.books.length > 0) {
+            this.selectBook(0);
+        }
     }
 
     private initRenderer(container: HTMLElement): void {
@@ -129,8 +148,47 @@ export class MainScene {
     public addBook(): void {
         const book = new Book(this.bookParams, "assets/book-cover.jpg");
         const added = this.bookshelf.addBook(book);
-        if (!added) {
+        if (added) {
+            this.books.push(book);
+            // Wait a frame for the book to be properly positioned
+            requestAnimationFrame(() => {
+                this.selectBook(this.books.length - 1);
+            });
+        } else {
             console.warn("Could not add book - bookshelf is full");
         }
+    }
+
+    public selectBook(index: number): void {
+        if (index >= 0 && index < this.books.length) {
+            this.selectedBookIndex = index;
+            const position = this.bookshelf.getBookPosition(index);
+
+            if (position) {
+                // Move indicator in front of the book
+                position.z += 20;  // Move it forward
+                this.selectionIndicator.position.copy(position);
+                this.selectionIndicator.visible = true;
+            }
+        } else {
+            this.selectionIndicator.visible = false;
+            this.selectedBookIndex = -1;
+        }
+    }
+
+    public selectNextBook(): void {
+        if (this.books.length === 0) return;
+        const nextIndex = (this.selectedBookIndex + 1) % this.books.length;
+        this.selectBook(nextIndex);
+    }
+
+    public selectPreviousBook(): void {
+        if (this.books.length === 0) return;
+        const prevIndex = this.selectedBookIndex <= 0 ? this.books.length - 1 : this.selectedBookIndex - 1;
+        this.selectBook(prevIndex);
+    }
+
+    public getBookCount(): number {
+        return this.books.length;
     }
 }

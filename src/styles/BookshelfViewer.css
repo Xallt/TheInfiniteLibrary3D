@@ -10,19 +10,41 @@
     height: 100%;
 }
 
-.add-book-button {
+.controls {
     position: fixed;
     bottom: 20px;
-    right: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 10px;
+}
+
+.nav-button, .add-book-button {
     padding: 12px 24px;
     font-size: 16px;
-    background-color: #4CAF50;
     color: white;
     border: none;
     border-radius: 4px;
     cursor: pointer;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
     transition: background-color 0.3s;
+}
+
+.nav-button {
+    background-color: #2196F3;
+}
+
+.nav-button:hover:not(:disabled) {
+    background-color: #1976D2;
+}
+
+.nav-button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
+
+.add-book-button {
+    background-color: #4CAF50;
 }
 
 .add-book-button:hover {

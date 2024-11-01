@@ -1,10 +1,11 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { MainScene } from '../scenes/MainScene';
 import { defaultBookParams, defaultBookshelfParams } from '../App';
 
 export function BookshelfViewer() {
     const sceneRef = useRef<MainScene | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
+    const [bookCount, setBookCount] = useState(0);
 
     useEffect(() => {
         if (!containerRef.current) return;
@@ -47,18 +48,47 @@ export function BookshelfViewer() {
     const handleAddBook = () => {
         if (sceneRef.current) {
             sceneRef.current.addBook();
+            setBookCount(sceneRef.current.getBookCount());
+        }
+    };
+
+    const handlePreviousBook = () => {
+        if (sceneRef.current) {
+            sceneRef.current.selectPreviousBook();
+        }
+    };
+
+    const handleNextBook = () => {
+        if (sceneRef.current) {
+            sceneRef.current.selectNextBook();
         }
     };
 
     return (
         <div className="bookshelf-viewer">
             <div ref={containerRef} className="scene-container" />
-            <button 
-                className="add-book-button"
-                onClick={handleAddBook}
-            >
-                Add Book
-            </button>
+            <div className="controls">
+                <button 
+                    className="nav-button"
+                    onClick={handlePreviousBook}
+                    disabled={bookCount === 0}
+                >
+                    Previous Book
+                </button>
+                <button 
+                    className="add-book-button"
+                    onClick={handleAddBook}
+                >
+                    Add Book
+                </button>
+                <button 
+                    className="nav-button"
+                    onClick={handleNextBook}
+                    disabled={bookCount === 0}
+                >
+                    Next Book
+                </button>
+            </div>
         </div>
     );
 } 

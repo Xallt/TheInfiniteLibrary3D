@@ -67,6 +67,11 @@ export class Book {
         return page;
     }
 
+    public setCoverAngles(angle: number): void {
+        this.leftSideMesh.rotation.y = -angle;
+        this.rightSideMesh.rotation.y = angle;
+    }
+
     private createBookMesh(): THREE.Mesh {
         const { bookThickness, bookWidth, bookHeight, coverWidth, numPages } = this.params;
 
@@ -74,21 +79,21 @@ export class Book {
             new THREE.Vector3(0, 0, 0),
             new THREE.Vector3(coverWidth, bookHeight, bookThickness)
         );
+
+        // Positioning in this specific way to make sure the rotation pivot is correct
         this.leftSideMesh = this.createBox(
-            new THREE.Vector3(-coverWidth / 2 - bookThickness / 2, 0, 0),
+            new THREE.Vector3(-coverWidth / 2, 0, bookThickness / 2),
             new THREE.Vector3(bookThickness, bookHeight, bookWidth)
         );
 
 
         this.rightSideMesh = this.createBox(
-            new THREE.Vector3(coverWidth / 2 + bookThickness / 2, 0, 0),
+            new THREE.Vector3(coverWidth / 2, 0, bookThickness / 2),
             new THREE.Vector3(bookThickness, bookHeight, bookWidth)
         );
 
-        const translationMatrix = new THREE.Matrix4();
-        translationMatrix.makeTranslation(0, 0, bookWidth / 2 + bookThickness / 2);
-        this.leftSideMesh.applyMatrix4(translationMatrix);
-        this.rightSideMesh.applyMatrix4(translationMatrix);
+        this.leftSideMesh.geometry.translate(- bookThickness / 2, 0, bookWidth / 2);
+        this.rightSideMesh.geometry.translate(bookThickness / 2, 0, bookWidth / 2);
 
         let pages: THREE.Mesh[] = [];
         for (let i = 0; i < numPages; i++) {

@@ -38,6 +38,7 @@ export class Bookshelf {
     private texturePath: string;
     private bookshelfMesh: THREE.Mesh;
     private rows: Row[] = [];
+    private books: { book: Book, position: THREE.Vector3 }[] = [];
 
     constructor(params: BookshelfParams, texturePath: string) {
         this.params = params;
@@ -221,7 +222,9 @@ export class Bookshelf {
     public addBook(book: Book): boolean {
         const bookSize = book.getOuterSize();
 
-        if (bookSize.x > this.params.cellWidth || bookSize.y > this.params.cellHeight || bookSize.z > this.params.cellDepth) {
+        if (bookSize.x > this.params.cellWidth ||
+            bookSize.y > this.params.cellHeight ||
+            bookSize.z > this.params.cellDepth) {
             console.error("Book dimensions exceed cell size.");
             return false;
         }
@@ -239,13 +242,26 @@ export class Bookshelf {
                     );
 
                     bookMesh.position.set(newBookPosition.x, newBookPosition.y, newBookPosition.z);
-
                     this.bookshelfMesh.add(bookMesh);
                     cell.availableX += bookSize.x;
+
+                    // Store book and its position
+                    this.books.push({ book, position: newBookPosition });
                     return true;
                 }
             }
         }
         return false;
+    }
+
+    public getBookPosition(index: number): THREE.Vector3 | null {
+        if (index >= 0 && index < this.books.length) {
+            return this.books[index].position.clone();
+        }
+        return null;
+    }
+
+    public getBookCount(): number {
+        return this.books.length;
     }
 }

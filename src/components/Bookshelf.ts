@@ -232,7 +232,7 @@ export class Bookshelf {
         for (const row of this.rows) {
             for (const cell of row.cells) {
                 if (cell.availableX + bookSize.x <= this.params.cellWidth) {
-                    const bookMesh = book.getMesh().clone();
+                    const bookMesh = book.getMesh();
                     bookMesh.rotateY(Math.PI);
 
                     const newBookPosition = new THREE.Vector3(

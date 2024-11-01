@@ -18,6 +18,10 @@ export class MainScene {
     private books: Book[] = [];
     private selectedBookIndex: number = -1;
     private selectionIndicator: THREE.Mesh;
+    private originalBookPositions: Map<number, THREE.Vector3> = new Map();
+    private isBookInViewMode: boolean = false;
+    private viewingBookIndex: number = -1;
+    private viewingBookMesh: THREE.Mesh | null = null;
 
     constructor(
         container: HTMLElement,
@@ -190,5 +194,59 @@ export class MainScene {
 
     public getBookCount(): number {
         return this.books.length;
+    }
+
+    public viewSelectedBook(): void {
+        if (this.selectedBookIndex === -1 || this.isBookInViewMode) return;
+
+        const originalBook = this.books[this.selectedBookIndex];
+        const originalMesh = originalBook.getMesh();
+
+        // Hide the original book
+        originalMesh.visible = false;
+
+        // Create and position a copy of the book
+        const bookCopy = originalBook.copy();
+        const viewingMesh = bookCopy.getMesh();
+        viewingMesh.position.set(0, 0, 50);  // In front of camera
+        this.scene.add(viewingMesh);
+        this.viewingBookMesh = viewingMesh;
+
+        this.isBookInViewMode = true;
+        this.viewingBookIndex = this.selectedBookIndex;
+
+        // Update selection indicator
+        this.selectionIndicator.position.copy(viewingMesh.position);
+        this.selectionIndicator.position.z += 20;
+    }
+
+    public returnBookToShelf(): void {
+        if (!this.isBookInViewMode || this.viewingBookIndex === -1) return;
+
+        // Show the original book
+        const originalBook = this.books[this.viewingBookIndex];
+        const originalMesh = originalBook.getMesh();
+        originalMesh.visible = true;
+
+        // Remove the copy
+        if (this.viewingBookMesh) {
+            this.scene.remove(this.viewingBookMesh);
+            this.viewingBookMesh = null;
+        }
+
+        this.isBookInViewMode = false;
+
+        // Update selection indicator
+        const position = this.bookshelf.getBookPosition(this.viewingBookIndex);
+        if (position) {
+            position.z += 20;
+            this.selectionIndicator.position.copy(position);
+        }
+
+        this.viewingBookIndex = -1;
+    }
+
+    public isViewingBook(): boolean {
+        return this.isBookInViewMode;
     }
 }

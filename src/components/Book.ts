@@ -128,4 +128,9 @@ export class Book {
     public getMesh(): THREE.Mesh {
         return this.bookMesh;
     }
+
+    public copy(): Book {
+        const newBook = new Book(this.params, this.texturePath);
+        return newBook;
+    }
 }

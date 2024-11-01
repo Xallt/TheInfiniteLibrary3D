@@ -6,6 +6,7 @@ export function BookshelfViewer() {
     const sceneRef = useRef<MainScene | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const [bookCount, setBookCount] = useState(0);
+    const [isViewingBook, setIsViewingBook] = useState(false);
 
     useEffect(() => {
         if (!containerRef.current) return;
@@ -52,6 +53,17 @@ export function BookshelfViewer() {
         }
     };
 
+    const handleViewBook = () => {
+        if (sceneRef.current) {
+            if (!isViewingBook) {
+                sceneRef.current.viewSelectedBook();
+            } else {
+                sceneRef.current.returnBookToShelf();
+            }
+            setIsViewingBook(!isViewingBook);
+        }
+    };
+
     const handlePreviousBook = () => {
         if (sceneRef.current) {
             sceneRef.current.selectPreviousBook();
@@ -71,20 +83,28 @@ export function BookshelfViewer() {
                 <button 
                     className="nav-button"
                     onClick={handlePreviousBook}
-                    disabled={bookCount === 0}
+                    disabled={bookCount === 0 || isViewingBook}
                 >
                     Previous Book
                 </button>
                 <button 
+                    className="view-button"
+                    onClick={handleViewBook}
+                    disabled={bookCount === 0}
+                >
+                    {isViewingBook ? 'Return to Shelf' : 'View Book'}
+                </button>
+                <button 
                     className="add-book-button"
                     onClick={handleAddBook}
+                    disabled={isViewingBook}
                 >
                     Add Book
                 </button>
                 <button 
                     className="nav-button"
                     onClick={handleNextBook}
-                    disabled={bookCount === 0}
+                    disabled={bookCount === 0 || isViewingBook}
                 >
                     Next Book
                 </button>

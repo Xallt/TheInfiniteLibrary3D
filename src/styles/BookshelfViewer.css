@@ -19,7 +19,7 @@
     gap: 10px;
 }
 
-.nav-button, .add-book-button {
+.nav-button, .add-book-button, .view-button {
     padding: 12px 24px;
     font-size: 16px;
     color: white;
@@ -38,15 +38,25 @@
     background-color: #1976D2;
 }
 
-.nav-button:disabled {
-    background-color: #ccc;
-    cursor: not-allowed;
+.view-button {
+    background-color: #9C27B0;
+}
+
+.view-button:hover:not(:disabled) {
+    background-color: #7B1FA2;
 }
 
 .add-book-button {
     background-color: #4CAF50;
 }
 
-.add-book-button:hover {
+.add-book-button:hover:not(:disabled) {
     background-color: #45a049;
+}
+
+.nav-button:disabled,
+.view-button:disabled,
+.add-book-button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
 } 

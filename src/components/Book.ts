@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { cover } from 'three/src/extras/TextureUtils';
 
 // Add this new class for the singleton texture loader
 export class TextureLoader {
@@ -39,6 +40,9 @@ export type BookMeshParams = {
 export class Book {
     private params: BookMeshParams;
     private texturePath: string;
+    private coverMesh!: THREE.Mesh;
+    private leftSideMesh!: THREE.Mesh;
+    private rightSideMesh!: THREE.Mesh;
     private bookMesh: THREE.Mesh;
 
     constructor(params: BookMeshParams, texturePath: string) {
@@ -66,18 +70,25 @@ export class Book {
     private createBookMesh(): THREE.Mesh {
         const { bookThickness, bookWidth, bookHeight, coverWidth, numPages } = this.params;
 
-        const cover = this.createBox(
+        this.coverMesh = this.createBox(
             new THREE.Vector3(0, 0, 0),
             new THREE.Vector3(coverWidth, bookHeight, bookThickness)
         );
-        const leftSide = this.createBox(
-            new THREE.Vector3(-coverWidth / 2 - bookThickness / 2, 0, bookWidth / 2 - bookThickness / 2),
+        this.leftSideMesh = this.createBox(
+            new THREE.Vector3(-coverWidth / 2 - bookThickness / 2, 0, 0),
             new THREE.Vector3(bookThickness, bookHeight, bookWidth)
         );
-        const rightSide = this.createBox(
-            new THREE.Vector3(coverWidth / 2 + bookThickness / 2, 0, bookWidth / 2 - bookThickness / 2),
+
+
+        this.rightSideMesh = this.createBox(
+            new THREE.Vector3(coverWidth / 2 + bookThickness / 2, 0, 0),
             new THREE.Vector3(bookThickness, bookHeight, bookWidth)
         );
+
+        const translationMatrix = new THREE.Matrix4();
+        translationMatrix.makeTranslation(0, 0, bookWidth / 2 + bookThickness / 2);
+        this.leftSideMesh.applyMatrix4(translationMatrix);
+        this.rightSideMesh.applyMatrix4(translationMatrix);
 
         let pages: THREE.Mesh[] = [];
         for (let i = 0; i < numPages; i++) {
@@ -93,9 +104,9 @@ export class Book {
         }
 
         const book = new THREE.Mesh();
-        book.add(cover);
-        book.add(leftSide);
-        book.add(rightSide);
+        book.add(this.coverMesh);
+        book.add(this.leftSideMesh);
+        book.add(this.rightSideMesh);
         pages.forEach(page => book.add(page));
         return book;
     }

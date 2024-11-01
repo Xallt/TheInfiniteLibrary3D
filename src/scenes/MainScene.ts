@@ -16,17 +16,22 @@ export class MainScene {
 
     private bookshelf!: Bookshelf;
 
-    constructor(numBooks: number, bookParams: BookMeshParams, bookshelfParams: BookshelfParams) {
+    constructor(
+        container: HTMLElement,
+        numBooks: number,
+        bookParams: BookMeshParams,
+        bookshelfParams: BookshelfParams
+    ) {
         this.bookParams = bookParams;
         this.bookshelfParams = bookshelfParams;
-        this.init(numBooks);
+        this.init(container, numBooks);
     }
 
-    private init(numBooks: number): void {
+    private init(container: HTMLElement, numBooks: number): void {
         this.initCamera();
         this.initScene();
         this.initLighting();
-        this.initRenderer();
+        this.initRenderer(container);
         this.initControls();
         this.initStats();
         this.addEventListeners();
@@ -75,14 +80,18 @@ export class MainScene {
             const book = new Book(this.bookParams, "assets/book-cover.jpg");
             this.bookshelf.addBook(book);
         }
+        const book = new Book(this.bookParams, "assets/book-cover.jpg");
+        const bookMesh = book.getMesh();
+        bookMesh.position.set(0, 0, 40);
+        this.scene.add(bookMesh);
     }
 
-    private initRenderer(): void {
+    private initRenderer(container: HTMLElement): void {
         this.renderer = new THREE.WebGLRenderer({ antialias: true });
         this.renderer.setPixelRatio(window.devicePixelRatio);
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.renderer.setAnimationLoop(this.animate.bind(this));
-        document.body.appendChild(this.renderer.domElement);
+        container.appendChild(this.renderer.domElement);
     }
 
     private initControls(): void {
@@ -91,7 +100,8 @@ export class MainScene {
 
     private initStats(): void {
         this.stats = new Stats();
-        document.body.appendChild(this.stats.dom);
+        this.stats.dom.style.position = 'absolute';
+        this.renderer.domElement.parentElement?.appendChild(this.stats.dom);
     }
 
     private addEventListeners(): void {
@@ -114,5 +124,13 @@ export class MainScene {
     private render(): void {
         this.renderer.clear();
         this.renderer.render(this.scene, this.camera);
+    }
+
+    public addBook(): void {
+        const book = new Book(this.bookParams, "assets/book-cover.jpg");
+        const added = this.bookshelf.addBook(book);
+        if (!added) {
+            console.warn("Could not add book - bookshelf is full");
+        }
     }
 }

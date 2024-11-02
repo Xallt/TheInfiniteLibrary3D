@@ -6,22 +6,22 @@ import { BookshelfParams } from './components/Bookshelf';
 
 // Move the parameters from App.ts to here
 export const defaultBookParams: BookMeshParams = {
-    bookThickness: 1,
-    bookWidth: 15,
-    bookHeight: 20,
-    coverWidth: 4,
+    bookThickness: 0.01,
+    bookWidth: 0.15,
+    bookHeight: 0.2,
+    coverWidth: 0.04,
 };
 
 export const defaultBookshelfParams: BookshelfParams = {
-    cellHeight: 30,
-    cellWidth: 45,
-    cellDepth: 30,
+    cellHeight: 0.3,
+    cellWidth: 0.45,
+    cellDepth: 0.3,
     numColumns: 5,
     numRows: 4,
-    sideWallThickness: 1,
-    interFloorThickness: 1,
-    mainSideWallThickness: 1,
-    mainRoofBottomThickness: 1,
+    sideWallThickness: 0.01,
+    interFloorThickness: 0.01,
+    mainSideWallThickness: 0.01,
+    mainRoofBottomThickness: 0.01,
     backWallThickness: 0,
 };
 

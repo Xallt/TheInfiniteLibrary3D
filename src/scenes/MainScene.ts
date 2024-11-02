@@ -26,6 +26,7 @@ export class MainScene {
     private isBookInViewMode: boolean = false;
     private viewingBookIndex: number = -1;
     private viewingBookMesh: THREE.Mesh | null = null;
+    private sceneElevation!: number;
 
     private controllers: THREE.XRTargetRaySpace[] = [];
     private controllerGrips: THREE.XRGripSpace[] = [];
@@ -41,7 +42,7 @@ export class MainScene {
         this.bookshelfParams = bookshelfParams;
 
         // Create selection indicator first
-        const geometry = new THREE.SphereGeometry(2, 32, 32);
+        const geometry = new THREE.SphereGeometry(0.02, 32, 32);
         const material = new THREE.MeshBasicMaterial({
             color: 0xff0000,
             transparent: true,
@@ -72,8 +73,8 @@ export class MainScene {
     }
 
     private init(container: HTMLElement): void {
-        this.initCamera();
         this.initScene();
+        this.initCamera();
         this.initLighting();
         this.initRenderer(container);
         this.initControls();
@@ -92,19 +93,21 @@ export class MainScene {
             0.1, // Reduced near plane for VR
             5000
         );
-        this.camera.position.set(0, 1.6, 150); // Set initial height to average human height
+        this.camera.position.set(0, this.sceneElevation, 1.5); // Set initial height to average human height
     }
 
     private initScene(): void {
         this.scene = new THREE.Scene();
         this.scene.background = new THREE.Color(0xf0f0f0);
 
+        this.sceneElevation = 0.5;
+
         // Only add VR-specific elements if VR is supported
-        if (this.isVRSupported) {
-            // Add a grid helper for VR ground reference
-            const grid = new THREE.GridHelper(100, 20);
-            this.scene.add(grid);
-        }
+        // if (this.isVRSupported) {
+        //     // Add a grid helper for VR ground reference
+        //     const grid = new THREE.GridHelper(100, 20);
+        //     this.scene.add(grid);
+        // }
     }
 
     private initLighting(): void {
@@ -122,7 +125,7 @@ export class MainScene {
 
 
         // Place the bookshelf at the center of the scene
-        bookshelfMesh.position.set(-bookshelfOuterSize.x / 2, bookshelfOuterSize.y / 2, 0);
+        bookshelfMesh.position.set(-bookshelfOuterSize.x / 2, bookshelfOuterSize.y / 2 + this.sceneElevation, 0);
 
         this.scene.add(bookshelfMesh);
     }
@@ -138,6 +141,33 @@ export class MainScene {
         // Only enable XR if supported
         if (this.isVRSupported) {
             this.renderer.xr.enabled = true;
+
+            // Add VR session change handlers
+            this.renderer.xr.addEventListener('sessionstart', () => {
+                const xrManager = this.renderer.xr;
+                const baseReferenceSpace = xrManager.getReferenceSpace();
+
+                if (baseReferenceSpace) {
+                    // Convert camera rotation to quaternion
+                    const quaternion = this.camera.quaternion;
+
+                    // Multiply by a 180-degree rotation around Y axis
+                    // First create a Euler rotation then convert to quaternion
+                    const euler = new THREE.Euler(0, Math.PI, 0, 'XYZ');
+                    const rotationQuaternion = new THREE.Quaternion().setFromEuler(euler);
+                    quaternion.multiply(rotationQuaternion);
+
+                    // Create transform from current camera position and rotation
+                    const transform = new XRRigidTransform(
+                        { x: this.camera.position.x, y: this.camera.position.y, z: this.camera.position.z },
+                        { x: quaternion.x, y: quaternion.y, z: quaternion.z, w: quaternion.w }
+                    );
+
+                    // Apply transform to reference space
+                    const referenceSpace = baseReferenceSpace.getOffsetReferenceSpace(transform);
+                    xrManager.setReferenceSpace(referenceSpace);
+                }
+            });
 
             // Add VR button
             const vrButton = VRButton.createButton(this.renderer);
@@ -188,6 +218,7 @@ export class MainScene {
 
     private initControls(): void {
         this.controls = createControls(this.camera, this.renderer);
+        this.controls.target.set(0, this.sceneElevation, 0);
     }
 
     private initStats(): void {
@@ -255,7 +286,7 @@ export class MainScene {
 
             if (position) {
                 // Move indicator in front of the book
-                position.z += 20;  // Move it forward
+                position.z += 0.2;  // Move it forward
                 this.selectionIndicator.position.copy(position);
                 this.selectionIndicator.visible = true;
             }
@@ -294,7 +325,7 @@ export class MainScene {
         const bookCopy = originalBook.copy();
         bookCopy.setCoverAngles(Math.PI / 2);
         const viewingMesh = bookCopy.getMesh();
-        viewingMesh.position.set(0, 0, 50);  // In front of camera
+        viewingMesh.position.set(0, this.sceneElevation, 0.5);  // In front of camera
         this.scene.add(viewingMesh);
         this.viewingBookMesh = viewingMesh;
 
@@ -307,7 +338,7 @@ export class MainScene {
 
         // Update selection indicator
         this.selectionIndicator.position.copy(viewingMesh.position);
-        this.selectionIndicator.position.z += 20;
+        this.selectionIndicator.position.z += 0.2;
     }
 
     public returnBookToShelf(): void {

@@ -29,10 +29,10 @@ export class PdfParser {
         return PdfParser.instance;
     }
 
-    public async parsePdfToImages(
+    public async *parsePdfToImages(
         pdfFile: ArrayBuffer,
         options: PdfParseOptions
-    ): Promise<PdfPage[]> {
+    ): AsyncGenerator<PdfPage> {
         const {
             scale = 2.0,
             imageFormat = 'png'
@@ -41,9 +41,8 @@ export class PdfParser {
         // Load the PDF document
         const loadingTask = pdfjsLib.getDocument({ data: pdfFile });
         const pdf = await loadingTask.promise;
-        const pages: PdfPage[] = [];
 
-        // Process all pages
+        // Process pages one at a time
         for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
             // Get the page
             const page = await pdf.getPage(pageNum);
@@ -78,12 +77,10 @@ export class PdfParser {
             // Convert blob to Uint8Array
             const imageData = new Uint8Array(await blob.arrayBuffer());
 
-            pages.push({
+            yield {
                 imageData,
                 pageNumber: pageNum
-            });
+            };
         }
-
-        return pages;
     }
 } 

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { MainScene } from '../scenes/MainScene';
 import { defaultBookParams, defaultBookshelfParams } from '../App';
-import { PdfParser } from '../utils/pdfParser';
+import { PdfPage, PdfParser } from '../utils/pdfParser';
 
 export function BookshelfViewer() {
     const sceneRef = useRef<MainScene | null>(null);
@@ -62,10 +62,16 @@ export function BookshelfViewer() {
 
             // Parse PDF
             const parser = PdfParser.getInstance();
-            const pages = await parser.parsePdfToImages(arrayBuffer, {
+            const pagesGenerator = parser.parsePdfToImages(arrayBuffer, {
                 imageFormat: 'png',
                 scale: 2.0
             });
+
+            // Collect all pages
+            const pages: PdfPage[] = [];
+            for await (const page of pagesGenerator) {
+                pages.push(page);
+            }
 
             // Add book with PDF pages
             if (sceneRef.current && pages.length > 0) {

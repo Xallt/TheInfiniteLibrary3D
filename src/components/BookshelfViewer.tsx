@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { MainScene } from '../scenes/MainScene';
 import { defaultBookParams, defaultBookshelfParams } from '../App';
 import { PdfPage, PdfParser } from '../utils/pdfParser';
+import { Book } from './Book';
 
 export function BookshelfViewer() {
     const sceneRef = useRef<MainScene | null>(null);
@@ -68,14 +69,15 @@ export function BookshelfViewer() {
             });
 
             // Collect all pages
-            const pages: PdfPage[] = [];
+            const book = Book.empty(defaultBookParams, "assets/book-cover.jpg");
+            book.setNumPages(pagesParseResult.metadata.numPages);
             for await (const page of pagesParseResult.pages) {
-                pages.push(page);
+                book.appendPageFromPdf(page);
             }
 
             // Add book with PDF pages
-            if (sceneRef.current && pages.length > 0) {
-                sceneRef.current.addBook(pages);
+            if (sceneRef.current) {
+                sceneRef.current.addBook(book);
                 setBookCount(sceneRef.current.getBookCount());
             }
         };

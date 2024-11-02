@@ -136,20 +136,23 @@ export class MainScene {
         this.renderer.render(this.scene, this.camera);
     }
 
-    public addBook(pdfPages: PdfPage[] = []): Book {
+    public addBook(book: Book): void {
+        const added = this.bookshelf.addBook(book);
+        if (added) {
+            this.books.push(book);
+        }
+        if (this.books.length === 1) {
+            this.selectBook(0);
+        }
+    }
+
+    public addBookFromPages(pdfPages: PdfPage[] = []): Book {
         const book = Book.fromPdfPages(
             this.bookParams,
             "assets/book-cover.jpg",
             pdfPages
         );
-        const added = this.bookshelf.addBook(book);
-        if (added) {
-            this.books.push(book);
-            // If this is the first book, select it
-            if (this.books.length === 1) {
-                this.selectBook(0);
-            }
-        }
+        this.addBook(book);
 
         return book;
     }

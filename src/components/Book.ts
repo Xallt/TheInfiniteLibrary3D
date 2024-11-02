@@ -59,6 +59,12 @@ export class Book {
         this.numPages = numPages;
     }
 
+    public static empty(params: BookMeshParams, texturePath: string): Book {
+        const book = new Book(params, texturePath);
+        book.setNumPages(0);
+        return book;
+    }
+
     public static fromPdfPages(params: BookMeshParams, texturePath: string, pdfPages: PdfPage[]): Book {
         const book = new Book(params, texturePath);
         book.setNumPages(pdfPages.length);

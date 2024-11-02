@@ -62,14 +62,14 @@ export function BookshelfViewer() {
 
             // Parse PDF
             const parser = PdfParser.getInstance();
-            const pagesGenerator = parser.parsePdfToImages(arrayBuffer, {
+            const pagesParseResult = await parser.parsePdfToImages(arrayBuffer, {
                 imageFormat: 'png',
                 scale: 2.0
             });
 
             // Collect all pages
             const pages: PdfPage[] = [];
-            for await (const page of pagesGenerator) {
+            for await (const page of pagesParseResult.pages) {
                 pages.push(page);
             }
 

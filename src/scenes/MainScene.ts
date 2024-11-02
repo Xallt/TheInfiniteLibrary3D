@@ -5,6 +5,7 @@ import Stats from 'three/examples/jsm/libs/stats.module.js';
 import { TrackballControls } from 'three/examples/jsm/controls/TrackballControls.js';
 import { Bookshelf, BookshelfParams } from '../components/Bookshelf';
 import { PdfPage } from 'src/utils/pdfParser';
+import { Page } from 'src/components/Page';
 
 export class MainScene {
     private camera!: THREE.PerspectiveCamera;
@@ -135,8 +136,8 @@ export class MainScene {
         this.renderer.render(this.scene, this.camera);
     }
 
-    public addBook(pdfPages: PdfPage[] = []): void {
-        const book = new Book(
+    public addBook(pdfPages: PdfPage[] = []): Book {
+        const book = Book.fromPdfPages(
             this.bookParams,
             "assets/book-cover.jpg",
             pdfPages
@@ -149,6 +150,8 @@ export class MainScene {
                 this.selectBook(0);
             }
         }
+
+        return book;
     }
 
     public selectBook(index: number): void {

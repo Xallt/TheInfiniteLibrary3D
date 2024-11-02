@@ -17,6 +17,13 @@ export interface PdfPage {
     pageNumber: number;
 }
 
+export interface PdfParseResult {
+    metadata: {
+        numPages: number;
+    };
+    pages: AsyncGenerator<PdfPage>;
+}
+
 export class PdfParser {
     private static instance: PdfParser;
 
@@ -29,18 +36,33 @@ export class PdfParser {
         return PdfParser.instance;
     }
 
-    public async *parsePdfToImages(
+    public async parsePdfToImages(
         pdfFile: ArrayBuffer,
+        options: PdfParseOptions
+    ): Promise<PdfParseResult> {
+        // Load the PDF document
+        const loadingTask = pdfjsLib.getDocument({ data: pdfFile });
+        const pdf = await loadingTask.promise;
+
+        const metadata = {
+            numPages: pdf.numPages
+        };
+
+        // Return both metadata and the generator
+        return {
+            metadata,
+            pages: this.generatePages(pdf, options)
+        };
+    }
+
+    private async *generatePages(
+        pdf: pdfjsLib.PDFDocumentProxy,
         options: PdfParseOptions
     ): AsyncGenerator<PdfPage> {
         const {
             scale = 2.0,
             imageFormat = 'png'
         } = options;
-
-        // Load the PDF document
-        const loadingTask = pdfjsLib.getDocument({ data: pdfFile });
-        const pdf = await loadingTask.promise;
 
         // Process pages one at a time
         for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {

@@ -5,8 +5,6 @@ import { PdfPage } from '../utils/pdfParser';
 export interface PageParams {
     width: number;
     height: number;
-    position?: THREE.Vector3;
-    rotation?: THREE.Euler;
 }
 
 export class Page {
@@ -16,13 +14,6 @@ export class Page {
     constructor(params: PageParams, texturePath: string | ImageData) {
         this.params = params;
         this.mesh = this.createPageMesh(texturePath);
-
-        if (params.position) {
-            this.mesh.position.copy(params.position);
-        }
-        if (params.rotation) {
-            this.mesh.rotation.copy(params.rotation);
-        }
     }
 
     private createPageMesh(textureSource: string | ImageData): THREE.Mesh {
@@ -57,12 +48,10 @@ export class Page {
     public static fromTexturePath(
         width: number,
         height: number,
-        texturePath: string,
-        position?: THREE.Vector3,
-        rotation?: THREE.Euler
+        texturePath: string
     ): Page {
         return new Page(
-            { width, height, position, rotation },
+            { width, height },
             texturePath
         );
     }
@@ -71,16 +60,17 @@ export class Page {
         width: number,
         height: number,
         imageData: ImageData,
-        position?: THREE.Vector3,
-        rotation?: THREE.Euler
     ): Page {
         return new Page(
-            { width, height, position, rotation },
+            { width, height },
             imageData
         );
     }
 
-    public static fromPdfPage(pdfPage: PdfPage, params: PageParams): Page {
+    public static fromPdfPage(
+        pdfPage: PdfPage,
+        params: PageParams
+    ): Page {
         // Create ImageData from the Uint8Array
         const blob = new Blob([pdfPage.imageData], { type: 'image/png' });
         const imageUrl = URL.createObjectURL(blob);

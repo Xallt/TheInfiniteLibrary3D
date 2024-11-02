@@ -7,6 +7,8 @@ import { Bookshelf, BookshelfParams } from '../components/Bookshelf';
 import { PdfPage } from 'src/utils/pdfParser';
 import { Page } from 'src/components/Page';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+import { VRButton } from 'three/examples/jsm/webxr/VRButton.js';
+import { XRControllerModelFactory } from 'three/examples/jsm/webxr/XRControllerModelFactory.js';
 
 export class MainScene {
     private camera!: THREE.PerspectiveCamera;
@@ -24,6 +26,11 @@ export class MainScene {
     private isBookInViewMode: boolean = false;
     private viewingBookIndex: number = -1;
     private viewingBookMesh: THREE.Mesh | null = null;
+
+    private controllers: THREE.XRTargetRaySpace[] = [];
+    private controllerGrips: THREE.XRGripSpace[] = [];
+
+    private isVRSupported: boolean = false;
 
     constructor(
         container: HTMLElement,
@@ -44,7 +51,24 @@ export class MainScene {
         this.selectionIndicator = new THREE.Mesh(geometry, material);
         this.selectionIndicator.visible = false;
 
-        this.init(container);
+        // Check VR support before initialization
+        this.checkVRSupport().then(() => {
+            this.init(container);
+        });
+    }
+
+    private async checkVRSupport(): Promise<void> {
+        if ('xr' in navigator && navigator.xr) {
+            try {
+                this.isVRSupported = await navigator.xr.isSessionSupported('immersive-vr');
+                console.log('VR Supported:', this.isVRSupported);
+            } catch (err) {
+                console.warn('VR Support check failed:', err);
+                this.isVRSupported = false;
+            }
+        } else {
+            this.isVRSupported = false;
+        }
     }
 
     private init(container: HTMLElement): void {
@@ -65,15 +89,22 @@ export class MainScene {
         this.camera = new THREE.PerspectiveCamera(
             60,
             window.innerWidth / window.innerHeight,
-            1,
+            0.1, // Reduced near plane for VR
             5000
         );
-        this.camera.position.set(0, 0, 150);
+        this.camera.position.set(0, 1.6, 150); // Set initial height to average human height
     }
 
     private initScene(): void {
         this.scene = new THREE.Scene();
         this.scene.background = new THREE.Color(0xf0f0f0);
+
+        // Only add VR-specific elements if VR is supported
+        if (this.isVRSupported) {
+            // Add a grid helper for VR ground reference
+            const grid = new THREE.GridHelper(100, 20);
+            this.scene.add(grid);
+        }
     }
 
     private initLighting(): void {
@@ -97,11 +128,62 @@ export class MainScene {
     }
 
     private initRenderer(container: HTMLElement): void {
-        this.renderer = new THREE.WebGLRenderer({ antialias: true });
+        this.renderer = new THREE.WebGLRenderer({
+            antialias: true,
+            alpha: true
+        });
         this.renderer.setPixelRatio(window.devicePixelRatio);
         this.renderer.setSize(window.innerWidth, window.innerHeight);
+
+        // Only enable XR if supported
+        if (this.isVRSupported) {
+            this.renderer.xr.enabled = true;
+
+            // Add VR button
+            const vrButton = VRButton.createButton(this.renderer);
+            container.appendChild(vrButton);
+
+            // Initialize VR controllers
+            this.initVRControllers();
+        }
+
         this.renderer.setAnimationLoop(this.animate.bind(this));
         container.appendChild(this.renderer.domElement);
+    }
+
+    private initVRControllers(): void {
+        if (!this.isVRSupported) return;
+
+        // Controller model factory
+        const controllerModelFactory = new XRControllerModelFactory();
+
+        // Setup controllers
+        for (let i = 0; i < 2; i++) {
+            // Controller
+            const controller = this.renderer.xr.getController(i);
+            controller.addEventListener('selectstart', this.onSelectStart.bind(this));
+            controller.addEventListener('selectend', this.onSelectEnd.bind(this));
+            this.scene.add(controller);
+            this.controllers.push(controller);
+
+            // Controller grip
+            const controllerGrip = this.renderer.xr.getControllerGrip(i);
+            controllerGrip.add(controllerModelFactory.createControllerModel(controllerGrip));
+            this.scene.add(controllerGrip);
+            this.controllerGrips.push(controllerGrip);
+        }
+    }
+
+    private onSelectStart(event: any): void {
+        const controller = event.target;
+        // Handle controller selection start
+        // You can add interaction logic here
+    }
+
+    private onSelectEnd(event: any): void {
+        const controller = event.target;
+        // Handle controller selection end
+        // You can add interaction logic here
     }
 
     private initControls(): void {
@@ -125,7 +207,17 @@ export class MainScene {
     }
 
     private animate(): void {
-        this.controls.update();
+        // Update controls based on VR state
+        if (this.isVRSupported && this.renderer.xr.isPresenting) {
+            // Update VR-specific elements
+            this.controllers.forEach(controller => {
+                // Add any per-frame controller updates here
+            });
+        } else {
+            // Update non-VR controls
+            this.controls.update();
+        }
+
         this.render();
         this.stats.update();
     }

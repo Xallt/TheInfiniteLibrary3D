@@ -201,6 +201,10 @@ export class MainScene {
         this.scene.add(viewingMesh);
         this.viewingBookMesh = viewingMesh;
 
+        // Update camera controls target to the book position
+        this.controls.target.copy(viewingMesh.position);
+        this.controls.update();
+
         this.isBookInViewMode = true;
         this.viewingBookIndex = this.selectedBookIndex;
 
@@ -222,6 +226,10 @@ export class MainScene {
             this.scene.remove(this.viewingBookMesh);
             this.viewingBookMesh = null;
         }
+
+        // Reset camera controls target to origin
+        this.controls.target.set(0, 0, 0);
+        this.controls.update();
 
         this.isBookInViewMode = false;
 

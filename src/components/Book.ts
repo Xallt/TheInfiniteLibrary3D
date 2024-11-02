@@ -156,9 +156,9 @@ export class Book {
         const pagePosition = new THREE.Vector3(
             -coverWidth / 2 + this.pages.length * (coverWidth / this.numPages) + (coverWidth / this.numPages) / 2,
             0,
-            pageWidth / 2 + bookThickness / 2
+            bookThickness / 2
         );
-        const pageRotation = new THREE.Euler(0, Math.PI / 2, 0);
+        const pageRotation = new THREE.Euler(0, -Math.PI / 2, 0);
         page.getMesh().position.set(pagePosition.x, pagePosition.y, pagePosition.z);
         page.getMesh().rotation.set(pageRotation.x, pageRotation.y, pageRotation.z);
         this.pages.push(page);

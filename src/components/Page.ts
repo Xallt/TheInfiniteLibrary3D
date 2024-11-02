@@ -18,6 +18,8 @@ export class Page {
 
     private createPageMesh(textureSource: string | ImageData): THREE.Mesh {
         const geometry = new THREE.PlaneGeometry(this.params.width, this.params.height);
+        geometry.translate(this.params.width / 2, 0, 0);
+
         let texture: THREE.Texture;
 
         if (textureSource instanceof ImageData) {

@@ -6,12 +6,13 @@ import { TrackballControls } from 'three/examples/jsm/controls/TrackballControls
 import { Bookshelf, BookshelfParams } from '../components/Bookshelf';
 import { PdfPage } from 'src/utils/pdfParser';
 import { Page } from 'src/components/Page';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 
 export class MainScene {
     private camera!: THREE.PerspectiveCamera;
     private scene!: THREE.Scene;
     private renderer!: THREE.WebGLRenderer;
-    private controls!: TrackballControls;
+    private controls!: OrbitControls;
     private stats!: Stats;
     private bookParams!: BookMeshParams;
     private bookshelfParams!: BookshelfParams;
@@ -20,7 +21,6 @@ export class MainScene {
     private books: Book[] = [];
     private selectedBookIndex: number = -1;
     private selectionIndicator: THREE.Mesh;
-    private originalBookPositions: Map<number, THREE.Vector3> = new Map();
     private isBookInViewMode: boolean = false;
     private viewingBookIndex: number = -1;
     private viewingBookMesh: THREE.Mesh | null = null;
@@ -122,7 +122,6 @@ export class MainScene {
         this.camera.aspect = window.innerWidth / window.innerHeight;
         this.camera.updateProjectionMatrix();
         this.renderer.setSize(window.innerWidth, window.innerHeight);
-        this.controls.handleResize();
     }
 
     private animate(): void {

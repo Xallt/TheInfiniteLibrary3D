@@ -1,11 +1,11 @@
 import * as THREE from 'three';
-import { TrackballControls } from 'three/examples/jsm/controls/TrackballControls.js';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
-export function createControls(camera: THREE.PerspectiveCamera, renderer: THREE.WebGLRenderer): TrackballControls {
-    const controls = new TrackballControls(camera, renderer.domElement);
-    controls.rotateSpeed = 1.0;
-    controls.zoomSpeed = 1.2;
+export function createControls(camera: THREE.PerspectiveCamera, renderer: THREE.WebGLRenderer): OrbitControls {
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.rotateSpeed = 0.6;
+    controls.zoomSpeed = 1.6;
     controls.panSpeed = 0.8;
-    controls.keys = ['KeyA', 'KeyS', 'KeyD'];
+    controls.keys = { LEFT: 'KeyA', UP: 'KeyS', RIGHT: 'KeyD', BOTTOM: 'KeyW' };
     return controls;
 }

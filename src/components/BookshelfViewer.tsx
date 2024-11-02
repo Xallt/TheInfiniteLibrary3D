@@ -9,6 +9,8 @@ export function BookshelfViewer() {
     const containerRef = useRef<HTMLDivElement>(null);
     const [bookCount, setBookCount] = useState(0);
     const [isViewingBook, setIsViewingBook] = useState(false);
+    const [showUrlModal, setShowUrlModal] = useState(false);
+    const [urls, setUrls] = useState<string[]>(['']);
 
     useEffect(() => {
         if (!containerRef.current) return;
@@ -109,6 +111,57 @@ export function BookshelfViewer() {
         }
     };
 
+    const handleAddUrl = () => {
+        setUrls([...urls, '']);
+    };
+
+    const handleRemoveUrl = (index: number) => {
+        setUrls(urls.filter((_, i) => i !== index));
+    };
+
+    const handleUrlChange = (index: number, value: string) => {
+        const newUrls = [...urls];
+        newUrls[index] = value;
+        setUrls(newUrls);
+    };
+
+    const handleSubmitUrls = async () => {
+        const validUrls = urls.filter(url => url.trim() !== '');
+        setShowUrlModal(false);
+
+        for (const url of validUrls) {
+            try {
+                const response = await fetch(url);
+                const arrayBuffer = await response.arrayBuffer();
+
+                // Parse PDF
+                const parser = PdfParser.getInstance();
+                const pagesParseResult = await parser.parsePdfToImages(arrayBuffer, {
+                    imageFormat: 'png',
+                    scale: 2.0
+                });
+
+                // Create book
+                const book = Book.empty(defaultBookParams, "assets/book-cover.jpg");
+                book.setNumPages(pagesParseResult.metadata.numPages);
+                for await (const page of pagesParseResult.pages) {
+                    book.appendPageFromPdf(page);
+                }
+
+                // Add book
+                if (sceneRef.current) {
+                    sceneRef.current.addBook(book);
+                    setBookCount(sceneRef.current.getBookCount());
+                }
+            } catch (error) {
+                console.error(`Failed to load PDF from ${url}:`, error);
+            }
+        }
+
+        // Reset URLs after processing
+        setUrls(['']);
+    };
+
     return (
         <div className="bookshelf-viewer">
             <div ref={containerRef} className="scene-container" />
@@ -129,9 +182,9 @@ export function BookshelfViewer() {
                 </button>
                 <button 
                     className="add-book-button"
-                    onClick={handleAddBook}
+                    onClick={() => setShowUrlModal(true)}
                 >
-                    Add Book
+                    Add Books from URLs
                 </button>
                 <button 
                     className="nav-button"
@@ -141,6 +194,52 @@ export function BookshelfViewer() {
                     Next Book
                 </button>
             </div>
+
+            {showUrlModal && (
+                <div className="modal-overlay">
+                    <div className="modal-content">
+                        <div className="modal-header">
+                            <h2>Add PDF URLs</h2>
+                            <button 
+                                className="modal-close"
+                                onClick={() => setShowUrlModal(false)}
+                            >
+                                ×
+                            </button>
+                        </div>
+                        <div className="url-list">
+                            {urls.map((url, index) => (
+                                <div key={index} className="url-input-row">
+                                    <input
+                                        type="text"
+                                        className="url-input"
+                                        value={url}
+                                        onChange={(e) => handleUrlChange(index, e.target.value)}
+                                        placeholder="Enter PDF URL"
+                                    />
+                                    {urls.length > 1 && (
+                                        <button
+                                            className="remove-url"
+                                            onClick={() => handleRemoveUrl(index)}
+                                        >
+                                            ×
+                                        </button>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                        <button className="add-url" onClick={handleAddUrl}>
+                            Add Another URL
+                        </button>
+                        <button 
+                            className="submit-urls"
+                            onClick={handleSubmitUrls}
+                        >
+                            Load PDFs
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 } 

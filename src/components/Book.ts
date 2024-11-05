@@ -81,6 +81,7 @@ export class Book {
 
     private createBox(boxCenter: THREE.Vector3, boxSize: THREE.Vector3): THREE.Mesh {
         const geometry = new THREE.BoxGeometry(boxSize.x, boxSize.y, boxSize.z);
+        console.log(this.bookTexture);
         const material = new THREE.MeshLambertMaterial({ map: this.bookTexture.getTexture() });
         const box = new THREE.Mesh(geometry, material);
         box.position.set(boxCenter.x, boxCenter.y, boxCenter.z);

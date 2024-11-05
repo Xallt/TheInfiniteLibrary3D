@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { Page, PageParams } from './Page';
 import { PdfPage } from 'src/utils/pdfParser';
+import { BookTexture } from './BookTexture';
 
 // Add this new class for the singleton texture loader
 export class TextureLoader {
@@ -39,7 +40,7 @@ export type BookMeshParams = {
 
 export class Book {
     private params: BookMeshParams;
-    private texturePath: string;
+    private bookTexture: BookTexture;
     private coverMesh!: THREE.Mesh;
     private leftSideMesh!: THREE.Mesh;
     private rightSideMesh!: THREE.Mesh;
@@ -47,9 +48,13 @@ export class Book {
     private pages: Page[] = [];
     private numPages: number;
 
-    constructor(params: BookMeshParams, texturePath: string, pages: Page[] = []) {
+    constructor(
+        params: BookMeshParams,
+        bookTexture: BookTexture,
+        pages: Page[] = []
+    ) {
         this.params = params;
-        this.texturePath = texturePath;
+        this.bookTexture = bookTexture;
         this.numPages = pages.length;
         this.pages = pages;
         this.bookMesh = this.createBookMesh();
@@ -59,14 +64,14 @@ export class Book {
         this.numPages = numPages;
     }
 
-    public static empty(params: BookMeshParams, texturePath: string): Book {
-        const book = new Book(params, texturePath);
+    public static empty(params: BookMeshParams, bookTexture: BookTexture): Book {
+        const book = new Book(params, bookTexture);
         book.setNumPages(0);
         return book;
     }
 
-    public static fromPdfPages(params: BookMeshParams, texturePath: string, pdfPages: PdfPage[]): Book {
-        const book = new Book(params, texturePath);
+    public static fromPdfPages(params: BookMeshParams, bookTexture: BookTexture, pdfPages: PdfPage[]): Book {
+        const book = new Book(params, bookTexture);
         book.setNumPages(pdfPages.length);
         for (const pdfPage of pdfPages) {
             book.appendPageFromPdf(pdfPage);
@@ -76,7 +81,7 @@ export class Book {
 
     private createBox(boxCenter: THREE.Vector3, boxSize: THREE.Vector3): THREE.Mesh {
         const geometry = new THREE.BoxGeometry(boxSize.x, boxSize.y, boxSize.z);
-        const material = new THREE.MeshLambertMaterial({ map: TextureLoader.getInstance().load(this.texturePath) });
+        const material = new THREE.MeshLambertMaterial({ map: this.bookTexture.getTexture() });
         const box = new THREE.Mesh(geometry, material);
         box.position.set(boxCenter.x, boxCenter.y, boxCenter.z);
         return box;
@@ -186,7 +191,7 @@ export class Book {
     }
 
     public copy(): Book {
-        const newBook = new Book(this.params, this.texturePath, this.pages);
+        const newBook = new Book(this.params, this.bookTexture, this.pages);
         return newBook;
     }
 

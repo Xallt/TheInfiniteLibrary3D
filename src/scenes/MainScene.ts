@@ -1,14 +1,13 @@
 import * as THREE from 'three';
-import { Book, BookMeshParams } from '../components/Book';
+import { Book, BookMeshParams, TextureLoader } from '../components/Book';
 import { createControls } from '../components/Controls';
 import Stats from 'three/examples/jsm/libs/stats.module.js';
-import { TrackballControls } from 'three/examples/jsm/controls/TrackballControls.js';
 import { Bookshelf, BookshelfParams } from '../components/Bookshelf';
 import { PdfPage } from 'src/utils/pdfParser';
-import { Page } from 'src/components/Page';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { VRButton } from 'three/examples/jsm/webxr/VRButton.js';
 import { XRControllerModelFactory } from 'three/examples/jsm/webxr/XRControllerModelFactory.js';
+import { BookTexture } from '../components/BookTexture';
 
 export class MainScene {
     private camera!: THREE.PerspectiveCamera;
@@ -271,7 +270,13 @@ export class MainScene {
     public addBookFromPages(pdfPages: PdfPage[] = []): Book {
         const book = Book.fromPdfPages(
             this.bookParams,
-            "assets/book-cover.jpg",
+            new BookTexture(
+                TextureLoader.getInstance().load("assets/BookCovers0135_5_350.jpg"),
+                {
+                    leftCoverPosition: 0.413,
+                    rightCoverPosition: 0.582
+                }
+            ),
             pdfPages
         );
         this.addBook(book);

@@ -111,14 +111,16 @@ export function BookshelfViewer() {
                         rightCoverPosition: 0.582
                     }
                 ));
-                book.setNumPages(pagesParseResult.metadata.numPages);
-                for await (const page of pagesParseResult.pages) {
-                    book.appendPageFromPdf(page);
-                }
 
                 // Add book
                 if (sceneRef.current) {
                     sceneRef.current.addBook(book);
+
+                    book.setNumPages(pagesParseResult.metadata.numPages);
+                    for await (const page of pagesParseResult.pages) {
+                        book.appendPageFromPdf(page);
+                    }
+
                     setBookCount(sceneRef.current.getBookCount());
                 }
             } catch (error) {

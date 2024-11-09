@@ -361,8 +361,8 @@ export class MainScene {
         }
 
         // Reset camera controls target to origin
-        this.controls.target.set(0, 0, 0);
-        this.controls.update();
+        // this.controls.target.set(0, 0, 0);
+        // this.controls.update();
 
         this.isBookInViewMode = false;
 

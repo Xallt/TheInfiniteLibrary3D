@@ -47,6 +47,7 @@ export class Book {
     private bookMesh: THREE.Mesh;
     private pages: Page[] = [];
     private numPages: number;
+    private angle: number;
     private originalPosition?: THREE.Vector3;
     private originalRotation?: THREE.Euler;
 
@@ -59,6 +60,7 @@ export class Book {
         this.bookTexture = bookTexture;
         this.numPages = pages.length;
         this.pages = pages;
+        this.angle = 0;
         this.bookMesh = this.createBookMesh();
     }
 
@@ -90,9 +92,18 @@ export class Book {
         return box;
     }
 
+    public getPageAngle(index: number, angle: number): number {
+        const proportionalAngle = 2 * angle * (index + 1) / this.numPages - angle - angle / (this.numPages);
+        return -Math.PI / 2 + proportionalAngle;
+    }
+
     public setCoverAngles(angle: number): void {
+        this.angle = angle;
         this.leftSideMesh.rotation.y = -angle;
         this.rightSideMesh.rotation.y = angle;
+        this.pages.forEach((page, index) => {
+            page.getMesh().rotation.y = this.getPageAngle(index, angle);
+        });
     }
 
     private createBookMesh(): THREE.Mesh {
@@ -166,7 +177,7 @@ export class Book {
             0,
             bookThickness / 2
         );
-        const pageRotation = new THREE.Euler(0, -Math.PI / 2, 0);
+        const pageRotation = new THREE.Euler(0, this.getPageAngle(this.pages.length, this.angle), 0);
         page.getMesh().position.set(pagePosition.x, pagePosition.y, pagePosition.z);
         page.getMesh().rotation.set(pageRotation.x, pageRotation.y, pageRotation.z);
         this.pages.push(page);

@@ -16,6 +16,7 @@ export function BookshelfViewer() {
         'https://arxiv.org/pdf/1706.03762',
         'https://arxiv.org/pdf/1706.03762'
     ]);
+    const [bookAngle, setBookAngle] = useState(Math.PI / 2); // Default open angle
 
     useEffect(() => {
         if (!containerRef.current) return;
@@ -143,6 +144,14 @@ export function BookshelfViewer() {
         setUrls(['https://arxiv.org/pdf/1706.03762']);
     };
 
+    const handleAngleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const angle = parseFloat(event.target.value);
+        setBookAngle(angle);
+        if (sceneRef.current) {
+            sceneRef.current.setBookAngle(angle);
+        }
+    };
+
     return (
         <div className="bookshelf-viewer">
             <div ref={containerRef} className="scene-container" />
@@ -175,6 +184,20 @@ export function BookshelfViewer() {
                     Next Book
                 </button>
             </div>
+
+            {isViewingBook && (
+                <div className="angle-control">
+                    <input
+                        type="range"
+                        min="0"
+                        max={Math.PI}
+                        step="0.01"
+                        value={bookAngle}
+                        onChange={handleAngleChange}
+                        className="angle-slider"
+                    />
+                </div>
+            )}
 
             {showUrlModal && (
                 <div className="modal-overlay">

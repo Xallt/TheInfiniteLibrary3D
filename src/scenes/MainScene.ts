@@ -377,4 +377,11 @@ export class MainScene {
     public isViewingBook(): boolean {
         return this.isBookInViewMode;
     }
+
+    public setBookAngle(angle: number): void {
+        if (this.isBookInViewMode && this.viewingBookIndex !== -1) {
+            const book = this.books[this.viewingBookIndex];
+            book.setCoverAngles(angle);
+        }
+    }
 }

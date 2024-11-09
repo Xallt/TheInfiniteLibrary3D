@@ -18,10 +18,10 @@ export const defaultBookshelfParams: BookshelfParams = {
     cellDepth: 0.3,
     numColumns: 5,
     numRows: 4,
-    sideWallThickness: 0.01,
-    interFloorThickness: 0.01,
-    mainSideWallThickness: 0.01,
-    mainRoofBottomThickness: 0.01,
+    sideWallThickness: 0.04,
+    interFloorThickness: 0.04,
+    mainSideWallThickness: 0.04,
+    mainRoofBottomThickness: 0.04,
     backWallThickness: 0,
 };
 

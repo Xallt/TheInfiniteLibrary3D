@@ -47,6 +47,8 @@ export class Book {
     private bookMesh: THREE.Mesh;
     private pages: Page[] = [];
     private numPages: number;
+    private originalPosition?: THREE.Vector3;
+    private originalRotation?: THREE.Euler;
 
     constructor(
         params: BookMeshParams,
@@ -199,5 +201,20 @@ export class Book {
     // New method to access pages
     public getPages(): Page[] {
         return this.pages;
+    }
+
+    public storeOriginalTransform(): void {
+        const mesh = this.getMesh();
+        this.originalPosition = mesh.position.clone();
+        this.originalRotation = mesh.rotation.clone();
+    }
+
+    public restoreOriginalTransform(): void {
+        if (!this.originalPosition || !this.originalRotation) return;
+
+        const mesh = this.getMesh();
+        mesh.position.copy(this.originalPosition);
+        mesh.rotation.copy(this.originalRotation);
+        this.setCoverAngles(0); // Reset cover angles
     }
 }

@@ -320,56 +320,54 @@ export class MainScene {
     public viewSelectedBook(): void {
         if (this.selectedBookIndex === -1 || this.isBookInViewMode) return;
 
-        const originalBook = this.books[this.selectedBookIndex];
-        const originalMesh = originalBook.getMesh();
+        const book = this.books[this.selectedBookIndex];
+        const bookMesh = book.getMesh();
 
-        // Hide the original book
-        originalMesh.visible = false;
+        // Store original position and rotation for returning later
+        book.storeOriginalTransform();
 
-        // Create and position a copy of the book
-        const bookCopy = originalBook.copy();
-        bookCopy.setCoverAngles(Math.PI / 2);
-        const viewingMesh = bookCopy.getMesh();
-        viewingMesh.position.set(0, this.sceneElevation, 0.5);  // In front of camera
-        this.scene.add(viewingMesh);
-        this.viewingBookMesh = viewingMesh;
+        // Remove book from bookshelf and add it directly to the scene
+        const bookshelfMesh = this.bookshelf.getMesh();
+        bookshelfMesh.remove(bookMesh);
+        this.scene.add(bookMesh);
+
+        // Move the book to viewing position
+        bookMesh.position.set(0, this.sceneElevation, 0.5);  // In front of camera
+        bookMesh.rotation.set(0, 0, 0);
+        book.setCoverAngles(Math.PI / 2);
 
         // Update camera controls target to the book position
-        this.controls.target.copy(viewingMesh.position);
+        this.controls.target.copy(bookMesh.position);
         this.controls.update();
 
         this.isBookInViewMode = true;
         this.viewingBookIndex = this.selectedBookIndex;
 
         // Update selection indicator
-        this.selectionIndicator.position.copy(viewingMesh.position);
+        this.selectionIndicator.position.copy(bookMesh.position);
         this.selectionIndicator.position.z += 0.2;
     }
 
     public returnBookToShelf(): void {
         if (!this.isBookInViewMode || this.viewingBookIndex === -1) return;
 
-        // Show the original book
-        const originalBook = this.books[this.viewingBookIndex];
-        const originalMesh = originalBook.getMesh();
-        originalMesh.visible = true;
+        const book = this.books[this.viewingBookIndex];
+        const bookMesh = book.getMesh();
 
-        // Remove the copy
-        if (this.viewingBookMesh) {
-            this.scene.remove(this.viewingBookMesh);
-            this.viewingBookMesh = null;
-        }
+        // Remove book from scene and add it back to bookshelf
+        this.scene.remove(bookMesh);
+        const bookshelfMesh = this.bookshelf.getMesh();
+        bookshelfMesh.add(bookMesh);
 
-        // Reset camera controls target to origin
-        // this.controls.target.set(0, 0, 0);
-        // this.controls.update();
+        // Restore the book to its original position and rotation
+        book.restoreOriginalTransform();
 
         this.isBookInViewMode = false;
 
         // Update selection indicator
         const position = this.bookshelf.getBookPosition(this.viewingBookIndex);
         if (position) {
-            position.z += 20;
+            position.z += 0.2;
             this.selectionIndicator.position.copy(position);
         }
 

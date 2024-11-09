@@ -11,7 +11,7 @@ export function BookshelfViewer() {
     const [bookCount, setBookCount] = useState(0);
     const [isViewingBook, setIsViewingBook] = useState(false);
     const [showUrlModal, setShowUrlModal] = useState(false);
-    const [urls, setUrls] = useState<string[]>(['']);
+    const [urls, setUrls] = useState<string[]>(['https://arxiv.org/pdf/1706.03762']);
 
     useEffect(() => {
         if (!containerRef.current) return;
@@ -49,45 +49,6 @@ export function BookshelfViewer() {
             }
         };
     }, []); // Empty dependency array means this runs once on mount
-
-    const handleAddBook = async () => {
-        // Create a hidden file input element
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = '.pdf';
-        
-        // Handle file selection
-        input.onchange = async (event) => {
-            const file = (event.target as HTMLInputElement).files?.[0];
-            if (!file) return;
-
-            // Read file as ArrayBuffer
-            const arrayBuffer = await file.arrayBuffer();
-
-            // Parse PDF
-            const parser = PdfParser.getInstance();
-            const pagesParseResult = await parser.parsePdfToImages(arrayBuffer, {
-                imageFormat: 'png',
-                scale: 2.0
-            });
-
-            // Collect all pages
-            const book = Book.empty(defaultBookParams, "assets/book-cover.jpg");
-            book.setNumPages(pagesParseResult.metadata.numPages);
-            for await (const page of pagesParseResult.pages) {
-                book.appendPageFromPdf(page);
-            }
-
-            // Add book with PDF pages
-            if (sceneRef.current) {
-                sceneRef.current.addBook(book);
-                setBookCount(sceneRef.current.getBookCount());
-            }
-        };
-
-        // Trigger file selection
-        input.click();
-    };
 
     const handleViewBook = () => {
         if (sceneRef.current) {

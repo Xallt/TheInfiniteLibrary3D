@@ -11,7 +11,11 @@ export function BookshelfViewer() {
     const [bookCount, setBookCount] = useState(0);
     const [isViewingBook, setIsViewingBook] = useState(false);
     const [showUrlModal, setShowUrlModal] = useState(false);
-    const [urls, setUrls] = useState<string[]>(['https://arxiv.org/pdf/1706.03762']);
+    const [urls, setUrls] = useState<string[]>([
+        'https://arxiv.org/pdf/1706.03762',
+        'https://arxiv.org/pdf/1706.03762',
+        'https://arxiv.org/pdf/1706.03762'
+    ]);
 
     useEffect(() => {
         if (!containerRef.current) return;
@@ -91,7 +95,8 @@ export function BookshelfViewer() {
         const validUrls = urls.filter(url => url.trim() !== '');
         setShowUrlModal(false);
 
-        for (const url of validUrls) {
+        // Process all URLs in parallel
+        const bookPromises = validUrls.map(async (url) => {
             try {
                 const response = await fetch(url);
                 const arrayBuffer = await response.arrayBuffer();
@@ -112,24 +117,30 @@ export function BookshelfViewer() {
                     }
                 ));
 
-                // Add book
+                // Add book to scene immediately
                 if (sceneRef.current) {
                     sceneRef.current.addBook(book);
-
-                    book.setNumPages(pagesParseResult.metadata.numPages);
-                    for await (const page of pagesParseResult.pages) {
-                        book.appendPageFromPdf(page);
-                    }
-
                     setBookCount(sceneRef.current.getBookCount());
                 }
+
+                // Process pages in parallel
+                book.setNumPages(pagesParseResult.metadata.numPages);
+                for await (const page of pagesParseResult.pages) {
+                    book.appendPageFromPdf(page);
+                }
+
+                return book;
             } catch (error) {
                 console.error(`Failed to load PDF from ${url}:`, error);
+                return null;
             }
-        }
+        });
+
+        // Wait for all books to be processed
+        await Promise.all(bookPromises);
 
         // Reset URLs after processing
-        setUrls(['']);
+        setUrls(['https://arxiv.org/pdf/1706.03762']);
     };
 
     return (

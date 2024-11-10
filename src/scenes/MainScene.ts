@@ -32,6 +32,14 @@ export class MainScene {
 
     private isVRSupported: boolean = false;
 
+    private grabbedBook: Book | null = null;
+    private grabbingController: THREE.XRTargetRaySpace | null = null;
+    private grabMatrix: THREE.Matrix4 = new THREE.Matrix4();
+    private inverseGrabMatrix: THREE.Matrix4 = new THREE.Matrix4();
+
+    private onVRSessionStartHandler?: () => void;
+    private onVRSessionEndHandler?: () => void;
+
     constructor(
         container: HTMLElement,
         bookParams: BookMeshParams,
@@ -204,15 +212,33 @@ export class MainScene {
     }
 
     private onSelectStart(event: any): void {
+        if (!this.isBookInViewMode || this.viewingBookIndex === -1) return;
+
         const controller = event.target;
-        // Handle controller selection start
-        // You can add interaction logic here
+        const book = this.books[this.viewingBookIndex];
+        const bookMesh = book.getMesh();
+
+        // Calculate if controller is close enough to grab
+        const controllerPosition = new THREE.Vector3();
+        controller.getWorldPosition(controllerPosition);
+        const distance = controllerPosition.distanceTo(bookMesh.position);
+
+        // If controller is within 0.3 units of the book, allow grabbing
+        if (distance < 0.3) {
+            this.grabbedBook = book;
+            this.grabbingController = controller;
+
+            // Calculate and store the grab offset matrix
+            this.inverseGrabMatrix.copy(controller.matrixWorld).invert();
+            this.grabMatrix.copy(this.inverseGrabMatrix).multiply(bookMesh.matrixWorld);
+        }
     }
 
     private onSelectEnd(event: any): void {
-        const controller = event.target;
-        // Handle controller selection end
-        // You can add interaction logic here
+        if (event.target === this.grabbingController) {
+            this.grabbedBook = null;
+            this.grabbingController = null;
+        }
     }
 
     private initControls(): void {
@@ -243,6 +269,9 @@ export class MainScene {
             this.controllers.forEach(controller => {
                 // Add any per-frame controller updates here
             });
+
+            // Update grabbed book position
+            this.updateGrabbedBook();
         } else {
             // Update non-VR controls
             this.controls.update();
@@ -383,5 +412,54 @@ export class MainScene {
             const book = this.books[this.viewingBookIndex];
             book.setCoverAngles(angle);
         }
+    }
+
+    private updateGrabbedBook(): void {
+        if (this.grabbedBook && this.grabbingController) {
+            const bookMesh = this.grabbedBook.getMesh();
+
+            // Calculate the new world matrix for the book
+            const newMatrix = new THREE.Matrix4();
+            newMatrix.copy(this.grabbingController.matrixWorld)
+                .multiply(this.grabMatrix);
+
+            // Extract position, rotation, and scale from the matrix
+            const position = new THREE.Vector3();
+            const quaternion = new THREE.Quaternion();
+            const scale = new THREE.Vector3();
+            newMatrix.decompose(position, quaternion, scale);
+
+            // Apply the transform to the book
+            bookMesh.position.copy(position);
+            bookMesh.quaternion.copy(quaternion);
+            bookMesh.scale.copy(scale);
+
+            // Update selection indicator position
+            this.selectionIndicator.position.copy(position);
+            this.selectionIndicator.position.z += 0.2;
+        }
+    }
+
+    public onVRSessionStart(callback: () => void): void {
+        this.onVRSessionStartHandler = callback;
+        this.renderer.xr.addEventListener('sessionstart', this.onVRSessionStartHandler);
+    }
+
+    public onVRSessionEnd(callback: () => void): void {
+        this.onVRSessionEndHandler = callback;
+        this.renderer.xr.addEventListener('sessionend', this.onVRSessionEndHandler);
+    }
+
+    public removeVRSessionListeners(): void {
+        if (this.onVRSessionStartHandler) {
+            this.renderer.xr.removeEventListener('sessionstart', this.onVRSessionStartHandler);
+        }
+        if (this.onVRSessionEndHandler) {
+            this.renderer.xr.removeEventListener('sessionend', this.onVRSessionEndHandler);
+        }
+    }
+
+    public isInVR(): boolean {
+        return this.isVRSupported && this.renderer.xr.isPresenting;
     }
 }

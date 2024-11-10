@@ -59,6 +59,9 @@ export function BookshelfViewer() {
         if (sceneRef.current) {
             if (!isViewingBook) {
                 sceneRef.current.viewSelectedBook();
+                if (sceneRef.current.isInVR()) {
+                    setBookAngle(Math.PI / 2);
+                }
             } else {
                 sceneRef.current.returnBookToShelf();
             }
@@ -151,6 +154,31 @@ export function BookshelfViewer() {
             sceneRef.current.setBookAngle(angle);
         }
     };
+
+    useEffect(() => {
+        if (sceneRef.current) {
+            const handleVRSessionStart = () => {
+                if (isViewingBook) {
+                    setBookAngle(Math.PI / 2);
+                }
+            };
+
+            const handleVRSessionEnd = () => {
+                // Reset any VR-specific states if needed
+            };
+
+            if (sceneRef.current.isInVR()) {
+                sceneRef.current.onVRSessionStart(handleVRSessionStart);
+                sceneRef.current.onVRSessionEnd(handleVRSessionEnd);
+            }
+
+            return () => {
+                if (sceneRef.current) {
+                    sceneRef.current.removeVRSessionListeners();
+                }
+            };
+        }
+    }, [isViewingBook]);
 
     return (
         <div className="bookshelf-viewer">

@@ -198,8 +198,8 @@ export class MainScene {
         for (let i = 0; i < 2; i++) {
             // Controller
             const controller = this.renderer.xr.getController(i);
-            controller.addEventListener('selectstart', this.onSelectStart.bind(this));
-            controller.addEventListener('selectend', this.onSelectEnd.bind(this));
+            controller.addEventListener('squeezestart', this.onSqueezeStart.bind(this));
+            controller.addEventListener('squeezeend', this.onSqueezeEnd.bind(this));
             this.scene.add(controller);
             this.controllers.push(controller);
 
@@ -211,7 +211,7 @@ export class MainScene {
         }
     }
 
-    private onSelectStart(event: any): void {
+    private onSqueezeStart(event: any): void {
         if (!this.isBookInViewMode || this.viewingBookIndex === -1) return;
 
         const controller = event.target;
@@ -234,7 +234,7 @@ export class MainScene {
         }
     }
 
-    private onSelectEnd(event: any): void {
+    private onSqueezeEnd(event: any): void {
         if (event.target === this.grabbingController) {
             this.grabbedBook = null;
             this.grabbingController = null;

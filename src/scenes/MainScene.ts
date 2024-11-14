@@ -7,7 +7,7 @@ import { PdfPage } from 'src/utils/pdfParser';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { VRButton } from 'three/examples/jsm/webxr/VRButton.js';
 import { XRControllerModelFactory } from 'three/examples/jsm/webxr/XRControllerModelFactory.js';
-import { TransformControls } from 'three/examples/jsm/controls/TransformControls';
+import { TransformControls, TransformControlsGizmo } from 'three/examples/jsm/controls/TransformControls';
 import { BookTexture } from '../components/BookTexture';
 
 export class MainScene {
@@ -18,6 +18,8 @@ export class MainScene {
     private stats!: Stats;
     private bookParams!: BookMeshParams;
     private bookshelfParams!: BookshelfParams;
+
+    private gizmo: THREE.Object3D | null = null;
 
     private bookshelf!: Bookshelf;
     private books: Book[] = [];
@@ -40,6 +42,8 @@ export class MainScene {
 
     private onVRSessionStartHandler?: () => void;
     private onVRSessionEndHandler?: () => void;
+
+    private transformControl: TransformControls | null = null;
 
     constructor(
         container: HTMLElement,
@@ -361,6 +365,9 @@ export class MainScene {
         // Store original position and rotation for returning later
         book.storeOriginalTransform();
 
+        // Hide selection indicator while book is being viewed
+        this.selectionIndicator.visible = false;
+
         // Remove book from bookshelf and add it directly to the scene
         const bookshelfMesh = this.bookshelf.getMesh();
         bookshelfMesh.remove(bookMesh);
@@ -373,21 +380,23 @@ export class MainScene {
             this.scene.add(bookMesh);
             this.controls.target.copy(bookMesh.position);
         } else {
-            const control = new TransformControls(this.camera, this.renderer.domElement);
-            control.setMode('translate');
-            control.addEventListener('dragging-changed', (event) => {
+            this.transformControl = new TransformControls(this.camera, this.renderer.domElement);
+            this.transformControl.setMode('translate');
+            this.transformControl.addEventListener('dragging-changed', (event) => {
                 this.controls.enabled = !event.value;
             });
 
-            const gizmo = control.getHelper();
+            this.gizmo = this.transformControl.getHelper();
 
             this.scene.add(bookMesh);
-            this.scene.add(gizmo);
+            if (this.gizmo) {
+                this.scene.add(this.gizmo);
+            }
 
             bookMesh.position.set(0, this.sceneElevation, 0.5);  // In front of camera
             bookMesh.rotation.set(0, 0, 0);
 
-            control.attach(bookMesh);
+            this.transformControl.attach(bookMesh);
 
             this.controls.target.copy(bookMesh.position);
         }
@@ -411,6 +420,15 @@ export class MainScene {
         const book = this.books[this.viewingBookIndex];
         const bookMesh = book.getMesh();
 
+        // Clean up transform controls if they exist
+        if (this.transformControl) {
+            if (this.gizmo) {
+                this.scene.remove(this.gizmo);
+            }
+            this.transformControl.detach();
+            this.transformControl = null;
+        }
+
         // Remove book from scene and add it back to bookshelf
         this.scene.remove(bookMesh);
         const bookshelfMesh = this.bookshelf.getMesh();
@@ -421,7 +439,8 @@ export class MainScene {
 
         this.isBookInViewMode = false;
 
-        // Update selection indicator
+        // Show and update selection indicator
+        this.selectionIndicator.visible = true;
         const position = this.bookshelf.getBookPosition(this.viewingBookIndex);
         if (position) {
             position.z += 0.2;

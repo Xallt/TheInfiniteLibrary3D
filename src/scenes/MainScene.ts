@@ -7,6 +7,7 @@ import { PdfPage } from 'src/utils/pdfParser';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { VRButton } from 'three/examples/jsm/webxr/VRButton.js';
 import { XRControllerModelFactory } from 'three/examples/jsm/webxr/XRControllerModelFactory.js';
+import { TransformControls } from 'three/examples/jsm/controls/TransformControls';
 import { BookTexture } from '../components/BookTexture';
 
 export class MainScene {
@@ -93,6 +94,47 @@ export class MainScene {
         this.scene.add(this.selectionIndicator);
     }
 
+    private initXR(container: HTMLElement): void {
+        // Only enable XR if supported
+        if (this.isVRSupported) {
+            this.renderer.xr.enabled = true;
+
+            // Add VR session change handlers
+            this.renderer.xr.addEventListener('sessionstart', () => {
+                const xrManager = this.renderer.xr;
+                const baseReferenceSpace = xrManager.getReferenceSpace();
+
+                if (baseReferenceSpace) {
+                    // Convert camera rotation to quaternion
+                    const quaternion = this.camera.quaternion;
+
+                    // Multiply by a 180-degree rotation around Y axis
+                    // First create a Euler rotation then convert to quaternion
+                    const euler = new THREE.Euler(0, Math.PI, 0, 'XYZ');
+                    const rotationQuaternion = new THREE.Quaternion().setFromEuler(euler);
+                    quaternion.multiply(rotationQuaternion);
+
+                    // Create transform from current camera position and rotation
+                    const transform = new XRRigidTransform(
+                        { x: this.camera.position.x, y: this.camera.position.y, z: this.camera.position.z },
+                        { x: quaternion.x, y: quaternion.y, z: quaternion.z, w: quaternion.w }
+                    );
+
+                    // Apply transform to reference space
+                    const referenceSpace = baseReferenceSpace.getOffsetReferenceSpace(transform);
+                    xrManager.setReferenceSpace(referenceSpace);
+                }
+            });
+
+            // Add VR button
+            const vrButton = VRButton.createButton(this.renderer);
+            container.appendChild(vrButton);
+
+            // Initialize VR controllers
+            this.initVRControllers();
+        }
+    }
+
     private initCamera(): void {
         this.camera = new THREE.PerspectiveCamera(
             60,
@@ -145,44 +187,8 @@ export class MainScene {
         this.renderer.setPixelRatio(window.devicePixelRatio);
         this.renderer.setSize(window.innerWidth, window.innerHeight);
 
-        // Only enable XR if supported
-        if (this.isVRSupported) {
-            this.renderer.xr.enabled = true;
+        this.initXR(container);
 
-            // Add VR session change handlers
-            this.renderer.xr.addEventListener('sessionstart', () => {
-                const xrManager = this.renderer.xr;
-                const baseReferenceSpace = xrManager.getReferenceSpace();
-
-                if (baseReferenceSpace) {
-                    // Convert camera rotation to quaternion
-                    const quaternion = this.camera.quaternion;
-
-                    // Multiply by a 180-degree rotation around Y axis
-                    // First create a Euler rotation then convert to quaternion
-                    const euler = new THREE.Euler(0, Math.PI, 0, 'XYZ');
-                    const rotationQuaternion = new THREE.Quaternion().setFromEuler(euler);
-                    quaternion.multiply(rotationQuaternion);
-
-                    // Create transform from current camera position and rotation
-                    const transform = new XRRigidTransform(
-                        { x: this.camera.position.x, y: this.camera.position.y, z: this.camera.position.z },
-                        { x: quaternion.x, y: quaternion.y, z: quaternion.z, w: quaternion.w }
-                    );
-
-                    // Apply transform to reference space
-                    const referenceSpace = baseReferenceSpace.getOffsetReferenceSpace(transform);
-                    xrManager.setReferenceSpace(referenceSpace);
-                }
-            });
-
-            // Add VR button
-            const vrButton = VRButton.createButton(this.renderer);
-            container.appendChild(vrButton);
-
-            // Initialize VR controllers
-            this.initVRControllers();
-        }
 
         this.renderer.setAnimationLoop(this.animate.bind(this));
         container.appendChild(this.renderer.domElement);
@@ -358,15 +364,37 @@ export class MainScene {
         // Remove book from bookshelf and add it directly to the scene
         const bookshelfMesh = this.bookshelf.getMesh();
         bookshelfMesh.remove(bookMesh);
-        this.scene.add(bookMesh);
 
-        // Move the book to viewing position
-        bookMesh.position.set(0, this.sceneElevation, 0.5);  // In front of camera
-        bookMesh.rotation.set(0, 0, 0);
+        // If it's VR mode, add to the scene
+        // Otherwise, add to a new transform control group
+        if (this.isVRSupported) {
+            bookMesh.position.set(0, this.sceneElevation, 0.5);  // In front of camera
+            bookMesh.rotation.set(0, 0, 0);
+            this.scene.add(bookMesh);
+            this.controls.target.copy(bookMesh.position);
+        } else {
+            const control = new TransformControls(this.camera, this.renderer.domElement);
+            control.setMode('translate');
+            control.addEventListener('dragging-changed', (event) => {
+                this.controls.enabled = !event.value;
+            });
+
+            const gizmo = control.getHelper();
+
+            this.scene.add(bookMesh);
+            this.scene.add(gizmo);
+
+            bookMesh.position.set(0, this.sceneElevation, 0.5);  // In front of camera
+            bookMesh.rotation.set(0, 0, 0);
+
+            control.attach(bookMesh);
+
+            this.controls.target.copy(bookMesh.position);
+        }
+
         book.setCoverAngles(Math.PI / 2);
 
         // Update camera controls target to the book position
-        this.controls.target.copy(bookMesh.position);
         this.controls.update();
 
         this.isBookInViewMode = true;

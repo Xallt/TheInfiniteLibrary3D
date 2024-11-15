@@ -92,7 +92,16 @@ export class Book {
         return box;
     }
 
-    public getPageAngle(index: number, angle: number): number {
+    public setPageAngles(angles: number[]): void {
+        if (angles.length !== this.pages.length) {
+            throw new Error('Number of angles must match number of pages');
+        }
+        this.pages.forEach((page, index) => {
+            page.getMesh().rotation.y = angles[index];
+        });
+    }
+
+    public getProportionalPageAngle(index: number, angle: number): number {
         const proportionalAngle = 2 * angle * (index + 1) / this.numPages - angle - angle / (this.numPages);
         return -Math.PI / 2 + proportionalAngle;
     }
@@ -101,9 +110,10 @@ export class Book {
         this.angle = angle;
         this.leftSideMesh.rotation.y = -angle;
         this.rightSideMesh.rotation.y = angle;
-        this.pages.forEach((page, index) => {
-            page.getMesh().rotation.y = this.getPageAngle(index, angle);
+        const propotionalAngles = this.pages.map((page, index) => {
+            return this.getProportionalPageAngle(index, angle);
         });
+        this.setPageAngles(propotionalAngles);
     }
 
     private createBookMesh(): THREE.Mesh {
@@ -177,7 +187,7 @@ export class Book {
             0,
             bookThickness / 2
         );
-        const pageRotation = new THREE.Euler(0, this.getPageAngle(this.pages.length, this.angle), 0);
+        const pageRotation = new THREE.Euler(0, this.getProportionalPageAngle(this.pages.length, this.angle), 0);
         page.getMesh().position.set(pagePosition.x, pagePosition.y, pagePosition.z);
         page.getMesh().rotation.set(pageRotation.x, pageRotation.y, pageRotation.z);
         this.pages.push(page);

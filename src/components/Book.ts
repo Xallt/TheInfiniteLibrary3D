@@ -128,6 +128,15 @@ export class Book {
         });
     }
 
+    public setPageAngle(index: number, angle: number): void {
+        if (index < 0 || index >= this.pages.length) {
+            throw new Error(`Page index ${index} is out of bounds (0-${this.pages.length - 1})`);
+        }
+        if (this.pages[index]) {
+            this.pages[index]!.getMesh().rotation.y = angle;
+        }
+    }
+
     public setCoverAngles(angle: number): void {
         this.angle = angle;
         this.leftSideMesh.rotation.y = -angle;

@@ -117,12 +117,12 @@ export class Book {
         return this.pages.length;
     }
 
-    public setPageAngles(angles: number[]): void {
+    public setPageAngles(angles: (number | null)[]): void {
         if (angles.length !== this.pages.length) {
             throw new Error('Number of angles must match number of pages');
         }
         this.pages.forEach((page, index) => {
-            if (page) {
+            if (page && angles[index] !== null) {
                 page.getMesh().rotation.y = angles[index];
             }
         });

@@ -398,6 +398,7 @@ export class MainScene {
             this.controls.target.copy(bookMesh.position);
         } else {
             this.transformControl = new TransformControls(this.camera, this.renderer.domElement);
+            this.transformControl.size = 0.5;
             this.transformControl.setMode(this.transformMode);
             this.transformControl.addEventListener('dragging-changed', (event) => {
                 this.controls.enabled = !event.value;
@@ -425,10 +426,6 @@ export class MainScene {
 
         this.isBookInViewMode = true;
         this.viewingBookIndex = this.selectedBookIndex;
-
-        // Update selection indicator
-        this.selectionIndicator.position.copy(bookMesh.position);
-        this.selectionIndicator.position.z += 0.2;
     }
 
     public returnBookToShelf(): void {

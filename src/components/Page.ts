@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { TextureLoader } from './Book';
+import { BookMeshParams, TextureLoader } from './Book';
 import { PdfPage } from '../utils/pdfParser';
 
 export interface PageParams {
@@ -14,6 +14,19 @@ export class Page {
     constructor(params: PageParams, texturePath: string | ImageData) {
         this.params = params;
         this.mesh = this.createPageMesh(texturePath);
+    }
+
+    public getParams(): PageParams {
+        return this.params;
+    }
+
+    public static getPageParams(bookParams: BookMeshParams): PageParams {
+        const { bookThickness, bookWidth, bookHeight } = bookParams;
+        const pageWidth = (bookWidth - bookThickness) * 0.95;
+        return {
+            width: pageWidth,
+            height: bookHeight,
+        }
     }
 
     private createPageMesh(textureSource: string | ImageData): THREE.Mesh {

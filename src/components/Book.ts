@@ -45,51 +45,76 @@ export class Book {
     private leftSideMesh!: THREE.Mesh;
     private rightSideMesh!: THREE.Mesh;
     private bookMesh: THREE.Mesh;
-    private pages: Page[] = [];
-    private numPages: number;
-    private angle: number;
+    private pages: (Page | null)[];
     private originalPosition?: THREE.Vector3;
     private originalRotation?: THREE.Euler;
+    private angle: number = 0;
 
     constructor(
         params: BookMeshParams,
         bookTexture: BookTexture,
-        pages: Page[] = []
+        pages: (Page | null)[]
     ) {
         this.params = params;
         this.bookTexture = bookTexture;
-        this.numPages = pages.length;
         this.pages = pages;
-        this.angle = 0;
         this.bookMesh = this.createBookMesh();
     }
 
-    public setNumPages(numPages: number): void {
-        this.numPages = numPages;
+    public getParams(): BookMeshParams {
+        return this.params;
     }
 
-    public static empty(params: BookMeshParams, bookTexture: BookTexture): Book {
-        const book = new Book(params, bookTexture);
-        book.setNumPages(0);
-        return book;
+    public static empty(params: BookMeshParams, bookTexture: BookTexture, numPages: number): Book {
+        const emptyPages = new Array(numPages).fill(null);
+        return new Book(params, bookTexture, emptyPages);
     }
 
     public static fromPdfPages(params: BookMeshParams, bookTexture: BookTexture, pdfPages: PdfPage[]): Book {
-        const book = new Book(params, bookTexture);
-        book.setNumPages(pdfPages.length);
-        for (const pdfPage of pdfPages) {
-            book.appendPageFromPdf(pdfPage);
-        }
-        return book;
+        const pages = pdfPages.map(pdfPage =>
+            Page.fromPdfPage(pdfPage, {
+                width: (params.bookWidth - params.bookThickness) * 0.95,
+                height: params.bookHeight
+            })
+        );
+        return new Book(params, bookTexture, pages);
     }
 
-    private createBox(boxCenter: THREE.Vector3, boxSize: THREE.Vector3): THREE.Mesh {
-        const geometry = new THREE.BoxGeometry(boxSize.x, boxSize.y, boxSize.z);
-        console.log(this.bookTexture);
-        const material = new THREE.MeshLambertMaterial({ map: this.bookTexture.getTexture() });
-        const box = new THREE.Mesh(geometry, material);
-        box.position.set(boxCenter.x, boxCenter.y, boxCenter.z);
-        return box;
+    public addPage(page: Page, index: number): void {
+        if (index < 0 || index >= this.pages.length) {
+            throw new Error(`Page index ${index} is out of bounds (0-${this.pages.length - 1})`);
+        }
+
+        const { bookThickness, bookWidth, coverWidth } = this.params;
+
+        const pagePosition = new THREE.Vector3(
+            -coverWidth / 2 + index * (coverWidth / this.pages.length) + (coverWidth / this.pages.length) / 2,
+            0,
+            bookThickness / 2
+        );
+        const pageRotation = new THREE.Euler(0, this.getProportionalPageAngle(index, this.angle), 0);
+
+        page.getMesh().position.set(pagePosition.x, pagePosition.y, pagePosition.z);
+        page.getMesh().rotation.set(pageRotation.x, pageRotation.y, pageRotation.z);
+
+        // Remove existing page mesh if it exists
+        if (this.pages[index]) {
+            this.bookMesh.remove(this.pages[index]!.getMesh());
+        }
+
+        this.pages[index] = page;
+        this.bookMesh.add(page.getMesh());
+    }
+
+    public getPage(index: number): Page | null {
+        if (index < 0 || index >= this.pages.length) {
+            throw new Error(`Page index ${index} is out of bounds (0-${this.pages.length - 1})`);
+        }
+        return this.pages[index];
+    }
+
+    public getNumPages(): number {
+        return this.pages.length;
     }
 
     public setPageAngles(angles: number[]): void {
@@ -97,23 +122,21 @@ export class Book {
             throw new Error('Number of angles must match number of pages');
         }
         this.pages.forEach((page, index) => {
-            page.getMesh().rotation.y = angles[index];
+            if (page) {
+                page.getMesh().rotation.y = angles[index];
+            }
         });
-    }
-
-    public getProportionalPageAngle(index: number, angle: number): number {
-        const proportionalAngle = 2 * angle * (index + 1) / this.numPages - angle - angle / (this.numPages);
-        return -Math.PI / 2 + proportionalAngle;
     }
 
     public setCoverAngles(angle: number): void {
         this.angle = angle;
         this.leftSideMesh.rotation.y = -angle;
         this.rightSideMesh.rotation.y = angle;
-        const propotionalAngles = this.pages.map((page, index) => {
-            return this.getProportionalPageAngle(index, angle);
-        });
-        this.setPageAngles(propotionalAngles);
+
+        const proportionalAngles = this.pages.map((_, index) =>
+            this.getProportionalPageAngle(index, angle)
+        );
+        this.setPageAngles(proportionalAngles);
     }
 
     private createBookMesh(): THREE.Mesh {
@@ -142,64 +165,37 @@ export class Book {
         book.add(this.leftSideMesh);
         book.add(this.rightSideMesh);
 
-        for (const page of this.pages) {
-            book.add(page.getMesh());
-        }
+        // Add existing pages to the mesh
+        this.pages.forEach((page, index) => {
+            if (page) {
+                const pagePosition = new THREE.Vector3(
+                    -coverWidth / 2 + index * (coverWidth / this.pages.length) + (coverWidth / this.pages.length) / 2,
+                    0,
+                    bookThickness / 2
+                );
+                const pageRotation = new THREE.Euler(0, this.getProportionalPageAngle(index, this.angle), 0);
+                page.getMesh().position.set(pagePosition.x, pagePosition.y, pagePosition.z);
+                page.getMesh().rotation.set(pageRotation.x, pageRotation.y, pageRotation.z);
+                book.add(page.getMesh());
+            }
+        });
 
         return book;
     }
 
-    getPageParams(): PageParams {
-        const { bookThickness, bookWidth, bookHeight } = this.params;
-        const pageWidth = (bookWidth - bookThickness) * 0.95;
-        return {
-            width: pageWidth,
-            height: bookHeight,
-        }
+    private createBox(boxCenter: THREE.Vector3, boxSize: THREE.Vector3): THREE.Mesh {
+        const geometry = new THREE.BoxGeometry(boxSize.x, boxSize.y, boxSize.z);
+        console.log(this.bookTexture);
+        const material = new THREE.MeshLambertMaterial({ map: this.bookTexture.getTexture() });
+        const box = new THREE.Mesh(geometry, material);
+        box.position.set(boxCenter.x, boxCenter.y, boxCenter.z);
+        return box;
     }
 
-    public appendPageFromPdf(pdfPage: PdfPage): void {
-
-        const page = Page.fromPdfPage(
-            pdfPage,
-            this.getPageParams()
-        );
-
-
-        this.appendPage(page);
+    public getProportionalPageAngle(index: number, angle: number): number {
+        const proportionalAngle = 2 * angle * (index + 1) / this.pages.length - angle - angle / (this.pages.length);
+        return -Math.PI / 2 + proportionalAngle;
     }
-    public appendPagesFromPdf(pdfPages: PdfPage[]): void {
-        const pages = pdfPages.map(
-            page => Page.fromPdfPage(
-                page,
-                this.getPageParams()
-            )
-        );
-        this.appendPages(pages);
-    }
-
-    public appendPage(page: Page): void {
-        const { bookThickness, bookWidth, bookHeight, coverWidth } = this.params;
-        const pageWidth = (bookWidth - bookThickness) * 0.95;
-
-        const pagePosition = new THREE.Vector3(
-            -coverWidth / 2 + this.pages.length * (coverWidth / this.numPages) + (coverWidth / this.numPages) / 2,
-            0,
-            bookThickness / 2
-        );
-        const pageRotation = new THREE.Euler(0, this.getProportionalPageAngle(this.pages.length, this.angle), 0);
-        page.getMesh().position.set(pagePosition.x, pagePosition.y, pagePosition.z);
-        page.getMesh().rotation.set(pageRotation.x, pageRotation.y, pageRotation.z);
-        this.pages.push(page);
-        this.bookMesh.add(page.getMesh());
-    }
-
-    public appendPages(pages: Page[]): void {
-        for (const page of pages) {
-            this.appendPage(page);
-        }
-    }
-
 
     public getOuterSize(): THREE.Vector3 {
         const { bookThickness, bookWidth, bookHeight, coverWidth } = this.params;
@@ -217,11 +213,6 @@ export class Book {
     public copy(): Book {
         const newBook = new Book(this.params, this.bookTexture, this.pages);
         return newBook;
-    }
-
-    // New method to access pages
-    public getPages(): Page[] {
-        return this.pages;
     }
 
     public storeOriginalTransform(): void {

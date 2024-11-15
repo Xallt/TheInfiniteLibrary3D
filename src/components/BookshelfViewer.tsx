@@ -4,6 +4,7 @@ import { defaultBookParams, defaultBookshelfParams } from '../App';
 import { PdfPage, PdfParser } from '../utils/pdfParser';
 import { Book, TextureLoader } from './Book';
 import { BookTexture } from './BookTexture';
+import { Page } from './Page';
 
 export function BookshelfViewer() {
     const sceneRef = useRef<MainScene | null>(null);
@@ -112,6 +113,8 @@ export function BookshelfViewer() {
                     scale: 2.0
                 });
 
+                const numPages = pagesParseResult.metadata.numPages;
+
                 // Create book
                 const book = Book.empty(defaultBookParams, new BookTexture(
                     TextureLoader.getInstance().load("assets/BookCovers0135_5_350.jpg"),
@@ -119,7 +122,7 @@ export function BookshelfViewer() {
                         leftCoverPosition: 0.413,
                         rightCoverPosition: 0.582
                     }
-                ));
+                ), numPages);
 
                 // Add book to scene immediately
                 if (sceneRef.current) {
@@ -128,9 +131,9 @@ export function BookshelfViewer() {
                 }
 
                 // Process pages in parallel
-                book.setNumPages(pagesParseResult.metadata.numPages);
+                let index = 0;
                 for await (const page of pagesParseResult.pages) {
-                    book.appendPageFromPdf(page);
+                    book.addPage(Page.fromPdfPage(page, Page.getPageParams(book.getParams())), index++);
                 }
 
                 return book;

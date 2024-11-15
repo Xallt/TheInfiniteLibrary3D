@@ -44,6 +44,7 @@ export class MainScene {
     private onVRSessionEndHandler?: () => void;
 
     private transformControl: TransformControls | null = null;
+    private transformMode: 'translate' | 'rotate' = 'translate';
 
     constructor(
         container: HTMLElement,
@@ -264,12 +265,28 @@ export class MainScene {
 
     private addEventListeners(): void {
         window.addEventListener('resize', this.onWindowResize.bind(this));
+        window.addEventListener('keydown', this.onKeyDown.bind(this));
     }
 
     private onWindowResize(): void {
         this.camera.aspect = window.innerWidth / window.innerHeight;
         this.camera.updateProjectionMatrix();
         this.renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    private onKeyDown(event: KeyboardEvent): void {
+        if (!this.isBookInViewMode || !this.transformControl) return;
+
+        switch (event.key.toLowerCase()) {
+            case 't':
+                this.transformMode = 'translate';
+                this.transformControl.setMode('translate');
+                break;
+            case 'r':
+                this.transformMode = 'rotate';
+                this.transformControl.setMode('rotate');
+                break;
+        }
     }
 
     private animate(): void {
@@ -381,7 +398,7 @@ export class MainScene {
             this.controls.target.copy(bookMesh.position);
         } else {
             this.transformControl = new TransformControls(this.camera, this.renderer.domElement);
-            this.transformControl.setMode('translate');
+            this.transformControl.setMode(this.transformMode);
             this.transformControl.addEventListener('dragging-changed', (event) => {
                 this.controls.enabled = !event.value;
             });

@@ -3,6 +3,58 @@ import { Page, PageParams } from './Page';
 import { PdfPage } from 'src/utils/pdfParser';
 import { BookTexture } from './BookTexture';
 
+// Add these interfaces at the top of the file
+export interface BookOpeningState {
+    getPageRotationArgs(numPages: number): { coverAngle: number, pageAngles: number[] };
+}
+
+export class UniformlyOpenedState implements BookOpeningState {
+    constructor(private angle: number = 0) { }
+
+    getPageRotationArgs(numPages: number): { coverAngle: number, pageAngles: number[] } {
+        const pageAngles = Array(numPages).fill(0).map((_, index) => {
+            const proportionalAngle = 2 * this.angle * (index + 1) / numPages - this.angle - this.angle / numPages;
+            return proportionalAngle;
+        });
+
+        return {
+            coverAngle: this.angle,
+            pageAngles
+        };
+    }
+}
+
+// Add this new state class after UniformlyOpenedState
+export class PageSelectedState implements BookOpeningState {
+    private readonly eps = 0.1; // Small angle to separate pages
+
+    constructor(
+        private angle: number = Math.PI / 2,
+        private selectedPageIndex: number = 0
+    ) { }
+
+    getPageRotationArgs(numPages: number): { coverAngle: number, pageAngles: number[] } {
+        const pageAngles = Array(numPages).fill(0).map((_, index) => {
+            if (index < this.selectedPageIndex) {
+                // Pages before selected page fold back
+                return -this.angle + this.eps;
+            } else {
+                // Selected page and those after fold forward
+                return this.angle - this.eps;
+            }
+        });
+
+        return {
+            coverAngle: this.angle,
+            pageAngles
+        };
+    }
+
+    public getSelectedPageIndex(): number {
+        return this.selectedPageIndex;
+    }
+}
+
 // Add this new class for the singleton texture loader
 export class TextureLoader {
     private static instance: TextureLoader;
@@ -48,36 +100,52 @@ export class Book {
     private pages: (Page | null)[];
     private originalPosition?: THREE.Vector3;
     private originalRotation?: THREE.Euler;
-    private angle: number = 0;
+    private openingState: BookOpeningState;
 
     constructor(
         params: BookMeshParams,
         bookTexture: BookTexture,
-        pages: (Page | null)[]
+        pages: (Page | null)[],
+        initialState: BookOpeningState = new UniformlyOpenedState()
     ) {
         this.params = params;
         this.bookTexture = bookTexture;
         this.pages = pages;
+        this.openingState = initialState;
         this.bookMesh = this.createBookMesh();
+    }
+
+    public static empty(
+        params: BookMeshParams,
+        bookTexture: BookTexture,
+        numPages: number,
+        initialState: BookOpeningState = new UniformlyOpenedState()
+    ): Book {
+        return new Book(params, bookTexture, new Array(numPages).fill(null), initialState);
     }
 
     public getParams(): BookMeshParams {
         return this.params;
     }
 
-    public static empty(params: BookMeshParams, bookTexture: BookTexture, numPages: number): Book {
-        const emptyPages = new Array(numPages).fill(null);
-        return new Book(params, bookTexture, emptyPages);
+    public setState(state: BookOpeningState): void {
+        this.openingState = state;
+        this.updateBookRotations();
     }
 
-    public static fromPdfPages(params: BookMeshParams, bookTexture: BookTexture, pdfPages: PdfPage[]): Book {
-        const pages = pdfPages.map(pdfPage =>
-            Page.fromPdfPage(pdfPage, {
-                width: (params.bookWidth - params.bookThickness) * 0.95,
-                height: params.bookHeight
-            })
-        );
-        return new Book(params, bookTexture, pages);
+    private updateBookRotations(): void {
+        const { coverAngle, pageAngles } = this.openingState.getPageRotationArgs(this.pages.length);
+
+        // Update cover angles
+        this.leftSideMesh.rotation.y = -coverAngle;
+        this.rightSideMesh.rotation.y = coverAngle;
+
+        // Set page angles
+        this.pages.forEach((page, index) => {
+            if (page) {
+                page.getMesh().rotation.y = pageAngles[index] - Math.PI / 2;
+            }
+        });
     }
 
     public addPage(page: Page, index: number): void {
@@ -92,7 +160,10 @@ export class Book {
             0,
             bookThickness / 2
         );
-        const pageRotation = new THREE.Euler(0, this.getProportionalPageAngle(index, this.angle), 0);
+
+        // Get rotation from current state
+        const { pageAngles } = this.openingState.getPageRotationArgs(this.pages.length);
+        const pageRotation = new THREE.Euler(0, pageAngles[index] - Math.PI / 2, 0);
 
         page.getMesh().position.set(pagePosition.x, pagePosition.y, pagePosition.z);
         page.getMesh().rotation.set(pageRotation.x, pageRotation.y, pageRotation.z);
@@ -117,35 +188,8 @@ export class Book {
         return this.pages.length;
     }
 
-    public setPageAngles(angles: (number | null)[]): void {
-        if (angles.length !== this.pages.length) {
-            throw new Error('Number of angles must match number of pages');
-        }
-        this.pages.forEach((page, index) => {
-            if (page && angles[index] !== null) {
-                page.getMesh().rotation.y = angles[index];
-            }
-        });
-    }
-
-    public setPageAngle(index: number, angle: number): void {
-        if (index < 0 || index >= this.pages.length) {
-            throw new Error(`Page index ${index} is out of bounds (0-${this.pages.length - 1})`);
-        }
-        if (this.pages[index]) {
-            this.pages[index]!.getMesh().rotation.y = angle;
-        }
-    }
-
     public setCoverAngles(angle: number): void {
-        this.angle = angle;
-        this.leftSideMesh.rotation.y = -angle;
-        this.rightSideMesh.rotation.y = angle;
-
-        const proportionalAngles = this.pages.map((_, index) =>
-            this.getProportionalPageAngle(index, angle)
-        );
-        this.setPageAngles(proportionalAngles);
+        this.setState(new UniformlyOpenedState(angle));
     }
 
     private createBookMesh(): THREE.Mesh {
@@ -174,7 +218,7 @@ export class Book {
         book.add(this.leftSideMesh);
         book.add(this.rightSideMesh);
 
-        // Add existing pages to the mesh
+        // Update the page rotation calculation
         this.pages.forEach((page, index) => {
             if (page) {
                 const pagePosition = new THREE.Vector3(
@@ -182,7 +226,8 @@ export class Book {
                     0,
                     bookThickness / 2
                 );
-                const pageRotation = new THREE.Euler(0, this.getProportionalPageAngle(index, this.angle), 0);
+                const { pageAngles } = this.openingState.getPageRotationArgs(this.pages.length);
+                const pageRotation = new THREE.Euler(0, pageAngles[index], 0);
                 page.getMesh().position.set(pagePosition.x, pagePosition.y, pagePosition.z);
                 page.getMesh().rotation.set(pageRotation.x, pageRotation.y, pageRotation.z);
                 book.add(page.getMesh());
@@ -201,11 +246,6 @@ export class Book {
         return box;
     }
 
-    public getProportionalPageAngle(index: number, angle: number): number {
-        const proportionalAngle = 2 * angle * (index + 1) / this.pages.length - angle - angle / (this.pages.length);
-        return -Math.PI / 2 + proportionalAngle;
-    }
-
     public getOuterSize(): THREE.Vector3 {
         const { bookThickness, bookWidth, bookHeight, coverWidth } = this.params;
         return new THREE.Vector3(
@@ -220,7 +260,7 @@ export class Book {
     }
 
     public copy(): Book {
-        const newBook = new Book(this.params, this.bookTexture, this.pages);
+        const newBook = new Book(this.params, this.bookTexture, this.pages, this.openingState);
         return newBook;
     }
 
@@ -237,5 +277,16 @@ export class Book {
         mesh.position.copy(this.originalPosition);
         mesh.rotation.copy(this.originalRotation);
         this.setCoverAngles(0); // Reset cover angles
+    }
+
+    public selectPage(pageIndex: number, angle: number = Math.PI / 2): void {
+        if (pageIndex < 0 || pageIndex >= this.pages.length) {
+            throw new Error(`Page index ${pageIndex} is out of bounds (0-${this.pages.length - 1})`);
+        }
+        this.setState(new PageSelectedState(angle, pageIndex));
+    }
+
+    public getCurrentState(): BookOpeningState {
+        return this.openingState;
     }
 }

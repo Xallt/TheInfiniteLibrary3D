@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { Book, BookMeshParams, TextureLoader } from '../components/Book';
+import { Book, BookMeshParams, PageSelectedState, TextureLoader } from '../components/Book';
 import { createControls } from '../components/Controls';
 import Stats from 'three/examples/jsm/libs/stats.module.js';
 import { Bookshelf, BookshelfParams } from '../components/Bookshelf';
@@ -323,23 +323,6 @@ export class MainScene {
         }
     }
 
-    public addBookFromPages(pdfPages: PdfPage[] = []): Book {
-        const book = Book.fromPdfPages(
-            this.bookParams,
-            new BookTexture(
-                TextureLoader.getInstance().load("assets/BookCovers0135_5_350.jpg"),
-                {
-                    leftCoverPosition: 0.413,
-                    rightCoverPosition: 0.582
-                }
-            ),
-            pdfPages
-        );
-        this.addBook(book);
-
-        return book;
-    }
-
     public selectBook(index: number): void {
         if (index >= 0 && index < this.books.length) {
             this.selectedBookIndex = index;
@@ -522,5 +505,55 @@ export class MainScene {
 
     public isInVR(): boolean {
         return this.isVRSupported && this.renderer.xr.isPresenting;
+    }
+
+    public selectBookPage(pageIndex: number): void {
+        if (this.isBookInViewMode && this.viewingBookIndex !== -1) {
+            const book = this.books[this.viewingBookIndex];
+            book.selectPage(pageIndex);
+        }
+    }
+
+    public switchToReadingMode(): void {
+        if (this.isBookInViewMode && this.viewingBookIndex !== -1) {
+            const book = this.books[this.viewingBookIndex];
+            book.selectPage(0); // Start with the first page
+        }
+    }
+
+    public nextPage(): void {
+        if (this.isBookInViewMode && this.viewingBookIndex !== -1) {
+            const book = this.books[this.viewingBookIndex];
+            const currentState = book.getCurrentState();
+
+            if (currentState instanceof PageSelectedState) {
+                const nextPageIndex = Math.min(currentState.getSelectedPageIndex() + 1, book.getNumPages() - 1);
+                book.selectPage(nextPageIndex);
+            }
+        }
+    }
+
+    public previousPage(): void {
+        if (this.isBookInViewMode && this.viewingBookIndex !== -1) {
+            const book = this.books[this.viewingBookIndex];
+            const currentState = book.getCurrentState();
+
+            if (currentState instanceof PageSelectedState) {
+                const prevPageIndex = Math.max(currentState.getSelectedPageIndex() - 1, 0);
+                book.selectPage(prevPageIndex);
+            }
+        }
+    }
+
+    public isInReadingMode(): boolean {
+        if (this.isBookInViewMode && this.viewingBookIndex !== -1) {
+            const book = this.books[this.viewingBookIndex];
+            return book.getCurrentState() instanceof PageSelectedState;
+        }
+        return false;
+    }
+
+    public isReadingBook(): boolean {
+        return this.isBookInViewMode && this.books[this.viewingBookIndex].getCurrentState() instanceof PageSelectedState;
     }
 }

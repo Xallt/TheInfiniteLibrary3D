@@ -158,6 +158,24 @@ export function BookshelfViewer() {
         }
     };
 
+    const handleSwitchToReading = () => {
+        if (sceneRef.current) {
+            sceneRef.current.switchToReadingMode();
+        }
+    };
+
+    const handleNextPage = () => {
+        if (sceneRef.current) {
+            sceneRef.current.nextPage();
+        }
+    };
+
+    const handlePrevPage = () => {
+        if (sceneRef.current) {
+            sceneRef.current.previousPage();
+        }
+    };
+
     useEffect(() => {
         if (sceneRef.current) {
             const handleVRSessionStart = () => {
@@ -218,15 +236,30 @@ export function BookshelfViewer() {
 
             {isViewingBook && (
                 <div className="angle-control">
-                    <input
-                        type="range"
-                        min="0"
-                        max={Math.PI}
-                        step="0.01"
-                        value={bookAngle}
-                        onChange={handleAngleChange}
-                        className="angle-slider"
-                    />
+                    {!sceneRef.current?.isInReadingMode() ? (
+                        <>
+                            <input
+                                type="range"
+                                min="0"
+                                max={Math.PI}
+                                step="0.01"
+                                value={bookAngle}
+                                onChange={handleAngleChange}
+                                className="angle-slider"
+                            />
+                            <button 
+                                className="reading-mode-button"
+                                onClick={handleSwitchToReading}
+                            >
+                                Read Book
+                            </button>
+                        </>
+                    ) : (
+                        <div className="page-controls">
+                            <button onClick={handlePrevPage}>&lt;</button>
+                            <button onClick={handleNextPage}>&gt;</button>
+                        </div>
+                    )}
                 </div>
             )}
 

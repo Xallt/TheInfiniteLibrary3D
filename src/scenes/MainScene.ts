@@ -18,9 +18,28 @@ interface BookIntersection extends THREE.Intersection<THREE.Object3D<THREE.Objec
 class ControllerWrapper {
     public controller: THREE.XRTargetRaySpace;
     public gamepad: Gamepad | null = null;
+    public previousButtonStates: boolean[] = [];
 
     constructor(controller: THREE.XRTargetRaySpace) {
         this.controller = controller;
+    }
+
+    public updateButtonStates() {
+        if (this.gamepad) {
+            // Initialize or update previous button states
+            if (this.previousButtonStates.length !== this.gamepad.buttons.length) {
+                this.previousButtonStates = this.gamepad.buttons.map(button => button.pressed);
+            } else {
+                this.previousButtonStates = this.gamepad.buttons.map(button => button.pressed);
+            }
+        }
+    }
+
+    public isButtonNewlyPressed(index: number): boolean {
+        if (!this.gamepad || index >= this.gamepad.buttons.length) return false;
+        const isCurrentlyPressed = this.gamepad.buttons[index].pressed;
+        const wasPreviouslyPressed = this.previousButtonStates[index] || false;
+        return isCurrentlyPressed && !wasPreviouslyPressed;
     }
 }
 
@@ -334,15 +353,12 @@ export class MainScene {
 
             // Update grabbed book position
             this.updateGrabbedBook();
-        } else {
-            this.controls.update();
-        }
 
-        for (const controllerWrapper of this.controllerWrappers) {
-            if (controllerWrapper.gamepad) {
-                // If book is in viewing mode, if button 4 is pressed, switch between reading mode and uniform open state
-                if (this.isBookInViewMode) {
-                    if (controllerWrapper.gamepad.buttons[4].pressed) {
+            // Handle controller button states
+            for (const controllerWrapper of this.controllerWrappers) {
+                if (controllerWrapper.gamepad) {
+                    // Check for newly pressed buttons before updating states
+                    if (this.isBookInViewMode && controllerWrapper.isButtonNewlyPressed(4)) {
                         const book = this.books[this.viewingBookIndex];
                         if (book.getCurrentState() instanceof PageSelectedState) {
                             book.setState(new UniformlyOpenedState(Math.PI / 2));
@@ -350,8 +366,13 @@ export class MainScene {
                             this.switchToReadingMode();
                         }
                     }
+
+                    // Update button states for next frame
+                    controllerWrapper.updateButtonStates();
                 }
             }
+        } else {
+            this.controls.update();
         }
 
         this.render();

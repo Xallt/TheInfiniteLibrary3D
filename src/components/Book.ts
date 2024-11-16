@@ -239,7 +239,6 @@ export class Book {
 
     private createBox(boxCenter: THREE.Vector3, boxSize: THREE.Vector3): THREE.Mesh {
         const geometry = new THREE.BoxGeometry(boxSize.x, boxSize.y, boxSize.z);
-        console.log(this.bookTexture);
         const material = new THREE.MeshLambertMaterial({ map: this.bookTexture.getTexture() });
         const box = new THREE.Mesh(geometry, material);
         box.position.set(boxCenter.x, boxCenter.y, boxCenter.z);
@@ -283,7 +282,10 @@ export class Book {
         if (pageIndex < 0 || pageIndex >= this.pages.length) {
             throw new Error(`Page index ${pageIndex} is out of bounds (0-${this.pages.length - 1})`);
         }
-        this.setState(new PageSelectedState(angle, pageIndex));
+
+        // Create new PageSelectedState with the specified angle and page index
+        const newState = new PageSelectedState(angle, pageIndex);
+        this.setState(newState);
     }
 
     public getCurrentState(): BookOpeningState {

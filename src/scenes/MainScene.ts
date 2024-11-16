@@ -597,8 +597,13 @@ export class MainScene {
             const currentState = book.getCurrentState();
 
             if (currentState instanceof PageSelectedState) {
-                const nextPageIndex = Math.min(currentState.getSelectedPageIndex() + 1, book.getNumPages() - 1);
-                book.selectPage(nextPageIndex);
+                const currentIndex = currentState.getSelectedPageIndex();
+                const nextPageIndex = Math.min(currentIndex + 1, book.getNumPages() - 1);
+
+                // Only update if we're not already at the last page
+                if (nextPageIndex !== currentIndex) {
+                    book.selectPage(nextPageIndex);
+                }
             }
         }
     }
@@ -609,8 +614,13 @@ export class MainScene {
             const currentState = book.getCurrentState();
 
             if (currentState instanceof PageSelectedState) {
-                const prevPageIndex = Math.max(currentState.getSelectedPageIndex() - 1, 0);
-                book.selectPage(prevPageIndex);
+                const currentIndex = currentState.getSelectedPageIndex();
+                const prevPageIndex = Math.max(currentIndex - 1, 0);
+
+                // Only update if we're not already at the first page
+                if (prevPageIndex !== currentIndex) {
+                    book.selectPage(prevPageIndex);
+                }
             }
         }
     }

@@ -25,6 +25,22 @@ export function BookStateControlsUI({
         onSwitchToReading();
     };
 
+    const handleNextPage = () => {
+        if (sceneRef.current) {
+            onNextPage();
+            // Update reading mode state based on scene state
+            setIsReadingMode(sceneRef.current.isReadingBook());
+        }
+    };
+
+    const handlePrevPage = () => {
+        if (sceneRef.current) {
+            onPrevPage();
+            // Update reading mode state based on scene state
+            setIsReadingMode(sceneRef.current.isReadingBook());
+        }
+    };
+
     const handleSwitchToUniform = () => {
         setIsReadingMode(false);
         // Set book angle to 90 degrees (PI/2)
@@ -58,13 +74,13 @@ export function BookStateControlsUI({
                 <div className="page-controls">
                     <button 
                         className="page-nav-button"
-                        onClick={onPrevPage}
+                        onClick={handlePrevPage}
                     >
                         ←
                     </button>
                     <button 
                         className="page-nav-button"
-                        onClick={onNextPage}
+                        onClick={handleNextPage}
                     >
                         →
                     </button>

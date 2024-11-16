@@ -589,29 +589,37 @@ export class MainScene {
         const rayDirection = new Vector3(0, 0, -1).applyMatrix4(this.tempMatrix);
         this.raycaster.set(rayOrigin, rayDirection);
 
-        // Test intersections with all books
-        const intersects: BookIntersection[] = [];
-        this.books.forEach((book, index) => {
-            const bookMesh = book.getMesh();
-            const bookIntersects = this.raycaster.intersectObject(bookMesh, true);
-            if (bookIntersects.length > 0) {
-                const intersection = bookIntersects[0] as BookIntersection;
-                intersection.bookIndex = index;
-                intersects.push(intersection);
-            }
-        });
+        // Update ray visibility - only hide when in view mode
+        if (this.controllerRayLine) {
+            this.controllerRayLine.visible = !this.isBookInViewMode;
+        }
 
-        // Sort intersections by distance
-        intersects.sort((a, b) => a.distance - b.distance);
+        // Only proceed with intersection testing if not in view mode
+        if (!this.isBookInViewMode) {
+            // Test intersections with all books
+            const intersects: BookIntersection[] = [];
+            this.books.forEach((book, index) => {
+                const bookMesh = book.getMesh();
+                const bookIntersects = this.raycaster.intersectObject(bookMesh, true);
+                if (bookIntersects.length > 0) {
+                    const intersection = bookIntersects[0] as BookIntersection;
+                    intersection.bookIndex = index;
+                    intersects.push(intersection);
+                }
+            });
 
-        // Select the closest intersected book
-        if (intersects.length > 0 && !this.isBookInViewMode) {
-            const closestIntersect = intersects[0];
-            const bookIndex = closestIntersect.bookIndex;
+            // Sort intersections by distance
+            intersects.sort((a, b) => a.distance - b.distance);
 
-            // Only update selection if it's different from current selection
-            if (bookIndex !== undefined && bookIndex !== this.selectedBookIndex) {
-                this.selectBook(bookIndex);
+            // Select the closest intersected book
+            if (intersects.length > 0) {
+                const closestIntersect = intersects[0];
+                const bookIndex = closestIntersect.bookIndex;
+
+                // Only update selection if it's different from current selection
+                if (bookIndex !== undefined && bookIndex !== this.selectedBookIndex) {
+                    this.selectBook(bookIndex);
+                }
             }
         }
     }
@@ -628,5 +636,6 @@ export class MainScene {
         });
         this.controllerRayLine = new THREE.Line(geometry, material);
         this.controllerRayLine.scale.z = 5; // Make the ray 5 meters long
+        this.controllerRayLine.visible = true; // Ensure initial visibility
     }
 }

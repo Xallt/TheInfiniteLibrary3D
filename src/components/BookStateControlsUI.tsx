@@ -25,6 +25,15 @@ export function BookStateControlsUI({
         onSwitchToReading();
     };
 
+    const handleSwitchToUniform = () => {
+        setIsReadingMode(false);
+        // Set book angle to 90 degrees (PI/2)
+        const event = {
+            target: { value: String(Math.PI / 2) }
+        } as React.ChangeEvent<HTMLInputElement>;
+        onAngleChange(event);
+    };
+
     return (
         <div className="angle-control">
             {!isReadingMode ? (
@@ -58,6 +67,12 @@ export function BookStateControlsUI({
                         onClick={onNextPage}
                     >
                         →
+                    </button>
+                    <button 
+                        className="uniform-mode-button"
+                        onClick={handleSwitchToUniform}
+                    >
+                        Uniform Open
                     </button>
                 </div>
             )}

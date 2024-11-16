@@ -9,6 +9,11 @@ import { VRButton } from 'three/examples/jsm/webxr/VRButton.js';
 import { XRControllerModelFactory } from 'three/examples/jsm/webxr/XRControllerModelFactory.js';
 import { TransformControls, TransformControlsGizmo } from 'three/examples/jsm/controls/TransformControls';
 import { BookTexture } from '../components/BookTexture';
+import { Raycaster, Vector3 } from 'three';
+
+interface BookIntersection extends THREE.Intersection<THREE.Object3D<THREE.Object3DEventMap>> {
+    bookIndex?: number;
+}
 
 export class MainScene {
     private camera!: THREE.PerspectiveCamera;
@@ -46,6 +51,11 @@ export class MainScene {
     private transformControl: TransformControls | null = null;
     private transformMode: 'translate' | 'rotate' = 'translate';
 
+    private raycaster: THREE.Raycaster;
+    private tempMatrix: THREE.Matrix4;
+
+    private controllerRayLine: THREE.Line | null = null;
+
     constructor(
         container: HTMLElement,
         bookParams: BookMeshParams,
@@ -64,6 +74,9 @@ export class MainScene {
         });
         this.selectionIndicator = new THREE.Mesh(geometry, material);
         this.selectionIndicator.visible = false;
+
+        this.raycaster = new THREE.Raycaster();
+        this.tempMatrix = new THREE.Matrix4();
 
         // Check VR support before initialization
         this.checkVRSupport().then(() => {
@@ -155,13 +168,6 @@ export class MainScene {
         this.scene.background = new THREE.Color(0xf0f0f0);
 
         this.sceneElevation = 0.5;
-
-        // Only add VR-specific elements if VR is supported
-        // if (this.isVRSupported) {
-        //     // Add a grid helper for VR ground reference
-        //     const grid = new THREE.GridHelper(100, 20);
-        //     this.scene.add(grid);
-        // }
     }
 
     private initLighting(): void {
@@ -202,19 +208,30 @@ export class MainScene {
     private initVRControllers(): void {
         if (!this.isVRSupported) return;
 
-        // Controller model factory
         const controllerModelFactory = new XRControllerModelFactory();
+
+        // Create the controller ray line
+        this.createControllerRay();
 
         // Setup controllers
         for (let i = 0; i < 2; i++) {
-            // Controller
             const controller = this.renderer.xr.getController(i);
+
+            // Add ray line to right controller only
+            if (i === 1 && this.controllerRayLine) { // Right controller
+                controller.add(this.controllerRayLine);
+                controller.addEventListener('select', () => {
+                    if (this.selectedBookIndex !== -1 && !this.isBookInViewMode) {
+                        this.viewSelectedBook();
+                    }
+                });
+            }
+
             controller.addEventListener('squeezestart', this.onSqueezeStart.bind(this));
             controller.addEventListener('squeezeend', this.onSqueezeEnd.bind(this));
             this.scene.add(controller);
             this.controllers.push(controller);
 
-            // Controller grip
             const controllerGrip = this.renderer.xr.getControllerGrip(i);
             controllerGrip.add(controllerModelFactory.createControllerModel(controllerGrip));
             this.scene.add(controllerGrip);
@@ -290,17 +307,16 @@ export class MainScene {
     }
 
     private animate(): void {
-        // Update controls based on VR state
         if (this.isVRSupported && this.renderer.xr.isPresenting) {
-            // Update VR-specific elements
-            this.controllers.forEach(controller => {
-                // Add any per-frame controller updates here
-            });
+            // Update ray intersection for right controller only
+            const rightController = this.controllers[1];
+            if (rightController) {
+                this.handleControllerRayIntersection(rightController);
+            }
 
             // Update grabbed book position
             this.updateGrabbedBook();
         } else {
-            // Update non-VR controls
             this.controls.update();
         }
 
@@ -329,9 +345,15 @@ export class MainScene {
             const position = this.bookshelf.getBookPosition(index);
 
             if (position) {
-                // Move indicator in front of the book
-                position.z += 0.2;  // Move it forward
+                // Get the book's dimensions
+                const book = this.books[index];
+                const bookMesh = book.getMesh();
+                const bookBounds = new THREE.Box3().setFromObject(bookMesh);
+                const bookDepth = bookBounds.max.z - bookBounds.min.z;
+
+                // Position indicator in front of the book's center
                 this.selectionIndicator.position.copy(position);
+                this.selectionIndicator.position.z += bookDepth + 0.05; // Offset by book depth plus a small gap
                 this.selectionIndicator.visible = true;
             }
         } else {
@@ -555,5 +577,56 @@ export class MainScene {
 
     public isReadingBook(): boolean {
         return this.isBookInViewMode && this.books[this.viewingBookIndex].getCurrentState() instanceof PageSelectedState;
+    }
+
+    private handleControllerRayIntersection(controller: THREE.XRTargetRaySpace): void {
+        // Get controller world matrix
+        this.tempMatrix.identity().extractRotation(controller.matrixWorld);
+
+        // Set raycaster from controller
+        const rayOrigin = new Vector3();
+        controller.getWorldPosition(rayOrigin);
+        const rayDirection = new Vector3(0, 0, -1).applyMatrix4(this.tempMatrix);
+        this.raycaster.set(rayOrigin, rayDirection);
+
+        // Test intersections with all books
+        const intersects: BookIntersection[] = [];
+        this.books.forEach((book, index) => {
+            const bookMesh = book.getMesh();
+            const bookIntersects = this.raycaster.intersectObject(bookMesh, true);
+            if (bookIntersects.length > 0) {
+                const intersection = bookIntersects[0] as BookIntersection;
+                intersection.bookIndex = index;
+                intersects.push(intersection);
+            }
+        });
+
+        // Sort intersections by distance
+        intersects.sort((a, b) => a.distance - b.distance);
+
+        // Select the closest intersected book
+        if (intersects.length > 0 && !this.isBookInViewMode) {
+            const closestIntersect = intersects[0];
+            const bookIndex = closestIntersect.bookIndex;
+
+            // Only update selection if it's different from current selection
+            if (bookIndex !== undefined && bookIndex !== this.selectedBookIndex) {
+                this.selectBook(bookIndex);
+            }
+        }
+    }
+
+    private createControllerRay(): void {
+        const geometry = new THREE.BufferGeometry().setFromPoints([
+            new THREE.Vector3(0, 0, 0),
+            new THREE.Vector3(0, 0, -1)  // 1 meter long ray
+        ]);
+        const material = new THREE.LineBasicMaterial({
+            color: 0xff0000,
+            transparent: true,
+            opacity: 0.5
+        });
+        this.controllerRayLine = new THREE.Line(geometry, material);
+        this.controllerRayLine.scale.z = 5; // Make the ray 5 meters long
     }
 }

@@ -265,4 +265,24 @@
 .page-nav-button:active {
     background-color: #333;
 }
+
+.uniform-mode-button {
+    padding: 0.5rem 1rem;
+    background-color: #FF9800;  /* Orange color to distinguish it */
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    font-size: 1rem;
+    white-space: nowrap;
+}
+
+.uniform-mode-button:hover {
+    background-color: #F57C00;  /* Darker orange on hover */
+}
+
+.uniform-mode-button:active {
+    background-color: #EF6C00;  /* Even darker on click */
+}
  

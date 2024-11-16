@@ -221,7 +221,11 @@ export class MainScene {
             if (i === 1 && this.controllerRayLine) { // Right controller
                 controller.add(this.controllerRayLine);
                 controller.addEventListener('select', () => {
-                    if (this.selectedBookIndex !== -1 && !this.isBookInViewMode) {
+                    if (this.isBookInViewMode) {
+                        // Return book to shelf if in view mode
+                        this.returnBookToShelf();
+                    } else if (this.selectedBookIndex !== -1) {
+                        // View selected book if not in view mode
                         this.viewSelectedBook();
                     }
                 });

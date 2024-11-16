@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { Book, BookMeshParams, PageSelectedState, TextureLoader } from '../components/Book';
+import { Book, BookMeshParams, PageSelectedState, TextureLoader, UniformlyOpenedState } from '../components/Book';
 import { createControls } from '../components/Controls';
 import Stats from 'three/examples/jsm/libs/stats.module.js';
 import { Bookshelf, BookshelfParams } from '../components/Bookshelf';
@@ -14,6 +14,16 @@ import { Raycaster, Vector3 } from 'three';
 interface BookIntersection extends THREE.Intersection<THREE.Object3D<THREE.Object3DEventMap>> {
     bookIndex?: number;
 }
+
+class ControllerWrapper {
+    public controller: THREE.XRTargetRaySpace;
+    public gamepad: Gamepad | null = null;
+
+    constructor(controller: THREE.XRTargetRaySpace) {
+        this.controller = controller;
+    }
+}
+
 
 export class MainScene {
     private camera!: THREE.PerspectiveCamera;
@@ -35,7 +45,7 @@ export class MainScene {
     private viewingBookMesh: THREE.Mesh | null = null;
     private sceneElevation!: number;
 
-    private controllers: THREE.XRTargetRaySpace[] = [];
+    private controllerWrappers: ControllerWrapper[] = [];
     private controllerGrips: THREE.XRGripSpace[] = [];
 
     private isVRSupported: boolean = false;
@@ -216,10 +226,14 @@ export class MainScene {
         // Setup controllers
         for (let i = 0; i < 2; i++) {
             const controller = this.renderer.xr.getController(i);
+            const controllerWrapper = new ControllerWrapper(controller);
 
             // Add ray line to right controller only
             if (i === 1 && this.controllerRayLine) { // Right controller
                 controller.add(this.controllerRayLine);
+                controller.addEventListener('connected', (event) => {
+                    controllerWrapper.gamepad = event.data?.gamepad || null;
+                });
                 controller.addEventListener('select', () => {
                     if (this.isBookInViewMode) {
                         // Return book to shelf if in view mode
@@ -234,7 +248,7 @@ export class MainScene {
             controller.addEventListener('squeezestart', this.onSqueezeStart.bind(this));
             controller.addEventListener('squeezeend', this.onSqueezeEnd.bind(this));
             this.scene.add(controller);
-            this.controllers.push(controller);
+            this.controllerWrappers.push(controllerWrapper);
 
             const controllerGrip = this.renderer.xr.getControllerGrip(i);
             controllerGrip.add(controllerModelFactory.createControllerModel(controllerGrip));
@@ -313,7 +327,7 @@ export class MainScene {
     private animate(): void {
         if (this.isVRSupported && this.renderer.xr.isPresenting) {
             // Update ray intersection for right controller only
-            const rightController = this.controllers[1];
+            const rightController = this.controllerWrappers[1].controller;
             if (rightController) {
                 this.handleControllerRayIntersection(rightController);
             }
@@ -322,6 +336,22 @@ export class MainScene {
             this.updateGrabbedBook();
         } else {
             this.controls.update();
+        }
+
+        for (const controllerWrapper of this.controllerWrappers) {
+            if (controllerWrapper.gamepad) {
+                // If book is in viewing mode, if button 4 is pressed, switch between reading mode and uniform open state
+                if (this.isBookInViewMode) {
+                    if (controllerWrapper.gamepad.buttons[4].pressed) {
+                        const book = this.books[this.viewingBookIndex];
+                        if (book.getCurrentState() instanceof PageSelectedState) {
+                            book.setState(new UniformlyOpenedState(Math.PI / 2));
+                        } else {
+                            this.switchToReadingMode();
+                        }
+                    }
+                }
+            }
         }
 
         this.render();

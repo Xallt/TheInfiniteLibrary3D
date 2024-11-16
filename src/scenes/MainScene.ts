@@ -152,18 +152,11 @@ export class MainScene {
                 const baseReferenceSpace = xrManager.getReferenceSpace();
 
                 if (baseReferenceSpace) {
-                    // Convert camera rotation to quaternion
-                    const quaternion = this.camera.quaternion;
-
-                    // Multiply by a 180-degree rotation around Y axis
-                    // First create a Euler rotation then convert to quaternion
-                    const euler = new THREE.Euler(0, Math.PI, 0, 'XYZ');
-                    const rotationQuaternion = new THREE.Quaternion().setFromEuler(euler);
-                    quaternion.multiply(rotationQuaternion);
+                    const quaternion = new THREE.Quaternion();
 
                     // Create transform from current camera position and rotation
                     const transform = new XRRigidTransform(
-                        { x: this.camera.position.x, y: this.camera.position.y, z: this.camera.position.z },
+                        { x: -this.camera.position.x, y: -this.camera.position.y + 1, z: -this.camera.position.z },
                         { x: quaternion.x, y: quaternion.y, z: quaternion.z, w: quaternion.w }
                     );
 

@@ -5,6 +5,7 @@ import { PdfPage, PdfParser } from '../utils/pdfParser';
 import { Book, TextureLoader } from './Book';
 import { BookTexture } from './BookTexture';
 import { Page } from './Page';
+import { BookStateControlsUI } from './BookStateControlsUI';
 
 export function BookshelfViewer() {
     const sceneRef = useRef<MainScene | null>(null);
@@ -235,32 +236,14 @@ export function BookshelfViewer() {
             </div>
 
             {isViewingBook && (
-                <div className="angle-control">
-                    {!sceneRef.current?.isInReadingMode() ? (
-                        <>
-                            <input
-                                type="range"
-                                min="0"
-                                max={Math.PI}
-                                step="0.01"
-                                value={bookAngle}
-                                onChange={handleAngleChange}
-                                className="angle-slider"
-                            />
-                            <button 
-                                className="reading-mode-button"
-                                onClick={handleSwitchToReading}
-                            >
-                                Read Book
-                            </button>
-                        </>
-                    ) : (
-                        <div className="page-controls">
-                            <button onClick={handlePrevPage}>&lt;</button>
-                            <button onClick={handleNextPage}>&gt;</button>
-                        </div>
-                    )}
-                </div>
+                <BookStateControlsUI 
+                    sceneRef={sceneRef}
+                    bookAngle={bookAngle}
+                    onAngleChange={handleAngleChange}
+                    onSwitchToReading={handleSwitchToReading}
+                    onNextPage={handleNextPage}
+                    onPrevPage={handlePrevPage}
+                />
             )}
 
             {showUrlModal && (

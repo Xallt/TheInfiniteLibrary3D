@@ -9,6 +9,11 @@ import { BookStateControlsUI } from './BookStateControlsUI';
 import { PDFResource, URLPDFResource, createPDFResource } from '../types/PDFResource';
 import { PDFSelectionModal } from './PDFSelectionModal';
 
+type BookResourceMapping = {
+    book: Book;
+    resource: PDFResource;
+};
+
 export function BookshelfViewer() {
     const sceneRef = useRef<MainScene | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -19,6 +24,7 @@ export function BookshelfViewer() {
         new URLPDFResource('https://arxiv.org/pdf/1706.03762')
     ]);
     const [bookAngle, setBookAngle] = useState(Math.PI / 2); // Default open angle
+    const [bookResourceMappings, setBookResourceMappings] = useState<BookResourceMapping[]>([]);
 
     useEffect(() => {
         if (!containerRef.current) return;
@@ -147,15 +153,19 @@ export function BookshelfViewer() {
                     book.addPage(Page.fromPdfPage(page, Page.getPageParams(book.getParams())), index++);
                 }
 
-                return book;
+                // Return both the book and resource for mapping
+                return { book, resource };
             } catch (error) {
                 console.error(`Failed to load PDF from ${resource.getDisplayName()}:`, error);
                 return null;
             }
         });
 
-        // Wait for all books to be processed
-        await Promise.all(bookPromises);
+        // Wait for all books to be processed and filter out any failed loads
+        const results = (await Promise.all(bookPromises)).filter((result): result is BookResourceMapping => result !== null);
+        
+        // Update the mappings
+        setBookResourceMappings(prevMappings => [...prevMappings, ...results]);
     };
 
     const handleAngleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -209,6 +219,31 @@ export function BookshelfViewer() {
         }
     }, [isViewingBook]);
 
+    const getCurrentBook = (): Book | null => {
+        if (!sceneRef.current) return null;
+        return sceneRef.current.getSelectedBook();
+    };
+
+    const getCurrentResource = (): PDFResource | null => {
+        const currentBook = getCurrentBook();
+        if (!currentBook) return null;
+        
+        const mapping = bookResourceMappings.find(m => m.book === currentBook);
+        return mapping?.resource || null;
+    };
+
+    const getCurrentBookInfo = (): { title: string; author: string; pageCount: number } | null => {
+        const resource = getCurrentResource();
+        if (!resource || !resource.getMetadata()) return null;
+        
+        const metadata = resource.getMetadata();
+        return {
+            title: metadata?.title || 'Untitled',
+            author: metadata?.author || 'Unknown Author',
+            pageCount: metadata?.numPages || 0
+        };
+    };
+
     return (
         <div className="bookshelf-viewer">
             <div ref={containerRef} className="scene-container" />
@@ -259,6 +294,14 @@ export function BookshelfViewer() {
                 onPDFSourcesSubmitted={handlePDFSourcesSubmitted}
                 initialURLs={['https://arxiv.org/pdf/1706.03762']}
             />
+
+            {isViewingBook && getCurrentBookInfo() && (
+                <div className="book-info">
+                    <h3>{getCurrentBookInfo()?.title}</h3>
+                    <p>By {getCurrentBookInfo()?.author}</p>
+                    <p>Pages: {getCurrentBookInfo()?.pageCount}</p>
+                </div>
+            )}
         </div>
     );
 } 

@@ -608,6 +608,13 @@ export class MainScene {
         }
     }
 
+    public getSelectedBook(): Book | null {
+        if (this.isBookInViewMode && this.viewingBookIndex !== -1) {
+            return this.books[this.viewingBookIndex];
+        }
+        return null;
+    }
+
     public previousPage(): void {
         if (this.isBookInViewMode && this.viewingBookIndex !== -1) {
             const book = this.books[this.viewingBookIndex];

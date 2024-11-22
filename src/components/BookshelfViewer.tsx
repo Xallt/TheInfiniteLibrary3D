@@ -7,6 +7,7 @@ import { BookTexture } from './BookTexture';
 import { Page } from './Page';
 import { BookStateControlsUI } from './BookStateControlsUI';
 import { PDFResource, URLPDFResource, createPDFResource } from '../types/PDFResource';
+import { PDFSelectionModal } from './PDFSelectionModal';
 
 export function BookshelfViewer() {
     const sceneRef = useRef<MainScene | null>(null);
@@ -107,14 +108,9 @@ export function BookshelfViewer() {
         setPdfResources([...pdfResources, ...newResources]);
     };
 
-    const handleSubmitUrls = async () => {
-        const validResources = pdfResources.filter(resource => 
-            resource instanceof URLPDFResource && resource.getDisplayName().trim() !== ''
-        );
-        setShowUrlModal(false);
-
+    const handlePDFSourcesSubmitted = async (sources: PDFResource[]) => {
         // Process all PDFs in parallel
-        const bookPromises = validResources.map(async (resource) => {
+        const bookPromises = sources.map(async (resource) => {
             try {
                 const arrayBuffer = await resource.getArrayBuffer();
 
@@ -160,9 +156,6 @@ export function BookshelfViewer() {
 
         // Wait for all books to be processed
         await Promise.all(bookPromises);
-
-        // Reset resources after processing
-        setPdfResources([new URLPDFResource('https://arxiv.org/pdf/1706.03762')]);
     };
 
     const handleAngleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -260,78 +253,12 @@ export function BookshelfViewer() {
                 />
             )}
 
-            {showUrlModal && (
-                <div className="modal-overlay">
-                    <div className="modal-content">
-                        <div className="modal-header">
-                            <h2>Add PDFs</h2>
-                            <button 
-                                className="modal-close"
-                                onClick={() => setShowUrlModal(false)}
-                            >
-                                ×
-                            </button>
-                        </div>
-                        
-                        <div className="upload-section">
-                            <input
-                                type="file"
-                                accept=".pdf"
-                                multiple
-                                onChange={handleFileUpload}
-                                className="file-input"
-                            />
-                            <p className="or-divider">- OR -</p>
-                        </div>
-
-                        <div className="url-list">
-                            {pdfResources.map((resource, index) => (
-                                <div key={index} className="url-input-row">
-                                    {resource instanceof URLPDFResource ? (
-                                        <>
-                                            <input
-                                                type="text"
-                                                className="url-input"
-                                                value={resource.getDisplayName()}
-                                                onChange={(e) => handleUrlChange(index, e.target.value)}
-                                                placeholder="Enter PDF URL"
-                                            />
-                                            {pdfResources.length > 1 && (
-                                                <button
-                                                    className="remove-url"
-                                                    onClick={() => handleRemoveUrl(index)}
-                                                >
-                                                    ×
-                                                </button>
-                                            )}
-                                        </>
-                                    ) : (
-                                        <div className="file-entry">
-                                            <span>{resource.getDisplayName()}</span>
-                                            <button
-                                                className="remove-url"
-                                                onClick={() => handleRemoveUrl(index)}
-                                            >
-                                                ×
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
-
-                        <button className="add-url" onClick={handleAddUrl}>
-                            Add URL
-                        </button>
-                        <button 
-                            className="submit-urls"
-                            onClick={handleSubmitUrls}
-                        >
-                            Load PDFs
-                        </button>
-                    </div>
-                </div>
-            )}
+            <PDFSelectionModal 
+                isOpen={showUrlModal}
+                onClose={() => setShowUrlModal(false)}
+                onPDFSourcesSubmitted={handlePDFSourcesSubmitted}
+                initialURLs={['https://arxiv.org/pdf/1706.03762']}
+            />
         </div>
     );
 } 

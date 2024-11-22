@@ -40,12 +40,7 @@ export class URLPDFResource extends PDFResource {
     }
 
     getDisplayName(): string {
-        try {
-            const urlObj = new URL(this.url);
-            return urlObj.pathname.split('/').pop() || urlObj.hostname;
-        } catch {
-            return this.url;
-        }
+        return this.url;
     }
 }
 

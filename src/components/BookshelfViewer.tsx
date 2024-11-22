@@ -231,7 +231,7 @@ export function BookshelfViewer() {
                     className="add-book-button"
                     onClick={() => setShowUrlModal(true)}
                 >
-                    Add Books from URLs
+                    Add Books
                 </button>
                 <button 
                     className="nav-button"

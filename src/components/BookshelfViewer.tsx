@@ -110,8 +110,7 @@ export function BookshelfViewer() {
     const handlePDFSourcesSubmitted = async (sources: PDFResource[]) => {
         const bookPromises = sources.map(async (resource, index) => {
             try {
-                // Only parse metadata initially
-                const metadata = await resource.parseMetadata();
+                const defaultPageCount = 1; // Start with just 1 page as a placeholder
 
                 // Create empty book
                 const book = Book.empty(defaultBookParams, new BookTexture(
@@ -120,7 +119,7 @@ export function BookshelfViewer() {
                         leftCoverPosition: 0.413,
                         rightCoverPosition: 0.582
                     }
-                ), metadata.numPages, index);
+                ), defaultPageCount, index);
 
                 if (sceneRef.current) {
                     sceneRef.current.addBook(book);
@@ -150,20 +149,24 @@ export function BookshelfViewer() {
                 scale: 2.0
             });
 
-            // Process pages in parallel
+            // First, resize the book's page array to match actual page count
+            const actualPageCount = parseResult.metadata.numPages;
+            bookResourceMapping.book.resizePageArray(actualPageCount);
+
+            // Then process pages in parallel
             let index = 0;
             for await (const page of parseResult.pages) {
-                bookResourceMapping.book.addPage(Page.fromPdfPage(page, Page.getPageParams(bookResourceMapping.book.getParams())), index++);
+                bookResourceMapping.book.addPage(
+                    Page.fromPdfPage(page, Page.getPageParams(bookResourceMapping.book.getParams())), 
+                    index++
+                );
             }
 
             // Update the mapping to mark this book as loaded
-            setBookResourceMappings(prevMappings => 
-                {
-                    const newMappings = { ...prevMappings };
-                    newMappings[bookResourceMapping.index] = { ...bookResourceMapping, loaded: true };
-                    return newMappings;
-                }
-            );
+            setBookResourceMappings(prevMappings => ({
+                ...prevMappings,
+                [bookResourceMapping.index]: { ...bookResourceMapping, loaded: true }
+            }));
 
         } catch (error) {
             console.error('Failed to load book pages:', error);

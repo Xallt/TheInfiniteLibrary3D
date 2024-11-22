@@ -295,4 +295,20 @@ export class Book {
     public getCurrentState(): BookOpeningState {
         return this.openingState;
     }
+
+    public resizePageArray(newSize: number): void {
+        // Create new array with new size, preserving existing pages
+        const newPages = new Array(newSize).fill(null);
+
+        // Copy over existing pages that are within the new bounds
+        for (let i = 0; i < Math.min(this.pages.length, newSize); i++) {
+            if (this.pages[i]) {
+                // Remove page from book mesh before reassignment
+                this.bookMesh.remove(this.pages[i]!.getMesh());
+            }
+        }
+
+        this.pages = newPages;
+        this.updateBookRotations(); // Update rotations for new page count
+    }
 }

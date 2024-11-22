@@ -76,12 +76,11 @@ export function BookshelfViewer() {
 
         if (!isViewingBook) {
             const currentBookResource = getCurrentBookResource();
-            console.log("currentBookResource", currentBookResource);
             
             if (currentBookResource) {
                 // Only load pages if they haven't been loaded yet
                 if (!currentBookResource.loaded) {
-                    await loadBookPages(currentBookResource.book, currentBookResource.source);
+                    loadBookPages(currentBookResource.book, currentBookResource.source);
                 }
                 
                 sceneRef.current.viewSelectedBook();
@@ -223,7 +222,6 @@ export function BookshelfViewer() {
     const getCurrentBookResource = (): BookResourceMapping | null => {
         if (!sceneRef.current) return null;
         const index = sceneRef.current.getSelectedBookIndex();
-        console.log("index", index);
         return bookResourceMappings[index] || null;
     };
 

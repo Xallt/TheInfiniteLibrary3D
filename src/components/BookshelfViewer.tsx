@@ -33,7 +33,7 @@ export function BookshelfViewer() {
         new URLPDFResource('https://arxiv.org/pdf/1706.03762')
     ]);
     const [bookAngle, setBookAngle] = useState(Math.PI / 2); // Default open angle
-    const [bookResourceMappings, setBookResourceMappings] = useState<BookResourceMapping[]>([]);
+    const [bookResourceMappings, setBookResourceMappings] = useState<{ [index: number]: BookResourceMapping }>({});
 
     useEffect(() => {
         if (!containerRef.current) return;
@@ -120,7 +120,7 @@ export function BookshelfViewer() {
                         leftCoverPosition: 0.413,
                         rightCoverPosition: 0.582
                     }
-                ), metadata.numPages);
+                ), metadata.numPages, index);
 
                 if (sceneRef.current) {
                     sceneRef.current.addBook(book);
@@ -137,9 +137,10 @@ export function BookshelfViewer() {
         const results = (await Promise.all(bookPromises)).filter((result): result is BookResourceMapping => result !== null);
         const resultsSorted = results.sort((a, b) => a.index - b.index);
 
-        console.log("resultsSorted", resultsSorted);
-
-        setBookResourceMappings(resultsSorted);
+        setBookResourceMappings(resultsSorted.reduce((acc, mapping) => {
+            acc[mapping.index] = mapping;
+            return acc;
+        }, {} as { [index: number]: BookResourceMapping }));
     };
 
     const loadBookPages = async (bookResourceMapping: BookResourceMapping) => {
@@ -152,17 +153,16 @@ export function BookshelfViewer() {
             // Process pages in parallel
             let index = 0;
             for await (const page of parseResult.pages) {
-                console.log("page", page);
                 bookResourceMapping.book.addPage(Page.fromPdfPage(page, Page.getPageParams(bookResourceMapping.book.getParams())), index++);
             }
 
             // Update the mapping to mark this book as loaded
             setBookResourceMappings(prevMappings => 
-                prevMappings.map(mapping => 
-                    mapping.book === bookResourceMapping.book 
-                        ? { ...mapping, loaded: true }
-                        : mapping
-                )
+                {
+                    const newMappings = { ...prevMappings };
+                    newMappings[bookResourceMapping.index] = { ...bookResourceMapping, loaded: true };
+                    return newMappings;
+                }
             );
 
         } catch (error) {
@@ -221,10 +221,11 @@ export function BookshelfViewer() {
         }
     }, [isViewingBook]);
 
-    const getCurrentBookResource = (): BookResourceMapping | null => {
-        if (!sceneRef.current) return null;
-        const index = sceneRef.current.getSelectedBookIndex();
-        return bookResourceMappings[index] || null;
+    const getCurrentBookResource = (): BookResourceMapping => {
+        if (!sceneRef.current) throw new Error("Scene not initialized");
+        const book = sceneRef.current.getSelectedBook();
+        if (!book) throw new Error("No book selected");
+        return bookResourceMappings[book.id] || null;
     };
 
     const getCurrentBookInfo = (): { title: string; author: string; pageCount: number } | null => {

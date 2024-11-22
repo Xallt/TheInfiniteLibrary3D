@@ -101,27 +101,31 @@ export class Book {
     private originalPosition?: THREE.Vector3;
     private originalRotation?: THREE.Euler;
     private openingState: BookOpeningState;
+    id: number;
 
     constructor(
         params: BookMeshParams,
         bookTexture: BookTexture,
         pages: (Page | null)[],
-        initialState: BookOpeningState = new UniformlyOpenedState()
+        initialState: BookOpeningState = new UniformlyOpenedState(),
+        id: number
     ) {
         this.params = params;
         this.bookTexture = bookTexture;
         this.pages = pages;
         this.openingState = initialState;
         this.bookMesh = this.createBookMesh();
+        this.id = id;
     }
 
     public static empty(
         params: BookMeshParams,
         bookTexture: BookTexture,
         numPages: number,
-        initialState: BookOpeningState = new UniformlyOpenedState()
+        id: number,
+        initialState: BookOpeningState = new UniformlyOpenedState(),
     ): Book {
-        return new Book(params, bookTexture, new Array(numPages).fill(null), initialState);
+        return new Book(params, bookTexture, new Array(numPages).fill(null), initialState, id);
     }
 
     public getParams(): BookMeshParams {
@@ -259,7 +263,7 @@ export class Book {
     }
 
     public copy(): Book {
-        const newBook = new Book(this.params, this.bookTexture, this.pages, this.openingState);
+        const newBook = new Book(this.params, this.bookTexture, this.pages, this.openingState, this.id);
         return newBook;
     }
 

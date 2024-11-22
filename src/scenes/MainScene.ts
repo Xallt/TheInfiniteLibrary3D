@@ -609,11 +609,8 @@ export class MainScene {
         }
     }
 
-    public getSelectedBook(): Book | null {
-        if (this.isBookInViewMode && this.viewingBookIndex !== -1) {
-            return this.books[this.viewingBookIndex];
-        }
-        return null;
+    public getSelectedBook(): Book {
+        return this.books[this.selectedBookIndex];
     }
 
     public getSelectedBookIndex(): number {

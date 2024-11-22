@@ -598,7 +598,7 @@ export class MainScene {
 
             if (currentState instanceof PageSelectedState) {
                 const currentIndex = currentState.getSelectedPageIndex();
-                const nextPageIndex = Math.min(currentIndex + 1, book.getNumPages() - 1);
+                const nextPageIndex = Math.min(currentIndex + 1, book.getNumPages());
 
                 // Only update if we're not already at the last page
                 if (nextPageIndex !== currentIndex) {

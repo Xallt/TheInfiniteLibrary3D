@@ -279,7 +279,7 @@ export class Book {
     }
 
     public selectPage(pageIndex: number, angle: number = Math.PI / 2): void {
-        if (pageIndex < 0 || pageIndex >= this.pages.length) {
+        if (pageIndex < 0 || pageIndex > this.pages.length) {
             throw new Error(`Page index ${pageIndex} is out of bounds (0-${this.pages.length - 1})`);
         }
 

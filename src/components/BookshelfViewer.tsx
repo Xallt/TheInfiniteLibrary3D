@@ -6,6 +6,7 @@ import { Book, TextureLoader } from './Book';
 import { BookTexture } from './BookTexture';
 import { Page } from './Page';
 import { BookStateControlsUI } from './BookStateControlsUI';
+import { PDFResource, URLPDFResource, createPDFResource } from '../types/PDFResource';
 
 export function BookshelfViewer() {
     const sceneRef = useRef<MainScene | null>(null);
@@ -13,10 +14,8 @@ export function BookshelfViewer() {
     const [bookCount, setBookCount] = useState(0);
     const [isViewingBook, setIsViewingBook] = useState(false);
     const [showUrlModal, setShowUrlModal] = useState(false);
-    const [urls, setUrls] = useState<string[]>([
-        'https://arxiv.org/pdf/1706.03762',
-        'https://arxiv.org/pdf/1706.03762',
-        'https://arxiv.org/pdf/1706.03762'
+    const [pdfResources, setPdfResources] = useState<PDFResource[]>([
+        new URLPDFResource('https://arxiv.org/pdf/1706.03762')
     ]);
     const [bookAngle, setBookAngle] = useState(Math.PI / 2); // Default open angle
 
@@ -84,28 +83,40 @@ export function BookshelfViewer() {
     };
 
     const handleAddUrl = () => {
-        setUrls([...urls, '']);
+        setPdfResources([...pdfResources, new URLPDFResource('')]);
     };
 
     const handleRemoveUrl = (index: number) => {
-        setUrls(urls.filter((_, i) => i !== index));
+        setPdfResources(pdfResources.filter((_, i) => i !== index));
     };
 
     const handleUrlChange = (index: number, value: string) => {
-        const newUrls = [...urls];
-        newUrls[index] = value;
-        setUrls(newUrls);
+        const newResources = [...pdfResources];
+        newResources[index] = new URLPDFResource(value);
+        setPdfResources(newResources);
+    };
+
+    const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const files = event.target.files;
+        if (!files) return;
+
+        const newResources = Array.from(files)
+            .filter(file => file.type.includes('pdf'))
+            .map(file => createPDFResource(file));
+
+        setPdfResources([...pdfResources, ...newResources]);
     };
 
     const handleSubmitUrls = async () => {
-        const validUrls = urls.filter(url => url.trim() !== '');
+        const validResources = pdfResources.filter(resource => 
+            resource instanceof URLPDFResource && resource.getDisplayName().trim() !== ''
+        );
         setShowUrlModal(false);
 
-        // Process all URLs in parallel
-        const bookPromises = validUrls.map(async (url) => {
+        // Process all PDFs in parallel
+        const bookPromises = validResources.map(async (resource) => {
             try {
-                const response = await fetch(url);
-                const arrayBuffer = await response.arrayBuffer();
+                const arrayBuffer = await resource.getArrayBuffer();
 
                 // Parse PDF
                 const parser = PdfParser.getInstance();
@@ -114,7 +125,10 @@ export function BookshelfViewer() {
                     scale: 2.0
                 });
 
-                const numPages = pagesParseResult.metadata.numPages;
+                // Store metadata in the resource
+                resource.setMetadata({
+                    ...pagesParseResult.metadata
+                });
 
                 // Create book
                 const book = Book.empty(defaultBookParams, new BookTexture(
@@ -123,7 +137,7 @@ export function BookshelfViewer() {
                         leftCoverPosition: 0.413,
                         rightCoverPosition: 0.582
                     }
-                ), numPages);
+                ), pagesParseResult.metadata.numPages);
 
                 // Add book to scene immediately
                 if (sceneRef.current) {
@@ -139,7 +153,7 @@ export function BookshelfViewer() {
 
                 return book;
             } catch (error) {
-                console.error(`Failed to load PDF from ${url}:`, error);
+                console.error(`Failed to load PDF from ${resource.getDisplayName()}:`, error);
                 return null;
             }
         });
@@ -147,8 +161,8 @@ export function BookshelfViewer() {
         // Wait for all books to be processed
         await Promise.all(bookPromises);
 
-        // Reset URLs after processing
-        setUrls(['https://arxiv.org/pdf/1706.03762']);
+        // Reset resources after processing
+        setPdfResources([new URLPDFResource('https://arxiv.org/pdf/1706.03762')]);
     };
 
     const handleAngleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -250,7 +264,7 @@ export function BookshelfViewer() {
                 <div className="modal-overlay">
                     <div className="modal-content">
                         <div className="modal-header">
-                            <h2>Add PDF URLs</h2>
+                            <h2>Add PDFs</h2>
                             <button 
                                 className="modal-close"
                                 onClick={() => setShowUrlModal(false)}
@@ -258,29 +272,56 @@ export function BookshelfViewer() {
                                 ×
                             </button>
                         </div>
+                        
+                        <div className="upload-section">
+                            <input
+                                type="file"
+                                accept=".pdf"
+                                multiple
+                                onChange={handleFileUpload}
+                                className="file-input"
+                            />
+                            <p className="or-divider">- OR -</p>
+                        </div>
+
                         <div className="url-list">
-                            {urls.map((url, index) => (
+                            {pdfResources.map((resource, index) => (
                                 <div key={index} className="url-input-row">
-                                    <input
-                                        type="text"
-                                        className="url-input"
-                                        value={url}
-                                        onChange={(e) => handleUrlChange(index, e.target.value)}
-                                        placeholder="Enter PDF URL"
-                                    />
-                                    {urls.length > 1 && (
-                                        <button
-                                            className="remove-url"
-                                            onClick={() => handleRemoveUrl(index)}
-                                        >
-                                            ×
-                                        </button>
+                                    {resource instanceof URLPDFResource ? (
+                                        <>
+                                            <input
+                                                type="text"
+                                                className="url-input"
+                                                value={resource.getDisplayName()}
+                                                onChange={(e) => handleUrlChange(index, e.target.value)}
+                                                placeholder="Enter PDF URL"
+                                            />
+                                            {pdfResources.length > 1 && (
+                                                <button
+                                                    className="remove-url"
+                                                    onClick={() => handleRemoveUrl(index)}
+                                                >
+                                                    ×
+                                                </button>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <div className="file-entry">
+                                            <span>{resource.getDisplayName()}</span>
+                                            <button
+                                                className="remove-url"
+                                                onClick={() => handleRemoveUrl(index)}
+                                            >
+                                                ×
+                                            </button>
+                                        </div>
                                     )}
                                 </div>
                             ))}
                         </div>
+
                         <button className="add-url" onClick={handleAddUrl}>
-                            Add Another URL
+                            Add URL
                         </button>
                         <button 
                             className="submit-urls"

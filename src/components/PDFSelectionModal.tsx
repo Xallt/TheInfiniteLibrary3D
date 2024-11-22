@@ -1,6 +1,11 @@
 import React, { useState } from 'react';
 import { PDFResource, URLPDFResource, createPDFResource } from '../types/PDFResource';
 
+interface PDFResourceWithCount {
+    resource: PDFResource;
+    count: string;
+}
+
 interface PDFSelectionModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -17,31 +22,51 @@ export function PDFSelectionModal({
     initialURLs = ['https://arxiv.org/pdf/1706.03762']
 }: PDFSelectionModalProps) {
     const [activeTab, setActiveTab] = useState<TabType>('url');
-    const [pdfResources, setPdfResources] = useState<PDFResource[]>(() => 
-        initialURLs.map(url => new URLPDFResource(url))
+    const [resourcesWithCount, setResourcesWithCount] = useState<PDFResourceWithCount[]>(() => 
+        initialURLs.map(url => ({
+            resource: new URLPDFResource(url),
+            count: '1'
+        }))
     );
 
     if (!isOpen) return null;
 
-    const urlResources = pdfResources.filter(resource => resource instanceof URLPDFResource);
-    const fileResources = pdfResources.filter(resource => !(resource instanceof URLPDFResource));
+    const urlResources = resourcesWithCount.filter(r => r.resource instanceof URLPDFResource);
+    const fileResources = resourcesWithCount.filter(r => !(r.resource instanceof URLPDFResource));
 
     const handleAddUrl = () => {
-        setPdfResources([...pdfResources, new URLPDFResource('')]);
+        setResourcesWithCount([...resourcesWithCount, {
+            resource: new URLPDFResource(''),
+            count: '1'
+        }]);
     };
 
     const handleRemoveResource = (index: number) => {
-        setPdfResources(pdfResources.filter((_, i) => i !== index));
+        setResourcesWithCount(resourcesWithCount.filter((_, i) => i !== index));
     };
 
     const handleUrlChange = (index: number, value: string) => {
-        const newResources = [...pdfResources];
-        const globalIndex = pdfResources.findIndex((r, i) => r instanceof URLPDFResource && 
-            urlResources.indexOf(r) === index);
+        const newResources = [...resourcesWithCount];
+        const globalIndex = resourcesWithCount.findIndex((r, i) => 
+            r.resource instanceof URLPDFResource && 
+            urlResources.indexOf(r) === index
+        );
         if (globalIndex !== -1) {
-            newResources[globalIndex] = new URLPDFResource(value);
-            setPdfResources(newResources);
+            newResources[globalIndex] = {
+                resource: new URLPDFResource(value),
+                count: newResources[globalIndex].count
+            };
+            setResourcesWithCount(newResources);
         }
+    };
+
+    const handleCountChange = (index: number, value: string) => {
+        const newResources = [...resourcesWithCount];
+        newResources[index] = {
+            ...newResources[index],
+            count: value
+        };
+        setResourcesWithCount(newResources);
     };
 
     const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -50,39 +75,74 @@ export function PDFSelectionModal({
 
         const newResources = Array.from(files)
             .filter(file => file.type.includes('pdf'))
-            .map(file => createPDFResource(file));
+            .map(file => ({
+                resource: createPDFResource(file),
+                count: '1'
+            }));
 
-        setPdfResources([...pdfResources, ...newResources]);
+        setResourcesWithCount([...resourcesWithCount, ...newResources]);
     };
 
     const handleSubmit = () => {
-        const activeResources = activeTab === 'url' ? urlResources : fileResources;
+        const activeResourcesWithCount = activeTab === 'url' ? urlResources : fileResources;
         
-        const validResources = activeResources.filter(resource => {
+        const validResourcesWithCount = activeResourcesWithCount.filter(({ resource, count }) => {
             if (resource instanceof URLPDFResource) {
                 return resource.getDisplayName().trim() !== '';
             }
             return true;
         });
 
-        if (validResources.length > 0) {
-            onPDFSourcesSubmitted(validResources);
+        if (validResourcesWithCount.length > 0) {
+            const expandedResources = validResourcesWithCount.flatMap(({ resource, count }) => 
+                Array(Math.max(1, Math.min(100, parseInt(count) || 1))).fill(resource)
+            );
+            
+            onPDFSourcesSubmitted(expandedResources);
+            
             const remainingResources = activeTab === 'url' ? 
                 fileResources : 
                 (activeTab === 'file' ? urlResources : []);
-            setPdfResources([
+            
+            setResourcesWithCount([
                 ...remainingResources,
-                ...(activeTab === 'url' ? initialURLs.map(url => new URLPDFResource(url)) : [])
+                ...(activeTab === 'url' ? initialURLs.map(url => ({
+                    resource: new URLPDFResource(url),
+                    count: '1'
+                })) : [])
             ]);
             onClose();
         }
     };
 
     const getSubmitButtonText = () => {
-        const activeResources = activeTab === 'url' ? urlResources : fileResources;
-        const count = activeResources.length;
-        return `Load ${count} PDF${count !== 1 ? 's' : ''}`;
+        const activeResourcesWithCount = activeTab === 'url' ? urlResources : fileResources;
+        const totalCount = activeResourcesWithCount.reduce((sum, { count }) => 
+            sum + (parseInt(count) || 1), 0);
+        return `Load ${totalCount} PDF${totalCount !== 1 ? 's' : ''}`;
     };
+
+    const renderCountSelector = (resourceWithCount: PDFResourceWithCount, index: number) => (
+        <div className="count-selector">
+            <span className="count-label">Copies:</span>
+            <input
+                type="number"
+                min="1"
+                max="100"
+                value={resourceWithCount.count}
+                onChange={(e) => handleCountChange(index, e.target.value)}
+                onBlur={(e) => {
+                    const num = parseInt(e.target.value);
+                    if (isNaN(num) || num < 1) {
+                        handleCountChange(index, '1');
+                    } else if (num > 100) {
+                        handleCountChange(index, '100');
+                    }
+                }}
+                className="count-input"
+            />
+        </div>
+    );
 
     return (
         <div className="modal-overlay">
@@ -116,7 +176,7 @@ export function PDFSelectionModal({
                     {activeTab === 'url' ? (
                         <div className="url-tab">
                             <div className="url-list">
-                                {urlResources.map((resource, index) => (
+                                {urlResources.map(({ resource, count }, index) => (
                                     <div key={index} className="url-input-row">
                                         <input
                                             type="text"
@@ -125,10 +185,14 @@ export function PDFSelectionModal({
                                             onChange={(e) => handleUrlChange(index, e.target.value)}
                                             placeholder="Enter PDF URL"
                                         />
+                                        {renderCountSelector(urlResources[index], 
+                                            resourcesWithCount.indexOf(urlResources[index]))}
                                         {urlResources.length > 1 && (
                                             <button
                                                 className="remove-url"
-                                                onClick={() => handleRemoveResource(index)}
+                                                onClick={() => handleRemoveResource(
+                                                    resourcesWithCount.indexOf(urlResources[index])
+                                                )}
                                             >
                                                 ×
                                             </button>
@@ -161,13 +225,15 @@ export function PDFSelectionModal({
                             {fileResources.length > 0 && (
                                 <div className="file-list">
                                     <h3>Selected Files:</h3>
-                                    {fileResources.map((resource, index) => (
+                                    {fileResources.map(({ resource, count }, index) => (
                                         <div key={index} className="file-entry">
                                             <span>{resource.getDisplayName()}</span>
+                                            {renderCountSelector(fileResources[index],
+                                                resourcesWithCount.indexOf(fileResources[index]))}
                                             <button
                                                 className="remove-url"
                                                 onClick={() => handleRemoveResource(
-                                                    pdfResources.indexOf(resource)
+                                                    resourcesWithCount.indexOf(fileResources[index])
                                                 )}
                                             >
                                                 ×

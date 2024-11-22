@@ -13,11 +13,13 @@ class BookResourceMapping {
     book: Book;
     source: PDFResource;
     loaded: boolean;
+    index: number;
 
-    constructor(book: Book, source: PDFResource, loaded: boolean = false) {
+    constructor(book: Book, source: PDFResource, loaded: boolean = false, index: number) {
         this.book = book;
         this.source = source;
         this.loaded = loaded;
+        this.index = index;
     }
 }
 
@@ -32,7 +34,6 @@ export function BookshelfViewer() {
     ]);
     const [bookAngle, setBookAngle] = useState(Math.PI / 2); // Default open angle
     const [bookResourceMappings, setBookResourceMappings] = useState<BookResourceMapping[]>([]);
-    const [isLoadingPages, setIsLoadingPages] = useState(false);
 
     useEffect(() => {
         if (!containerRef.current) return;
@@ -80,7 +81,7 @@ export function BookshelfViewer() {
             if (currentBookResource) {
                 // Only load pages if they haven't been loaded yet
                 if (!currentBookResource.loaded) {
-                    loadBookPages(currentBookResource.book, currentBookResource.source);
+                    loadBookPages(currentBookResource);
                 }
                 
                 sceneRef.current.viewSelectedBook();
@@ -107,7 +108,7 @@ export function BookshelfViewer() {
     };
 
     const handlePDFSourcesSubmitted = async (sources: PDFResource[]) => {
-        const bookPromises = sources.map(async (resource) => {
+        const bookPromises = sources.map(async (resource, index) => {
             try {
                 // Only parse metadata initially
                 const metadata = await resource.parseMetadata();
@@ -126,7 +127,7 @@ export function BookshelfViewer() {
                     setBookCount(sceneRef.current.getBookCount());
                 }
 
-                return new BookResourceMapping(book, resource);
+                return new BookResourceMapping(book, resource, false, index);
             } catch (error) {
                 console.error(`Failed to load PDF from ${resource.getDisplayName()}:`, error);
                 return null;
@@ -134,14 +135,16 @@ export function BookshelfViewer() {
         });
 
         const results = (await Promise.all(bookPromises)).filter((result): result is BookResourceMapping => result !== null);
-        setBookResourceMappings(results);
+        const resultsSorted = results.sort((a, b) => a.index - b.index);
+
+        console.log("resultsSorted", resultsSorted);
+
+        setBookResourceMappings(resultsSorted);
     };
 
-    const loadBookPages = async (book: Book, resource: PDFResource) => {
+    const loadBookPages = async (bookResourceMapping: BookResourceMapping) => {
         try {
-            setIsLoadingPages(true);
-            
-            const parseResult = await resource.getParsedPDF({
+            const parseResult = await bookResourceMapping.source.getParsedPDF({
                 imageFormat: 'png',
                 scale: 2.0
             });
@@ -149,13 +152,14 @@ export function BookshelfViewer() {
             // Process pages in parallel
             let index = 0;
             for await (const page of parseResult.pages) {
-                book.addPage(Page.fromPdfPage(page, Page.getPageParams(book.getParams())), index++);
+                console.log("page", page);
+                bookResourceMapping.book.addPage(Page.fromPdfPage(page, Page.getPageParams(bookResourceMapping.book.getParams())), index++);
             }
 
             // Update the mapping to mark this book as loaded
             setBookResourceMappings(prevMappings => 
                 prevMappings.map(mapping => 
-                    mapping.book === book 
+                    mapping.book === bookResourceMapping.book 
                         ? { ...mapping, loaded: true }
                         : mapping
                 )
@@ -163,8 +167,6 @@ export function BookshelfViewer() {
 
         } catch (error) {
             console.error('Failed to load book pages:', error);
-        } finally {
-            setIsLoadingPages(false);
         }
     };
 

@@ -1,4 +1,5 @@
 import * as pdfjsLib from 'pdfjs-dist';
+import { PDFMetadata } from 'src/types/PDFResource';
 
 // Initialize PDF.js worker
 const workerUrl = new URL(
@@ -36,6 +37,12 @@ export class PdfParser {
         return PdfParser.instance;
     }
 
+    public async parsePdfMetadata(pdfFile: ArrayBuffer): Promise<PDFMetadata> {
+        const loadingTask = pdfjsLib.getDocument({ data: pdfFile });
+        const pdf = await loadingTask.promise;
+        return { numPages: pdf.numPages };
+    }
+
     public async parsePdfToImages(
         pdfFile: ArrayBuffer,
         options: PdfParseOptions
@@ -44,7 +51,7 @@ export class PdfParser {
         const loadingTask = pdfjsLib.getDocument({ data: pdfFile });
         const pdf = await loadingTask.promise;
 
-        const metadata = {
+        const metadata: PDFMetadata = {
             numPages: pdf.numPages
         };
 

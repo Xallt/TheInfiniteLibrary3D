@@ -1,3 +1,5 @@
+import { PdfParser, PdfPage, PdfParseResult } from '../utils/pdfParser';
+
 export interface PDFMetadata {
     title?: string;
     author?: string;
@@ -7,6 +9,7 @@ export interface PDFMetadata {
 
 export abstract class PDFResource {
     protected metadata?: PDFMetadata;
+    protected parseResult?: PdfParseResult;
 
     abstract getArrayBuffer(): Promise<ArrayBuffer>;
     abstract getDisplayName(): string;
@@ -17,6 +20,38 @@ export abstract class PDFResource {
 
     getMetadata(): PDFMetadata | undefined {
         return this.metadata;
+    }
+
+    // Get just the metadata without parsing pages
+    async parseMetadata(): Promise<PDFMetadata> {
+        const buffer = await this.getArrayBuffer();
+        const parser = PdfParser.getInstance();
+        const metadata = await parser.parsePdfMetadata(buffer);
+        this.setMetadata(metadata);
+        return metadata;
+    }
+
+    // Get the full parse result including pages
+    async getParsedPDF(options: { imageFormat: 'png' | 'jpeg', scale?: number }): Promise<PdfParseResult> {
+        if (this.parseResult) {
+            return this.parseResult;
+        }
+
+        const buffer = await this.getArrayBuffer();
+        const parser = PdfParser.getInstance();
+        this.parseResult = await parser.parsePdfToImages(buffer, options);
+
+        // Update metadata if we haven't already
+        if (!this.metadata) {
+            this.setMetadata(this.parseResult.metadata);
+        }
+
+        return this.parseResult;
+    }
+
+    // Clear cached data to free memory
+    clearCache() {
+        this.parseResult = undefined;
     }
 }
 

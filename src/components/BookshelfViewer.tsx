@@ -9,10 +9,17 @@ import { BookStateControlsUI } from './BookStateControlsUI';
 import { PDFResource, URLPDFResource, createPDFResource } from '../types/PDFResource';
 import { PDFSelectionModal } from './PDFSelectionModal';
 
-type BookResourceMapping = {
+class BookResourceMapping {
     book: Book;
-    resource: PDFResource;
-};
+    source: PDFResource;
+    loaded: boolean;
+
+    constructor(book: Book, source: PDFResource, loaded: boolean = false) {
+        this.book = book;
+        this.source = source;
+        this.loaded = loaded;
+    }
+}
 
 export function BookshelfViewer() {
     const sceneRef = useRef<MainScene | null>(null);
@@ -25,6 +32,7 @@ export function BookshelfViewer() {
     ]);
     const [bookAngle, setBookAngle] = useState(Math.PI / 2); // Default open angle
     const [bookResourceMappings, setBookResourceMappings] = useState<BookResourceMapping[]>([]);
+    const [isLoadingPages, setIsLoadingPages] = useState(false);
 
     useEffect(() => {
         if (!containerRef.current) return;
@@ -63,18 +71,28 @@ export function BookshelfViewer() {
         };
     }, []); // Empty dependency array means this runs once on mount
 
-    const handleViewBook = () => {
-        if (sceneRef.current) {
-            if (!isViewingBook) {
+    const handleViewBook = async () => {
+        if (!sceneRef.current) return;
+
+        if (!isViewingBook) {
+            const currentBookResource = getCurrentBookResource();
+            console.log("currentBookResource", currentBookResource);
+            
+            if (currentBookResource) {
+                // Only load pages if they haven't been loaded yet
+                if (!currentBookResource.loaded) {
+                    await loadBookPages(currentBookResource.book, currentBookResource.source);
+                }
+                
                 sceneRef.current.viewSelectedBook();
                 if (sceneRef.current.isInVR()) {
                     setBookAngle(Math.PI / 2);
                 }
-            } else {
-                sceneRef.current.returnBookToShelf();
             }
-            setIsViewingBook(!isViewingBook);
+        } else {
+            sceneRef.current.returnBookToShelf();
         }
+        setIsViewingBook(!isViewingBook);
     };
 
     const handlePreviousBook = () => {
@@ -89,83 +107,66 @@ export function BookshelfViewer() {
         }
     };
 
-    const handleAddUrl = () => {
-        setPdfResources([...pdfResources, new URLPDFResource('')]);
-    };
-
-    const handleRemoveUrl = (index: number) => {
-        setPdfResources(pdfResources.filter((_, i) => i !== index));
-    };
-
-    const handleUrlChange = (index: number, value: string) => {
-        const newResources = [...pdfResources];
-        newResources[index] = new URLPDFResource(value);
-        setPdfResources(newResources);
-    };
-
-    const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const files = event.target.files;
-        if (!files) return;
-
-        const newResources = Array.from(files)
-            .filter(file => file.type.includes('pdf'))
-            .map(file => createPDFResource(file));
-
-        setPdfResources([...pdfResources, ...newResources]);
-    };
-
     const handlePDFSourcesSubmitted = async (sources: PDFResource[]) => {
-        // Process all PDFs in parallel
         const bookPromises = sources.map(async (resource) => {
             try {
-                const arrayBuffer = await resource.getArrayBuffer();
+                // Only parse metadata initially
+                const metadata = await resource.parseMetadata();
 
-                // Parse PDF
-                const parser = PdfParser.getInstance();
-                const pagesParseResult = await parser.parsePdfToImages(arrayBuffer, {
-                    imageFormat: 'png',
-                    scale: 2.0
-                });
-
-                // Store metadata in the resource
-                resource.setMetadata({
-                    ...pagesParseResult.metadata
-                });
-
-                // Create book
+                // Create empty book
                 const book = Book.empty(defaultBookParams, new BookTexture(
                     TextureLoader.getInstance().load("assets/BookCovers0135_5_350.jpg"),
                     {
                         leftCoverPosition: 0.413,
                         rightCoverPosition: 0.582
                     }
-                ), pagesParseResult.metadata.numPages);
+                ), metadata.numPages);
 
-                // Add book to scene immediately
                 if (sceneRef.current) {
                     sceneRef.current.addBook(book);
                     setBookCount(sceneRef.current.getBookCount());
                 }
 
-                // Process pages in parallel
-                let index = 0;
-                for await (const page of pagesParseResult.pages) {
-                    book.addPage(Page.fromPdfPage(page, Page.getPageParams(book.getParams())), index++);
-                }
-
-                // Return both the book and resource for mapping
-                return { book, resource };
+                return new BookResourceMapping(book, resource);
             } catch (error) {
                 console.error(`Failed to load PDF from ${resource.getDisplayName()}:`, error);
                 return null;
             }
         });
 
-        // Wait for all books to be processed and filter out any failed loads
         const results = (await Promise.all(bookPromises)).filter((result): result is BookResourceMapping => result !== null);
-        
-        // Update the mappings
-        setBookResourceMappings(prevMappings => [...prevMappings, ...results]);
+        setBookResourceMappings(results);
+    };
+
+    const loadBookPages = async (book: Book, resource: PDFResource) => {
+        try {
+            setIsLoadingPages(true);
+            
+            const parseResult = await resource.getParsedPDF({
+                imageFormat: 'png',
+                scale: 2.0
+            });
+
+            // Process pages in parallel
+            let index = 0;
+            for await (const page of parseResult.pages) {
+                book.addPage(Page.fromPdfPage(page, Page.getPageParams(book.getParams())), index++);
+            }
+
+            // Update the mapping to mark this book as loaded
+            setBookResourceMappings(prevMappings => 
+                prevMappings.map(mapping => 
+                    mapping.book === book 
+                        ? { ...mapping, loaded: true }
+                        : mapping
+                )
+            );
+
+        } catch (error) {
+            console.error('Failed to load book pages:', error);
+        } finally {
+            setIsLoadingPages(false);
+        }
     };
 
     const handleAngleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -219,24 +220,18 @@ export function BookshelfViewer() {
         }
     }, [isViewingBook]);
 
-    const getCurrentBook = (): Book | null => {
+    const getCurrentBookResource = (): BookResourceMapping | null => {
         if (!sceneRef.current) return null;
-        return sceneRef.current.getSelectedBook();
-    };
-
-    const getCurrentResource = (): PDFResource | null => {
-        const currentBook = getCurrentBook();
-        if (!currentBook) return null;
-        
-        const mapping = bookResourceMappings.find(m => m.book === currentBook);
-        return mapping?.resource || null;
+        const index = sceneRef.current.getSelectedBookIndex();
+        console.log("index", index);
+        return bookResourceMappings[index] || null;
     };
 
     const getCurrentBookInfo = (): { title: string; author: string; pageCount: number } | null => {
-        const resource = getCurrentResource();
-        if (!resource || !resource.getMetadata()) return null;
+        const resource = getCurrentBookResource();
+        if (!resource || !resource.source.getMetadata()) return null;
         
-        const metadata = resource.getMetadata();
+        const metadata = resource.source.getMetadata();
         return {
             title: metadata?.title || 'Untitled',
             author: metadata?.author || 'Unknown Author',

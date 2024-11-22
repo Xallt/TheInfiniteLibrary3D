@@ -382,9 +382,11 @@ export class MainScene {
         if (added) {
             this.books.push(book);
         }
-        if (this.books.length === 1) {
+        if (this.books.length >= 1) {
             this.selectBook(0);
         }
+
+        console.log("selectedBookIndex", this.selectedBookIndex);
     }
 
     public selectBook(index: number): void {
@@ -427,6 +429,7 @@ export class MainScene {
     }
 
     public viewSelectedBook(): void {
+        console.log("viewSelectedBook", this.selectedBookIndex, this.isBookInViewMode);
         if (this.selectedBookIndex === -1 || this.isBookInViewMode) return;
 
         const book = this.books[this.selectedBookIndex];
@@ -613,6 +616,10 @@ export class MainScene {
             return this.books[this.viewingBookIndex];
         }
         return null;
+    }
+
+    public getSelectedBookIndex(): number {
+        return this.selectedBookIndex;
     }
 
     public previousPage(): void {

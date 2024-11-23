@@ -1,3 +1,4 @@
+import { MeshConnection, MeshConnectionFace } from '../utils/MeshConnection';
 import * as THREE from 'three';
 
 export class ProceduralBookshelfCell {
@@ -112,7 +113,7 @@ export class ProceduralBookshelfCell {
         ];
     }
 
-    private createCellMesh(points: THREE.Vector3[], material: THREE.Material): THREE.Mesh {
+    private createCellGeometry(points: THREE.Vector3[]): THREE.BufferGeometry {
         const vertices: number[] = [];
         const indices: number[] = [];
 
@@ -146,33 +147,48 @@ export class ProceduralBookshelfCell {
         geometry.setIndex(indices);
         geometry.computeVertexNormals();
 
-        return new THREE.Mesh(geometry, material);
+        return geometry;
     }
 
-    private getOuterCellMesh(): THREE.Mesh {
-        const material = new THREE.MeshLambertMaterial({
-            color: 0x808080,
-            side: THREE.DoubleSide
-        });
-        return this.createCellMesh(this.getOuterCellPoints(), material);
+    private getOuterCellGeometry(): THREE.BufferGeometry {
+        return this.createCellGeometry(this.getOuterCellPoints());
     }
 
-    private getInnerCellMesh(): THREE.Mesh {
-        const material = new THREE.MeshLambertMaterial({
-            color: 0x606060,
-            side: THREE.DoubleSide
-        });
-        return this.createCellMesh(this.getInnerCellPoints(), material);
+    private getInnerCellGeometry(): THREE.BufferGeometry {
+        return this.createCellGeometry(this.getInnerCellPoints());
     }
 
     public getMesh(): THREE.Mesh {
-        const cellMesh = new THREE.Mesh();
-        cellMesh.add(this.getOuterCellMesh());
+        const innerCellGeometry = this.getInnerCellGeometry();
+        const outerCellGeometry = this.getOuterCellGeometry();
 
-        if (this.cellSize.x > 0 && this.cellSize.y > 0 && this.cellSize.z > 0) {
-            cellMesh.add(this.getInnerCellMesh());
-        }
+        // Create connecting faces between inner and outer cells
+        const connectingFacesBack: MeshConnectionFace[] = [
+            // Connect front faces
+            ...MeshConnection.connectQuads([4, 6], [4, 6]), // Left wall
+            ...MeshConnection.connectQuads([7, 5], [7, 5]), // Right wall
+            ...MeshConnection.connectQuads([5, 4], [5, 4]), // Top wall
+            ...MeshConnection.connectQuads([6, 7], [6, 7]), // Bottom wall
+        ];
 
-        return cellMesh;
+        const connectingFacesFront: MeshConnectionFace[] = [
+            ...MeshConnection.connectQuads([2, 0], [2, 0]), // Left wall
+            ...MeshConnection.connectQuads([1, 3], [1, 3]), // Right wall
+            ...MeshConnection.connectQuads([0, 1], [0, 1]), // Top wall
+            ...MeshConnection.connectQuads([3, 2], [3, 2]), // Bottom wall
+        ];
+
+        const joinedGeometry = MeshConnection.joinGeometries(
+            [outerCellGeometry, innerCellGeometry],
+            [...connectingFacesBack, ...connectingFacesFront]
+        );
+
+        return new THREE.Mesh(
+            joinedGeometry,
+            new THREE.MeshLambertMaterial({
+                color: 0x808080,
+                side: THREE.DoubleSide
+            })
+        );
     }
 }

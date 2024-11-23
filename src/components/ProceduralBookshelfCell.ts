@@ -106,57 +106,13 @@ export class ProceduralBookshelfCell {
     }
 
     private createWallFaces(baseIndex: number): number[] {
-        // Creates triangles for one wall face (2 triangles)
-        // Assuming points are in clockwise order
         return [
             baseIndex + 0, baseIndex + 1, baseIndex + 2,  // First triangle
             baseIndex + 2, baseIndex + 1, baseIndex + 3   // Second triangle
         ];
     }
 
-    private getOuterCellMesh(): THREE.Mesh {
-        const points = this.getOuterCellPoints();
-        const vertices: number[] = [];
-        const indices: number[] = [];
-
-        // Convert Vector3 points to flat array of numbers
-        points.forEach(point => {
-            vertices.push(point.x, point.y, point.z);
-        });
-
-        // Left wall (using points 0,2,4,6)
-        indices.push(
-            ...this.createWallFaces(0).map(i => [0, 2, 4, 6][i])
-        );
-
-        // Right wall (using points 1,3,5,7)
-        indices.push(
-            ...this.createWallFaces(0).map(i => [1, 3, 5, 7][i])
-        );
-
-        // Top wall (using points 0,1,4,5)
-        indices.push(
-            ...this.createWallFaces(0).map(i => [0, 1, 4, 5][i])
-        );
-
-        // Bottom wall (using points 2,3,6,7)
-        indices.push(
-            ...this.createWallFaces(0).map(i => [2, 3, 6, 7][i])
-        );
-
-        const geometry = new THREE.BufferGeometry();
-        geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-        geometry.setIndex(indices);
-        geometry.computeVertexNormals(); // Needed for proper lighting
-
-        return new THREE.Mesh(
-            geometry,
-            new THREE.MeshLambertMaterial({ color: 0x808080, side: THREE.DoubleSide })
-        );
-    }
-
-    private getInnerCellMesh(): THREE.Mesh {
-        const points = this.getInnerCellPoints();
+    private createCellMesh(points: THREE.Vector3[], material: THREE.Material): THREE.Mesh {
         const vertices: number[] = [];
         const indices: number[] = [];
 
@@ -190,23 +146,29 @@ export class ProceduralBookshelfCell {
         geometry.setIndex(indices);
         geometry.computeVertexNormals();
 
-        return new THREE.Mesh(
-            geometry,
-            new THREE.MeshLambertMaterial({
-                color: 0x606060,
-                side: THREE.DoubleSide,
-                wireframe: true  // Helpful for debugging
-            })
-        );
+        return new THREE.Mesh(geometry, material);
+    }
+
+    private getOuterCellMesh(): THREE.Mesh {
+        const material = new THREE.MeshLambertMaterial({
+            color: 0x808080,
+            side: THREE.DoubleSide
+        });
+        return this.createCellMesh(this.getOuterCellPoints(), material);
+    }
+
+    private getInnerCellMesh(): THREE.Mesh {
+        const material = new THREE.MeshLambertMaterial({
+            color: 0x606060,
+            side: THREE.DoubleSide
+        });
+        return this.createCellMesh(this.getInnerCellPoints(), material);
     }
 
     public getMesh(): THREE.Mesh {
         const cellMesh = new THREE.Mesh();
-
-        // Add both inner and outer meshes as children
         cellMesh.add(this.getOuterCellMesh());
 
-        // Only add inner mesh if there's actually space for a cavity
         if (this.cellSize.x > 0 && this.cellSize.y > 0 && this.cellSize.z > 0) {
             cellMesh.add(this.getInnerCellMesh());
         }

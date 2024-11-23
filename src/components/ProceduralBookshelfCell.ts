@@ -1,5 +1,6 @@
 import { MeshConnection, MeshConnectionFace } from '../utils/MeshConnection';
 import * as THREE from 'three';
+import { TextureLoader } from './Book';
 
 export class ProceduralBookshelfCell {
     private upperLeftFarCorner: THREE.Vector3;
@@ -9,6 +10,7 @@ export class ProceduralBookshelfCell {
     private thicknessBack: number;
     private thicknessUp: number;
     private thicknessDown: number;
+    private texturePath: string;
 
     constructor(
         cellUpperLeftFarCorner: THREE.Vector3,
@@ -18,6 +20,7 @@ export class ProceduralBookshelfCell {
         cellThicknessBack: number,
         cellThicknessUp: number,
         cellThicknessDown: number,
+        texturePath: string
     ) {
         this.upperLeftFarCorner = cellUpperLeftFarCorner.clone();
         this.cellSize = cellSize.clone();
@@ -26,6 +29,7 @@ export class ProceduralBookshelfCell {
         this.thicknessBack = cellThicknessBack;
         this.thicknessUp = cellThicknessUp;
         this.thicknessDown = cellThicknessDown;
+        this.texturePath = texturePath;
     }
 
     /**
@@ -158,6 +162,66 @@ export class ProceduralBookshelfCell {
         return this.createCellGeometry(this.getInnerCellPoints());
     }
 
+    /**
+     * Determines UV coordinates for a triangle face based on its orientation
+     * Uses the most visible coordinates for each face orientation:
+     * - XY plane (front/back faces) -> use X,Y coordinates
+     * - YZ plane (left/right faces) -> use Y,Z coordinates
+     * - XZ plane (top/bottom faces) -> use X,Z coordinates
+     */
+    private getFaceUVs(vertices: THREE.Vector3[]): number[] {
+        if (vertices.length !== 3) {
+            throw new Error('Face must have exactly 3 vertices');
+        }
+
+        // Calculate outer size including all thicknesses
+        const outerSize = new THREE.Vector3(
+            this.thicknessLeft + this.cellSize.x + this.thicknessRight,
+            this.thicknessDown + this.cellSize.y + this.thicknessUp,
+            this.thicknessBack + this.cellSize.z
+        );
+
+        // Calculate face normal to determine orientation
+        const v1 = vertices[1].clone().sub(vertices[0]);
+        const v2 = vertices[2].clone().sub(vertices[0]);
+        const normal = v1.cross(v2).normalize();
+
+        // Determine which plane this face is most parallel to
+        const absNormal = new THREE.Vector3(
+            Math.abs(normal.x),
+            Math.abs(normal.y),
+            Math.abs(normal.z)
+        );
+        const dominantAxis = Math.max(absNormal.x, absNormal.y, absNormal.z);
+
+        const uvs: number[] = [];
+
+        // Choose UV mapping based on dominant axis and normalize by outer size
+        vertices.forEach(vertex => {
+            if (dominantAxis === absNormal.x) {
+                // Face is parallel to YZ plane (left/right faces)
+                uvs.push(
+                    (vertex.y - this.upperLeftFarCorner.y) / outerSize.y,
+                    (vertex.z - (this.upperLeftFarCorner.z - outerSize.z)) / outerSize.z
+                );
+            } else if (dominantAxis === absNormal.y) {
+                // Face is parallel to XZ plane (top/bottom faces)
+                uvs.push(
+                    (vertex.x - this.upperLeftFarCorner.x) / outerSize.x,
+                    (vertex.z - (this.upperLeftFarCorner.z - outerSize.z)) / outerSize.z
+                );
+            } else {
+                // Face is parallel to XY plane (front/back faces)
+                uvs.push(
+                    (vertex.x - this.upperLeftFarCorner.x) / outerSize.x,
+                    (vertex.y - this.upperLeftFarCorner.y) / outerSize.y
+                );
+            }
+        });
+
+        return uvs;
+    }
+
     public getMesh(): THREE.Mesh {
         const innerCellGeometry = this.getInnerCellGeometry();
         const outerCellGeometry = this.getOuterCellGeometry();
@@ -183,10 +247,49 @@ export class ProceduralBookshelfCell {
             [...connectingFacesBack, ...connectingFacesFront]
         );
 
+        // Get all vertices as Vector3 objects for UV calculation
+        const positions = joinedGeometry.getAttribute('position').array;
+        const indices = joinedGeometry.getIndex()!.array;
+        const vertices: THREE.Vector3[] = [];
+        for (let i = 0; i < positions.length; i += 3) {
+            vertices.push(new THREE.Vector3(
+                positions[i],
+                positions[i + 1],
+                positions[i + 2]
+            ));
+        }
+
+        // Calculate UVs for each face
+        const uvs: number[] = [];
+        const uvMap = new Map<number, [number, number]>();
+
+        for (let i = 0; i < indices.length; i += 3) {
+            const faceVertices = [
+                vertices[indices[i]],
+                vertices[indices[i + 1]],
+                vertices[indices[i + 2]]
+            ];
+            const faceUVs = this.getFaceUVs(faceVertices);
+
+            // Store UVs for each vertex
+            for (let j = 0; j < 3; j++) {
+                const vertexIndex = indices[i + j];
+                uvMap.set(vertexIndex, [faceUVs[j * 2], faceUVs[j * 2 + 1]]);
+            }
+        }
+
+        // Create final UV array
+        for (let i = 0; i < vertices.length; i++) {
+            const uv = uvMap.get(i) || [0, 0];
+            uvs.push(uv[0], uv[1]);
+        }
+
+        joinedGeometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+
         return new THREE.Mesh(
             joinedGeometry,
             new THREE.MeshLambertMaterial({
-                color: 0x808080,
+                map: TextureLoader.getInstance().load(this.texturePath),
                 side: THREE.DoubleSide
             })
         );

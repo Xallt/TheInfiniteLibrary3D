@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { TextureLoader, Book } from './Book';
+import { ProceduralBookshelfCell } from './ProceduralBookshelfCell';
 
 export type BookshelfParams = {
     cellHeight: number;
@@ -81,62 +82,28 @@ export class Bookshelf {
         cellThicknessUp: number,
         cellThicknessDown: number,
     ): Cell {
+        const proceduralCell = new ProceduralBookshelfCell(
+            cellUpperLeftFarCorner,
+            cellSize,
+            cellThicknessLeft,
+            cellThicknessRight,
+            cellThicknessBack,
+            cellThicknessUp,
+            cellThicknessDown,
+            this.texturePath
+        );
+
         const outerSize = new THREE.Vector3(
             cellThicknessLeft + cellSize.x + cellThicknessRight,
             cellThicknessDown + cellSize.y + cellThicknessUp,
             cellThicknessBack + cellSize.z
         );
 
-        const upWall = this.createBoxWithCorner(
-            new THREE.Vector3(
-                cellUpperLeftFarCorner.x,
-                cellUpperLeftFarCorner.y,
-                cellUpperLeftFarCorner.z - cellThicknessBack
-            ),
-            new THREE.Vector3(outerSize.x, cellThicknessUp, cellSize.z)
-        );
-        const downWall = this.createBoxWithCorner(
-            new THREE.Vector3(
-                cellUpperLeftFarCorner.x,
-                cellUpperLeftFarCorner.y - cellThicknessUp - cellSize.y,
-                cellUpperLeftFarCorner.z
-            ),
-            new THREE.Vector3(outerSize.x, cellThicknessDown, cellSize.z)
-        );
-        const leftWall = this.createBoxWithCorner(
-            new THREE.Vector3(
-                cellUpperLeftFarCorner.x,
-                cellUpperLeftFarCorner.y - cellThicknessUp,
-                cellUpperLeftFarCorner.z - cellThicknessBack
-            ),
-            new THREE.Vector3(cellThicknessLeft, cellSize.y, cellSize.z)
-        );
-        const rightWall = this.createBoxWithCorner(
-            new THREE.Vector3(
-                cellUpperLeftFarCorner.x + cellThicknessLeft + cellSize.x,
-                cellUpperLeftFarCorner.y - cellThicknessUp,
-                cellUpperLeftFarCorner.z - cellThicknessBack
-            ),
-            new THREE.Vector3(cellThicknessRight, cellSize.y, cellSize.z)
-        );
-
-        const cell = new THREE.Mesh();
-        if (this.params.backWallThickness > 0) {
-            const farWall = this.createBoxWithCorner(
-                cellUpperLeftFarCorner,
-                new THREE.Vector3(outerSize.x, outerSize.y, cellThicknessBack)
-            );
-            cell.add(farWall);
-        }
-        cell.add(upWall);
-        cell.add(downWall);
-        cell.add(leftWall);
-        cell.add(rightWall);
         return {
-            mesh: cell,
+            mesh: proceduralCell.getMesh(),
             upperLeftFarCorner: cellUpperLeftFarCorner.clone(),
             outerSize: outerSize,
-            size: cellSize,
+            size: cellSize.clone(),
             availableX: 0,
             leftSideThickness: cellThicknessLeft,
             rightSideThickness: cellThicknessRight,

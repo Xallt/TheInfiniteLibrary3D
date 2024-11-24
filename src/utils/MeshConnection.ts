@@ -49,71 +49,69 @@ export class MeshConnection {
         geometries: THREE.BufferGeometry[],
         connectingFaces: MeshConnectionFace[]
     ): THREE.BufferGeometry {
-        // Create new geometry
         const newGeometry = new THREE.BufferGeometry();
-
-        // Get vertex positions from all geometries
-        const allVertices: number[] = [];
-        const vertexMaps: Map<number, Map<number, number>> = new Map(); // [meshIndex][oldVertexIndex] -> newVertexIndex
+        const vertices: number[] = [];
+        const indices: number[] = [];
+        let vertexCounter = 0;
 
         // Process each input geometry
-        let vertexOffset = 0;
-        geometries.forEach((geometry, meshIndex) => {
+        geometries.forEach((geometry) => {
             const positions = geometry.getAttribute('position').array;
-            const numVertices = positions.length / 3;
-            const vertexMap = new Map<number, number>();
-            vertexMaps.set(meshIndex, vertexMap);
+            const originalIndices = geometry.getIndex()?.array || [];
 
-            // Map each vertex from the original geometry to its new index
-            for (let i = 0; i < numVertices; i++) {
-                vertexMap.set(i, i + vertexOffset);
+            // Process each face (triangle) in the original geometry
+            for (let i = 0; i < originalIndices.length; i += 3) {
+                // Add three new vertices for this face
+                for (let j = 0; j < 3; j++) {
+                    const originalVertexIndex = originalIndices[i + j];
+                    const posIndex = originalVertexIndex * 3;
+                    vertices.push(
+                        positions[posIndex],
+                        positions[posIndex + 1],
+                        positions[posIndex + 2]
+                    );
+                }
 
-                const posIndex = i * 3;
-                allVertices.push(
+                // Create a new face using the newly added vertices
+                indices.push(
+                    vertexCounter,
+                    vertexCounter + 1,
+                    vertexCounter + 2
+                );
+                vertexCounter += 3;
+            }
+        });
+
+        // Process connecting faces
+        connectingFaces.forEach(face => {
+            face.forEach(([vertexIndex, meshIndex]) => {
+                // Get the original vertex position from the source geometry
+                const sourceGeometry = geometries[meshIndex];
+                const positions = sourceGeometry.getAttribute('position').array;
+                const posIndex = vertexIndex * 3;
+
+                // Add a new vertex
+                vertices.push(
                     positions[posIndex],
                     positions[posIndex + 1],
                     positions[posIndex + 2]
                 );
-            }
-
-            vertexOffset += numVertices;
-        });
-
-        // Combine existing indices from all geometries
-        const allIndices: number[] = [];
-
-        // Add original faces from each geometry
-        geometries.forEach((geometry, meshIndex) => {
-            const indices = geometry.getIndex()?.array || [];
-            const vertexMap = vertexMaps.get(meshIndex);
-
-            if (vertexMap === undefined) {
-                throw new Error(`No vertex map found for mesh ${meshIndex}`);
-            }
-
-            for (let i = 0; i < indices.length; i++) {
-                allIndices.push(vertexMap.get(indices[i])!);
-            }
-        });
-
-        // Add connecting faces
-        connectingFaces.forEach(face => {
-            face.forEach(([vertexIndex, meshIndex]) => {
-                const meshMap = vertexMaps.get(meshIndex);
-                const newIndex = meshMap?.get(vertexIndex);
-                if (newIndex === undefined) {
-                    throw new Error(`Invalid vertex reference: mesh ${meshIndex}, vertex ${vertexIndex}`);
-                }
-                allIndices.push(newIndex);
             });
+
+            // Create face using the newly added vertices
+            indices.push(
+                vertexCounter,
+                vertexCounter + 1,
+                vertexCounter + 2
+            );
+            vertexCounter += 3;
         });
 
-        // Create the new geometry
         newGeometry.setAttribute(
             'position',
-            new THREE.Float32BufferAttribute(allVertices, 3)
+            new THREE.Float32BufferAttribute(vertices, 3)
         );
-        newGeometry.setIndex(allIndices);
+        newGeometry.setIndex(indices);
         newGeometry.computeVertexNormals();
 
         return newGeometry;

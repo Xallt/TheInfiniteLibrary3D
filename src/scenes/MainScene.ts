@@ -9,7 +9,7 @@ import { VRButton } from 'three/examples/jsm/webxr/VRButton.js';
 import { XRControllerModelFactory } from 'three/examples/jsm/webxr/XRControllerModelFactory.js';
 import { TransformControls, TransformControlsGizmo } from 'three/examples/jsm/controls/TransformControls';
 import { BookTexture } from '../components/BookTexture';
-import { Raycaster, Vector3 } from 'three';
+import { Raycaster, Vector3, Vector2 } from 'three';
 
 interface BookIntersection extends THREE.Intersection<THREE.Object3D<THREE.Object3DEventMap>> {
     bookIndex?: number;
@@ -85,6 +85,9 @@ export class MainScene {
 
     private controllerRayLine: THREE.Line | null = null;
 
+    private mousePosition: Vector2;
+    private mouseRaycaster: THREE.Raycaster;
+
     constructor(
         container: HTMLElement,
         bookParams: BookMeshParams,
@@ -106,6 +109,9 @@ export class MainScene {
 
         this.raycaster = new THREE.Raycaster();
         this.tempMatrix = new THREE.Matrix4();
+
+        this.mousePosition = new Vector2();
+        this.mouseRaycaster = new THREE.Raycaster();
 
         // Check VR support before initialization
         this.checkVRSupport().then(() => {
@@ -313,6 +319,7 @@ export class MainScene {
     private addEventListeners(): void {
         window.addEventListener('resize', this.onWindowResize.bind(this));
         window.addEventListener('keydown', this.onKeyDown.bind(this));
+        window.addEventListener('mousemove', this.onMouseMove.bind(this));
     }
 
     private onWindowResize(): void {
@@ -704,5 +711,42 @@ export class MainScene {
         this.controllerRayLine = new THREE.Line(geometry, material);
         this.controllerRayLine.scale.z = 5; // Make the ray 5 meters long
         this.controllerRayLine.visible = true; // Ensure initial visibility
+    }
+
+    private onMouseMove(event: MouseEvent): void {
+        // Calculate normalized device coordinates (-1 to +1)
+        this.mousePosition.x = (event.clientX / window.innerWidth) * 2 - 1;
+        this.mousePosition.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+        // Only perform raycasting if not in VR and not viewing a book
+        if (!this.isVRSupported && !this.isBookInViewMode) {
+            this.mouseRaycaster.setFromCamera(this.mousePosition, this.camera);
+
+            // Test intersections with all books
+            const intersects: BookIntersection[] = [];
+            this.books.forEach((book, index) => {
+                const bookMesh = book.getMesh();
+                const bookIntersects = this.mouseRaycaster.intersectObject(bookMesh, true);
+                if (bookIntersects.length > 0) {
+                    const intersection = bookIntersects[0] as BookIntersection;
+                    intersection.bookIndex = index;
+                    intersects.push(intersection);
+                }
+            });
+
+            // Sort intersections by distance
+            intersects.sort((a, b) => a.distance - b.distance);
+
+            // Select the closest intersected book
+            if (intersects.length > 0) {
+                const closestIntersect = intersects[0];
+                const bookIndex = closestIntersect.bookIndex;
+
+                // Only update selection if it's different from current selection
+                if (bookIndex !== undefined && bookIndex !== this.selectedBookIndex) {
+                    this.selectBook(bookIndex);
+                }
+            }
+        }
     }
 }

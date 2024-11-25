@@ -66,7 +66,6 @@ export class Page {
             });
         const backPlane = new THREE.Mesh(backGeometry, backMaterial);
         backPlane.position.z = -Page.PLANE_OFFSET;
-        // backPlane.rotation.y = Math.PI;
 
         group.add(frontPlane);
         group.add(backPlane);
@@ -115,15 +114,18 @@ export class Page {
 
     public static fromPdfPages(
         frontPdfPage: PdfPage,
-        backPdfPage: PdfPage,
+        backPdfPage: PdfPage | null,
         params: PageParams
     ): Page {
         const frontBlob = new Blob([frontPdfPage.imageData], { type: 'image/png' });
-        const backBlob = new Blob([backPdfPage.imageData], { type: 'image/png' });
+        const backBlob = backPdfPage
+            ? new Blob([backPdfPage.imageData], { type: 'image/png' })
+            : null;
 
         const frontImageUrl = URL.createObjectURL(frontBlob);
-        const backImageUrl = URL.createObjectURL(backBlob);
-
+        const backImageUrl = backBlob
+            ? URL.createObjectURL(backBlob)
+            : null;
         const textures: PageTextures = {
             front: frontImageUrl,
             back: backImageUrl
@@ -132,8 +134,12 @@ export class Page {
         const page = new Page(params, textures);
 
         setTimeout(() => {
-            URL.revokeObjectURL(frontImageUrl);
-            URL.revokeObjectURL(backImageUrl);
+            if (frontImageUrl) {
+                URL.revokeObjectURL(frontImageUrl);
+            }
+            if (backImageUrl) {
+                URL.revokeObjectURL(backImageUrl);
+            }
         }, 1000);
 
         return page;

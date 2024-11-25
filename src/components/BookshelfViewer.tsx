@@ -171,16 +171,11 @@ export function BookshelfViewer() {
 
             let pageIndex = 0;
             for await (const [frontPage, backPage] of pairPdfPages(parseResult.pages)) {
-                const physicalPage = backPage 
-                    ? Page.fromPdfPages(
-                        frontPage,
-                        backPage,
-                        Page.getPageParams(bookResourceMapping.book.getParams())
-                    )
-                    : Page.fromSinglePdfPage(
-                        frontPage,
-                        Page.getPageParams(bookResourceMapping.book.getParams())
-                    );
+                const physicalPage = Page.fromPdfPages(
+                    frontPage,
+                    backPage,
+                    Page.getPageParams(bookResourceMapping.book.getParams())
+                );
 
                 bookResourceMapping.book.addPage(physicalPage, pageIndex++);
             }

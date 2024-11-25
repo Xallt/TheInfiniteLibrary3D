@@ -257,7 +257,7 @@ export class Book {
         let vertexCounter = 0;
 
         // Helper to add a quad (two triangles) with its own vertices
-        const addQuad = (p1: THREE.Vector3, p2: THREE.Vector3, p3: THREE.Vector3, p4: THREE.Vector3, reverse: boolean = false) => {
+        const addQuad = (p1: THREE.Vector3, p2: THREE.Vector3, p3: THREE.Vector3, p4: THREE.Vector3) => {
             vertices.push(
                 p1.x, p1.y, p1.z,
                 p2.x, p2.y, p2.z,
@@ -277,10 +277,6 @@ export class Book {
                 vertexCounter + 2, vertexCounter + 1, vertexCounter + 3  // Second triangle
             ];
 
-            if (reverse) {
-                indicesToAdd.reverse();
-            }
-
             indicesArray.push(...indicesToAdd);
 
             vertexCounter += 4;
@@ -288,11 +284,15 @@ export class Book {
 
         // Add all faces for a complete box
         // Front
-        addQuad(points[indices.frontBottomLeft], points[indices.frontBottomRight],
-            points[indices.frontTopLeft], points[indices.frontTopRight], true);
+        addQuad(
+            points[indices.frontTopLeft], points[indices.frontTopRight],
+            points[indices.frontBottomLeft], points[indices.frontBottomRight],
+        );
         // Back
-        addQuad(points[indices.backBottomRight], points[indices.backBottomLeft],
-            points[indices.backTopRight], points[indices.backTopLeft], true);
+        addQuad(
+            points[indices.backTopRight], points[indices.backTopLeft],
+            points[indices.backBottomRight], points[indices.backBottomLeft]
+        );
         // Left
         addQuad(points[indices.frontBottomLeft], points[indices.backBottomLeft],
             points[indices.frontTopLeft], points[indices.backTopLeft]);
@@ -300,8 +300,10 @@ export class Book {
         addQuad(points[indices.backBottomRight], points[indices.frontBottomRight],
             points[indices.backTopRight], points[indices.frontTopRight]);
         // Top
-        addQuad(points[indices.frontTopLeft], points[indices.frontTopRight],
-            points[indices.backTopLeft], points[indices.backTopRight], true);
+        addQuad(
+            points[indices.frontTopLeft], points[indices.backTopLeft],
+            points[indices.frontTopRight], points[indices.backTopRight],
+        );
         // Bottom
         addQuad(points[indices.frontBottomLeft], points[indices.frontBottomRight],
             points[indices.backBottomLeft], points[indices.backBottomRight]);

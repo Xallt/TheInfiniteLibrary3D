@@ -6,6 +6,7 @@ export interface BookTextureParams {
 }
 
 export class BookTexture {
+    private static readonly UV_OFFSET = 0.1;
     private texture: THREE.Texture;
     private params: BookTextureParams;
 
@@ -22,33 +23,98 @@ export class BookTexture {
         return this.texture;
     }
 
-    public generateCoverUVCoordinates(): THREE.Vector2[] {
-        // UV coordinates for the front cover (middle section)
+    /**
+     * Returns UV coordinates for the front cover (spine) of the book
+     */
+    public getSpineUVs(): number[] {
         return [
-            new THREE.Vector2(this.params.leftCoverPosition, 0),  // bottom left
-            new THREE.Vector2(this.params.rightCoverPosition, 0), // bottom right
-            new THREE.Vector2(this.params.leftCoverPosition, 1),  // top left
-            new THREE.Vector2(this.params.rightCoverPosition, 1), // top right
+            this.params.leftCoverPosition, 0,  // bottom left
+            this.params.rightCoverPosition, 0, // bottom right
+            this.params.leftCoverPosition, 1,  // top left
+            this.params.rightCoverPosition, 1  // top right
         ];
     }
 
-    public generateLeftCoverUVCoordinates(): THREE.Vector2[] {
-        // UV coordinates for the left cover section
+    /**
+     * Returns UV coordinates for the left side of the book
+     */
+    public getLeftSideUVs(): number[] {
         return [
-            new THREE.Vector2(0, 0),                           // bottom left
-            new THREE.Vector2(this.params.leftCoverPosition, 0), // bottom right
-            new THREE.Vector2(0, 1),                           // top left
-            new THREE.Vector2(this.params.leftCoverPosition, 1), // top right
+            0, 0,                              // bottom left
+            this.params.leftCoverPosition, 0,  // bottom right
+            0, 1,                              // top left
+            this.params.leftCoverPosition, 1   // top right
         ];
     }
 
-    public generateRightCoverUVCoordinates(): THREE.Vector2[] {
-        // UV coordinates for the right cover section
+    /**
+     * Returns UV coordinates for the right side of the book
+     */
+    public getRightSideUVs(): number[] {
         return [
-            new THREE.Vector2(this.params.rightCoverPosition, 0), // bottom left
-            new THREE.Vector2(1, 0),                            // bottom right
-            new THREE.Vector2(this.params.rightCoverPosition, 1), // top left
-            new THREE.Vector2(1, 1),                            // top right
+            this.params.rightCoverPosition, 0, // bottom left
+            1, 0,                             // bottom right
+            this.params.rightCoverPosition, 1, // top left
+            1, 1                              // top right
         ];
     }
+
+    /**
+     * Returns UV coordinates for the top side of the book
+     * This will stretch/tile the edge of the texture
+     */
+    public getSpineTopSideUVs(): number[] {
+        return [
+            this.params.leftCoverPosition, -BookTexture.UV_OFFSET,  // bottom left
+            this.params.rightCoverPosition, -BookTexture.UV_OFFSET, // bottom right
+            this.params.leftCoverPosition, 0,  // top left
+            this.params.rightCoverPosition, 0  // top right
+        ];
+    }
+
+    public getSpineBottomSideUVs(): number[] {
+        return [
+            this.params.leftCoverPosition, 1,  // bottom left
+            this.params.rightCoverPosition, 1, // bottom right
+            this.params.leftCoverPosition, 1 + BookTexture.UV_OFFSET,  // top left
+            this.params.rightCoverPosition, 1 + BookTexture.UV_OFFSET  // top right
+        ];
+    }
+
+    public getLeftSideTopUVs(): number[] {
+        return [
+            0, -BookTexture.UV_OFFSET,
+            this.params.leftCoverPosition, -BookTexture.UV_OFFSET,
+            0, 0,
+            this.params.leftCoverPosition, 0
+        ];
+    }
+
+    public getRightSideTopUVs(): number[] {
+        return [
+            this.params.rightCoverPosition, -BookTexture.UV_OFFSET,
+            1, -BookTexture.UV_OFFSET,
+            this.params.rightCoverPosition, 0,
+            1, 0
+        ];
+    }
+
+    public getRightSideBottomUVs(): number[] {
+        return [
+            this.params.rightCoverPosition, 1,
+            1, 1,
+            this.params.rightCoverPosition, 1 + BookTexture.UV_OFFSET,
+            1, 1 + BookTexture.UV_OFFSET
+        ];
+    }
+
+    public getLeftSideBottomUVs(): number[] {
+        return [
+            0, 1,
+            this.params.leftCoverPosition, 1,
+            0, 1 + BookTexture.UV_OFFSET,
+            this.params.leftCoverPosition, 1 + BookTexture.UV_OFFSET
+        ];
+    }
+
 } 

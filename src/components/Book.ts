@@ -253,6 +253,7 @@ export class Book {
 
         const vertices: number[] = [];
         const indicesArray: number[] = [];
+        const uvs: number[] = [];
         let vertexCounter = 0;
 
         // Helper to add a quad (two triangles) with its own vertices
@@ -262,6 +263,13 @@ export class Book {
                 p2.x, p2.y, p2.z,
                 p3.x, p3.y, p3.z,
                 p4.x, p4.y, p4.z
+            );
+
+            uvs.push(
+                0, 0,
+                1, 0,
+                0, 1,
+                1, 1
             );
 
             const indicesToAdd = [
@@ -300,6 +308,7 @@ export class Book {
 
         const geometry = new THREE.BufferGeometry();
         geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+        geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
         geometry.setIndex(indicesArray);
         geometry.computeVertexNormals();
 

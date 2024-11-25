@@ -15,7 +15,7 @@ export interface PageTextures {
 export class Page {
     private mesh: THREE.Group;
     private params: PageParams;
-    private static readonly PLANE_OFFSET = 0.0001;
+    private static readonly PLANE_OFFSET = 0.0000;
 
     constructor(params: PageParams, textures: PageTextures) {
         this.params = params;
@@ -37,8 +37,8 @@ export class Page {
 
     private createPageMesh(textures: PageTextures): THREE.Group {
         const group = new THREE.Group();
-        const geometry = new THREE.PlaneGeometry(this.params.width, this.params.height);
-        geometry.translate(this.params.width / 2, 0, 0);
+        const frontGeometry = new THREE.PlaneGeometry(this.params.width, this.params.height);
+        frontGeometry.translate(this.params.width / 2, 0, 0);
 
         const frontMaterial = textures.front
             ? new THREE.MeshLambertMaterial({
@@ -49,20 +49,24 @@ export class Page {
                 color: 0xffffff,
                 side: THREE.FrontSide
             });
-        const frontPlane = new THREE.Mesh(geometry, frontMaterial);
+        const frontPlane = new THREE.Mesh(frontGeometry, frontMaterial);
         frontPlane.position.z = Page.PLANE_OFFSET;
 
+        const backGeometry = new THREE.PlaneGeometry(this.params.width, this.params.height);
+        backGeometry.rotateY(Math.PI);
+        backGeometry.translate(this.params.width / 2, 0, 0);
         const backMaterial = textures.back
             ? new THREE.MeshLambertMaterial({
                 map: this.createTextureFromSource(textures.back),
-                side: THREE.BackSide
+                side: THREE.FrontSide
             })
             : new THREE.MeshLambertMaterial({
                 color: 0xffffff,
-                side: THREE.BackSide
+                side: THREE.FrontSide
             });
-        const backPlane = new THREE.Mesh(geometry, backMaterial);
+        const backPlane = new THREE.Mesh(backGeometry, backMaterial);
         backPlane.position.z = -Page.PLANE_OFFSET;
+        // backPlane.rotation.y = Math.PI;
 
         group.add(frontPlane);
         group.add(backPlane);

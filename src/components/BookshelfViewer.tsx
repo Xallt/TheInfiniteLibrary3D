@@ -23,15 +23,32 @@ class BookResourceMapping {
     }
 }
 
+async function* pairPdfPages(
+    pageGenerator: AsyncGenerator<PdfPage, void, unknown>
+): AsyncGenerator<[PdfPage, PdfPage | null], void, unknown> {
+    let firstPage: PdfPage | null = null;
+    
+    for await (const page of pageGenerator) {
+        if (firstPage === null) {
+            firstPage = page;
+        } else {
+            yield [firstPage, page];
+            firstPage = null;
+        }
+    }
+    
+    // Handle odd number of pages
+    if (firstPage !== null) {
+        yield [firstPage, null];
+    }
+}
+
 export function BookshelfViewer() {
     const sceneRef = useRef<MainScene | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const [bookCount, setBookCount] = useState(0);
     const [isViewingBook, setIsViewingBook] = useState(false);
     const [showUrlModal, setShowUrlModal] = useState(false);
-    const [pdfResources, setPdfResources] = useState<PDFResource[]>([
-        new URLPDFResource('https://arxiv.org/pdf/1706.03762')
-    ]);
     const [bookAngle, setBookAngle] = useState(Math.PI / 2); // Default open angle
     const [bookResourceMappings, setBookResourceMappings] = useState<{ [index: number]: BookResourceMapping }>({});
 
@@ -149,20 +166,11 @@ export function BookshelfViewer() {
                 scale: 2.0
             });
 
-            const actualPageCount = Math.ceil(parseResult.metadata.numPages / 2); // Each physical page has 2 PDF pages
+            const actualPageCount = Math.ceil(parseResult.metadata.numPages / 2);
             bookResourceMapping.book.resizePageArray(actualPageCount);
 
-            // Collect all pages first
-            const pdfPages: PdfPage[] = [];
-            for await (const page of parseResult.pages) {
-                pdfPages.push(page);
-            }
-
-            // Create physical pages from pairs of PDF pages
-            for (let i = 0; i < pdfPages.length; i += 2) {
-                const frontPage = pdfPages[i];
-                const backPage = pdfPages[i + 1] || null; // Use null for the last page if odd number
-
+            let pageIndex = 0;
+            for await (const [frontPage, backPage] of pairPdfPages(parseResult.pages)) {
                 const physicalPage = backPage 
                     ? Page.fromPdfPages(
                         frontPage,
@@ -174,10 +182,9 @@ export function BookshelfViewer() {
                         Page.getPageParams(bookResourceMapping.book.getParams())
                     );
 
-                bookResourceMapping.book.addPage(physicalPage, Math.floor(i / 2));
+                bookResourceMapping.book.addPage(physicalPage, pageIndex++);
             }
 
-            // Update the mapping to mark this book as loaded
             setBookResourceMappings(prevMappings => ({
                 ...prevMappings,
                 [bookResourceMapping.index]: { ...bookResourceMapping, loaded: true }

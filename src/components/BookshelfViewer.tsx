@@ -149,17 +149,32 @@ export function BookshelfViewer() {
                 scale: 2.0
             });
 
-            // First, resize the book's page array to match actual page count
-            const actualPageCount = parseResult.metadata.numPages;
+            const actualPageCount = Math.ceil(parseResult.metadata.numPages / 2); // Each physical page has 2 PDF pages
             bookResourceMapping.book.resizePageArray(actualPageCount);
 
-            // Then process pages in parallel
-            let index = 0;
+            // Collect all pages first
+            const pdfPages: PdfPage[] = [];
             for await (const page of parseResult.pages) {
-                bookResourceMapping.book.addPage(
-                    Page.fromPdfPage(page, Page.getPageParams(bookResourceMapping.book.getParams())), 
-                    index++
-                );
+                pdfPages.push(page);
+            }
+
+            // Create physical pages from pairs of PDF pages
+            for (let i = 0; i < pdfPages.length; i += 2) {
+                const frontPage = pdfPages[i];
+                const backPage = pdfPages[i + 1] || null; // Use null for the last page if odd number
+
+                const physicalPage = backPage 
+                    ? Page.fromPdfPages(
+                        frontPage,
+                        backPage,
+                        Page.getPageParams(bookResourceMapping.book.getParams())
+                    )
+                    : Page.fromSinglePdfPage(
+                        frontPage,
+                        Page.getPageParams(bookResourceMapping.book.getParams())
+                    );
+
+                bookResourceMapping.book.addPage(physicalPage, Math.floor(i / 2));
             }
 
             // Update the mapping to mark this book as loaded

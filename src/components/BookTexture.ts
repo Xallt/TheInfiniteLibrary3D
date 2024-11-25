@@ -117,4 +117,22 @@ export class BookTexture {
         ];
     }
 
+    public getLeftLeftUVs(): number[] {
+        return [
+            -BookTexture.UV_OFFSET, 0,
+            0, 0,
+            -BookTexture.UV_OFFSET, 1,
+            0, 1
+        ];
+    }
+
+    public getRightRightUVs(): number[] {
+        return [
+            1, 0,
+            1 + BookTexture.UV_OFFSET, 0,
+            1, 1,
+            1 + BookTexture.UV_OFFSET, 1
+        ];
+    }
+
 } 

@@ -294,19 +294,25 @@ export class Book {
             points[indices.backBottomRight], points[indices.backBottomLeft]
         );
         // Left
-        addQuad(points[indices.frontBottomLeft], points[indices.backBottomLeft],
-            points[indices.frontTopLeft], points[indices.backTopLeft]);
+        addQuad(
+            points[indices.frontBottomLeft], points[indices.backBottomLeft],
+            points[indices.frontTopLeft], points[indices.backTopLeft]
+        );
         // Right
-        addQuad(points[indices.backBottomRight], points[indices.frontBottomRight],
-            points[indices.backTopRight], points[indices.frontTopRight]);
+        addQuad(
+            points[indices.backBottomRight], points[indices.frontBottomRight],
+            points[indices.backTopRight], points[indices.frontTopRight]
+        );
         // Top
         addQuad(
             points[indices.frontTopLeft], points[indices.backTopLeft],
             points[indices.frontTopRight], points[indices.backTopRight],
         );
         // Bottom
-        addQuad(points[indices.frontBottomLeft], points[indices.frontBottomRight],
-            points[indices.backBottomLeft], points[indices.backBottomRight]);
+        addQuad(
+            points[indices.frontBottomLeft], points[indices.frontBottomRight],
+            points[indices.backBottomLeft], points[indices.backBottomRight]
+        );
 
         const geometry = new THREE.BufferGeometry();
         geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));

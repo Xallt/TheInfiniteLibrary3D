@@ -256,7 +256,7 @@ export class Book {
         let vertexCounter = 0;
 
         // Helper to add a quad (two triangles) with its own vertices
-        const addQuad = (p1: THREE.Vector3, p2: THREE.Vector3, p3: THREE.Vector3, p4: THREE.Vector3) => {
+        const addQuad = (p1: THREE.Vector3, p2: THREE.Vector3, p3: THREE.Vector3, p4: THREE.Vector3, reverse: boolean = false) => {
             vertices.push(
                 p1.x, p1.y, p1.z,
                 p2.x, p2.y, p2.z,
@@ -264,10 +264,16 @@ export class Book {
                 p4.x, p4.y, p4.z
             );
 
-            indicesArray.push(
+            const indicesToAdd = [
                 vertexCounter, vertexCounter + 1, vertexCounter + 2,     // First triangle
                 vertexCounter + 2, vertexCounter + 1, vertexCounter + 3  // Second triangle
-            );
+            ];
+
+            if (reverse) {
+                indicesToAdd.reverse();
+            }
+
+            indicesArray.push(...indicesToAdd);
 
             vertexCounter += 4;
         };
@@ -275,10 +281,10 @@ export class Book {
         // Add all faces for a complete box
         // Front
         addQuad(points[indices.frontBottomLeft], points[indices.frontBottomRight],
-            points[indices.frontTopLeft], points[indices.frontTopRight]);
+            points[indices.frontTopLeft], points[indices.frontTopRight], true);
         // Back
         addQuad(points[indices.backBottomRight], points[indices.backBottomLeft],
-            points[indices.backTopRight], points[indices.backTopLeft]);
+            points[indices.backTopRight], points[indices.backTopLeft], true);
         // Left
         addQuad(points[indices.frontBottomLeft], points[indices.backBottomLeft],
             points[indices.frontTopLeft], points[indices.backTopLeft]);
@@ -287,7 +293,7 @@ export class Book {
             points[indices.backTopRight], points[indices.frontTopRight]);
         // Top
         addQuad(points[indices.frontTopLeft], points[indices.frontTopRight],
-            points[indices.backTopLeft], points[indices.backTopRight]);
+            points[indices.backTopLeft], points[indices.backTopRight], true);
         // Bottom
         addQuad(points[indices.frontBottomLeft], points[indices.frontBottomRight],
             points[indices.backBottomLeft], points[indices.backBottomRight]);
@@ -302,7 +308,9 @@ export class Book {
 
     private createBox(boxCenter: THREE.Vector3, boxSize: THREE.Vector3): THREE.Mesh {
         const geometry = this.createBoxGeometry(boxSize);
-        const material = new THREE.MeshLambertMaterial({ map: this.bookTexture.getTexture(), side: THREE.DoubleSide });
+        const material = new THREE.MeshLambertMaterial({
+            map: this.bookTexture.getTexture()
+        });
         const box = new THREE.Mesh(geometry, material);
         box.position.set(boxCenter.x, boxCenter.y, boxCenter.z);
         return box;

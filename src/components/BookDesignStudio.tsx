@@ -1,21 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { BookDesignScene } from '../scenes/BookDesignScene';
 import { BookTexture, BookTextureParams } from './Bookshelf/BookTexture';
 import { defaultBookParams } from '../App';
 import * as THREE from 'three';
 import { PDFSelectionModal } from './PDFSelectionModal';
 import { PDFResource } from '../types/PDFResource';
-import { Page } from './Bookshelf/Page';
-import { BookMeshParams } from './Bookshelf/Book';
+import { BookDesignScene } from '../scenes/BookDesignScene';
 
 type SelectionState = 'left' | 'right' | 'complete';
 type ViewMode = '2d' | '3d';
-
-interface BookDesignSceneProps {
-    bookTextures: BookTexture[];
-    bookParams: BookMeshParams;
-    pdfResource: PDFResource | null;
-}
 
 export function BookDesignStudio() {
     const canvasRef = useRef<HTMLCanvasElement>(null);

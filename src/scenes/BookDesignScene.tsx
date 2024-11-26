@@ -1,10 +1,11 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { Book, BookMeshParams } from '../components/Bookshelf/Book';
 import { BookTexture } from '../components/Bookshelf/BookTexture';
 import { Page } from '../components/Bookshelf/Page';
 import { PDFResource } from '../types/PDFResource';
+import { BookStateControlsUI } from '../components/BookStateControlsUI';
 
 interface BookDesignSceneProps {
     bookTextures: BookTexture[];
@@ -20,6 +21,7 @@ export function BookDesignScene({ bookTextures, bookParams, pdfResource }: BookD
     const controlsRef = useRef<OrbitControls | null>(null);
     const booksRef = useRef<Book[]>([]);
     const loadedPdfRef = useRef<PDFResource | null>(null);
+    const [currentBook, setCurrentBook] = useState<Book | null>(null);
 
     useEffect(() => {
         if (!containerRef.current) return;
@@ -119,6 +121,11 @@ export function BookDesignScene({ bookTextures, bookParams, pdfResource }: BookD
             bookMesh.position.set(index * 0.5 - (bookTextures.length - 1) * 0.25, 0, 0);
             sceneRef.current!.add(bookMesh);
             booksRef.current.push(book);
+            
+            // Set the first book as current
+            if (index === 0) {
+                setCurrentBook(book);
+            }
 
             // Load PDF pages if we have a PDF resource and haven't loaded it yet
             if (pdfResource && pdfResource !== loadedPdfRef.current) {
@@ -159,6 +166,16 @@ export function BookDesignScene({ bookTextures, bookParams, pdfResource }: BookD
     }, [bookTextures, bookParams, pdfResource]);
 
     return (
-        <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
+        <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+            <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
+            {currentBook && (
+                <div className="book-controls-overlay">
+                    <BookStateControlsUI 
+                        book={currentBook}
+                        controllers={[]}
+                    />
+                </div>
+            )}
+        </div>
     );
 } 

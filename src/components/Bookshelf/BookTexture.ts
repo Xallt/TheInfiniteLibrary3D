@@ -28,10 +28,10 @@ export class BookTexture {
      */
     public getSpineUVs(): number[] {
         return [
-            this.params.leftCoverPosition, 0,  // bottom left
-            this.params.rightCoverPosition, 0, // bottom right
+            this.params.rightCoverPosition, 1,  // top right
             this.params.leftCoverPosition, 1,  // top left
-            this.params.rightCoverPosition, 1  // top right
+            this.params.rightCoverPosition, 0, // bottom right
+            this.params.leftCoverPosition, 0,  // bottom left
         ];
     }
 

@@ -331,22 +331,22 @@ export class Book {
             this.createSpineGeometry(new THREE.Vector3(coverWidth, bookHeight, bookThickness))
         );
 
-        // Create left cover
-        this.leftSideMesh = this.createBox(
-            new THREE.Vector3(-coverWidth / 2, 0, bookThickness / 2),
-            new THREE.Vector3(bookThickness, bookHeight, bookWidth),
-            this.createLeftCoverGeometry(new THREE.Vector3(bookThickness, bookHeight, bookWidth))
-        );
-
         // Create right cover
         this.rightSideMesh = this.createBox(
-            new THREE.Vector3(coverWidth / 2, 0, bookThickness / 2),
+            new THREE.Vector3(-coverWidth / 2, 0, bookThickness / 2),
             new THREE.Vector3(bookThickness, bookHeight, bookWidth),
             this.createRightCoverGeometry(new THREE.Vector3(bookThickness, bookHeight, bookWidth))
         );
 
-        this.leftSideMesh.geometry.translate(- bookThickness / 2, 0, bookWidth / 2);
-        this.rightSideMesh.geometry.translate(bookThickness / 2, 0, bookWidth / 2);
+        // Create left cover
+        this.leftSideMesh = this.createBox(
+            new THREE.Vector3(coverWidth / 2, 0, bookThickness / 2),
+            new THREE.Vector3(bookThickness, bookHeight, bookWidth),
+            this.createLeftCoverGeometry(new THREE.Vector3(bookThickness, bookHeight, bookWidth))
+        );
+
+        this.rightSideMesh.geometry.translate(- bookThickness / 2, 0, bookWidth / 2);
+        this.leftSideMesh.geometry.translate(bookThickness / 2, 0, bookWidth / 2);
 
         const book = new THREE.Mesh();
         book.add(this.coverMesh);

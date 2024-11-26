@@ -151,8 +151,8 @@ export class Book {
         const { coverAngle, pageAngles } = this.openingState.getPageRotationArgs(this.pages.length);
 
         // Update cover angles
-        this.leftSideMesh.rotation.y = -coverAngle;
-        this.rightSideMesh.rotation.y = coverAngle;
+        this.leftSideMesh.rotation.y = coverAngle;
+        this.rightSideMesh.rotation.y = -coverAngle;
 
         // Set page angles
         this.pages.forEach((page, index) => {

@@ -9,6 +9,15 @@ export interface BookOpeningState {
     getPageRotationArgs(numPages: number): { coverAngle: number, pageAngles: number[] };
 }
 
+interface QuadUVs {
+    front: number[];
+    back: number[];
+    left: number[];
+    right: number[];
+    top: number[];
+    bottom: number[];
+}
+
 export class UniformlyOpenedState implements BookOpeningState {
     constructor(private angle: number = 0) { }
 
@@ -197,22 +206,143 @@ export class Book {
         this.setState(new UniformlyOpenedState(angle));
     }
 
+    private createBoxGeometry(boxSize: THREE.Vector3, uvs: QuadUVs): THREE.BufferGeometry {
+        const corner = new THREE.Vector3(
+            -boxSize.x / 2,
+            boxSize.y / 2,
+            boxSize.z / 2
+        );
+        const { points, indices } = ProceduralMesh.get3DRectPoints(corner, boxSize);
+
+        const vertices: number[] = [];
+        const indicesArray: number[] = [];
+        const uvCoords: number[] = [];
+        let vertexCounter = 0;
+
+        // Helper to add a quad with specific UVs
+        const addQuad = (p1: THREE.Vector3, p2: THREE.Vector3, p3: THREE.Vector3, p4: THREE.Vector3, quadUVs: number[]) => {
+            vertices.push(
+                p1.x, p1.y, p1.z,
+                p2.x, p2.y, p2.z,
+                p3.x, p3.y, p3.z,
+                p4.x, p4.y, p4.z
+            );
+
+            uvCoords.push(...quadUVs);
+
+            indicesArray.push(
+                vertexCounter, vertexCounter + 1, vertexCounter + 2,
+                vertexCounter + 2, vertexCounter + 1, vertexCounter + 3
+            );
+
+            vertexCounter += 4;
+        };
+
+        // Add all faces with their specific UVs
+        addQuad(
+            points[indices.frontTopLeft], points[indices.frontTopRight],
+            points[indices.frontBottomLeft], points[indices.frontBottomRight],
+            uvs.front
+        );
+        addQuad(
+            points[indices.backTopRight], points[indices.backTopLeft],
+            points[indices.backBottomRight], points[indices.backBottomLeft],
+            uvs.back
+        );
+        addQuad(
+            points[indices.frontBottomLeft], points[indices.backBottomLeft],
+            points[indices.frontTopLeft], points[indices.backTopLeft],
+            uvs.left
+        );
+        addQuad(
+            points[indices.backBottomRight], points[indices.frontBottomRight],
+            points[indices.backTopRight], points[indices.frontTopRight],
+            uvs.right
+        );
+        addQuad(
+            points[indices.frontTopLeft], points[indices.backTopLeft],
+            points[indices.frontTopRight], points[indices.backTopRight],
+            uvs.top
+        );
+        addQuad(
+            points[indices.frontBottomLeft], points[indices.frontBottomRight],
+            points[indices.backBottomLeft], points[indices.backBottomRight],
+            uvs.bottom
+        );
+
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+        geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvCoords, 2));
+        geometry.setIndex(indicesArray);
+        geometry.computeVertexNormals();
+
+        return geometry;
+    }
+
+    private createSpineGeometry(boxSize: THREE.Vector3): THREE.BufferGeometry {
+        return this.createBoxGeometry(boxSize, {
+            front: this.bookTexture.getSpineUVs(),
+            back: this.bookTexture.getSpineUVs(),
+            left: this.bookTexture.getLeftLeftUVs(),
+            right: this.bookTexture.getRightRightUVs(),
+            top: this.bookTexture.getSpineTopSideUVs(),
+            bottom: this.bookTexture.getSpineBottomSideUVs()
+        });
+    }
+
+    private createLeftCoverGeometry(boxSize: THREE.Vector3): THREE.BufferGeometry {
+        return this.createBoxGeometry(boxSize, {
+            front: this.bookTexture.getLeftLeftUVs(),
+            back: this.bookTexture.getRightRightUVs(),
+            left: this.bookTexture.getLeftSideUVs(),
+            right: this.bookTexture.getLeftSideUVs(),
+            top: this.bookTexture.getLeftSideTopUVs(),
+            bottom: this.bookTexture.getLeftSideBottomUVs()
+        });
+    }
+
+    private createRightCoverGeometry(boxSize: THREE.Vector3): THREE.BufferGeometry {
+        return this.createBoxGeometry(boxSize, {
+            front: this.bookTexture.getLeftLeftUVs(),
+            back: this.bookTexture.getRightRightUVs(),
+            left: this.bookTexture.getRightSideUVs(),
+            right: this.bookTexture.getRightSideUVs(),
+            top: this.bookTexture.getRightSideTopUVs(),
+            bottom: this.bookTexture.getRightSideBottomUVs()
+        });
+    }
+
+    private createBox(boxCenter: THREE.Vector3, boxSize: THREE.Vector3, geometry: THREE.BufferGeometry): THREE.Mesh {
+        const material = new THREE.MeshLambertMaterial({
+            map: this.bookTexture.getTexture()
+        });
+        const box = new THREE.Mesh(geometry, material);
+        box.position.set(boxCenter.x, boxCenter.y, boxCenter.z);
+        return box;
+    }
+
     private createBookMesh(): THREE.Mesh {
         const { bookThickness, bookWidth, bookHeight, coverWidth } = this.params;
 
+        // Create spine
         this.coverMesh = this.createBox(
             new THREE.Vector3(0, 0, 0),
-            new THREE.Vector3(coverWidth, bookHeight, bookThickness)
+            new THREE.Vector3(coverWidth, bookHeight, bookThickness),
+            this.createSpineGeometry(new THREE.Vector3(coverWidth, bookHeight, bookThickness))
         );
 
+        // Create left cover
         this.leftSideMesh = this.createBox(
             new THREE.Vector3(-coverWidth / 2, 0, bookThickness / 2),
-            new THREE.Vector3(bookThickness, bookHeight, bookWidth)
+            new THREE.Vector3(bookThickness, bookHeight, bookWidth),
+            this.createLeftCoverGeometry(new THREE.Vector3(bookThickness, bookHeight, bookWidth))
         );
 
+        // Create right cover
         this.rightSideMesh = this.createBox(
             new THREE.Vector3(coverWidth / 2, 0, bookThickness / 2),
-            new THREE.Vector3(bookThickness, bookHeight, bookWidth)
+            new THREE.Vector3(bookThickness, bookHeight, bookWidth),
+            this.createRightCoverGeometry(new THREE.Vector3(bookThickness, bookHeight, bookWidth))
         );
 
         this.leftSideMesh.geometry.translate(- bookThickness / 2, 0, bookWidth / 2);
@@ -240,97 +370,6 @@ export class Book {
         });
 
         return book;
-    }
-
-    private createBoxGeometry(boxSize: THREE.Vector3): THREE.BufferGeometry {
-        // Create the geometry with the corner at origin
-        const corner = new THREE.Vector3(
-            -boxSize.x / 2,  // Center the box
-            boxSize.y / 2,
-            boxSize.z / 2
-        );
-        const { points, indices } = ProceduralMesh.get3DRectPoints(corner, boxSize);
-
-        const vertices: number[] = [];
-        const indicesArray: number[] = [];
-        const uvs: number[] = [];
-        let vertexCounter = 0;
-
-        // Helper to add a quad (two triangles) with its own vertices
-        const addQuad = (p1: THREE.Vector3, p2: THREE.Vector3, p3: THREE.Vector3, p4: THREE.Vector3) => {
-            vertices.push(
-                p1.x, p1.y, p1.z,
-                p2.x, p2.y, p2.z,
-                p3.x, p3.y, p3.z,
-                p4.x, p4.y, p4.z
-            );
-
-            uvs.push(
-                0, 0,
-                1, 0,
-                0, 1,
-                1, 1
-            );
-
-            const indicesToAdd = [
-                vertexCounter, vertexCounter + 1, vertexCounter + 2,     // First triangle
-                vertexCounter + 2, vertexCounter + 1, vertexCounter + 3  // Second triangle
-            ];
-
-            indicesArray.push(...indicesToAdd);
-
-            vertexCounter += 4;
-        };
-
-        // Add all faces for a complete box
-        // Front
-        addQuad(
-            points[indices.frontTopLeft], points[indices.frontTopRight],
-            points[indices.frontBottomLeft], points[indices.frontBottomRight],
-        );
-        // Back
-        addQuad(
-            points[indices.backTopRight], points[indices.backTopLeft],
-            points[indices.backBottomRight], points[indices.backBottomLeft]
-        );
-        // Left
-        addQuad(
-            points[indices.frontBottomLeft], points[indices.backBottomLeft],
-            points[indices.frontTopLeft], points[indices.backTopLeft]
-        );
-        // Right
-        addQuad(
-            points[indices.backBottomRight], points[indices.frontBottomRight],
-            points[indices.backTopRight], points[indices.frontTopRight]
-        );
-        // Top
-        addQuad(
-            points[indices.frontTopLeft], points[indices.backTopLeft],
-            points[indices.frontTopRight], points[indices.backTopRight],
-        );
-        // Bottom
-        addQuad(
-            points[indices.frontBottomLeft], points[indices.frontBottomRight],
-            points[indices.backBottomLeft], points[indices.backBottomRight]
-        );
-
-        const geometry = new THREE.BufferGeometry();
-        geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-        geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-        geometry.setIndex(indicesArray);
-        geometry.computeVertexNormals();
-
-        return geometry;
-    }
-
-    private createBox(boxCenter: THREE.Vector3, boxSize: THREE.Vector3): THREE.Mesh {
-        const geometry = this.createBoxGeometry(boxSize);
-        const material = new THREE.MeshLambertMaterial({
-            map: this.bookTexture.getTexture()
-        });
-        const box = new THREE.Mesh(geometry, material);
-        box.position.set(boxCenter.x, boxCenter.y, boxCenter.z);
-        return box;
     }
 
     public getOuterSize(): THREE.Vector3 {

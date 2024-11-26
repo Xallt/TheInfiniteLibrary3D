@@ -24,6 +24,20 @@ export function BookDesignStudio() {
     const canSubmitTexture = texture && selectionState === 'complete';
 
     useEffect(() => {
+        const container = document.querySelector('.threejs-container');
+        if (container) {
+            sceneRef.current = new BookDesignScene(container as HTMLElement);
+        }
+
+        return () => {
+            if (sceneRef.current) {
+                sceneRef.current.dispose();
+                sceneRef.current = null;
+            }
+        };
+    }, []);
+
+    useEffect(() => {
         if (viewMode === '2d') {
             if (!canvasRef.current) return;
 
@@ -51,22 +65,6 @@ export function BookDesignStudio() {
                 window.removeEventListener('resize', resizeCanvas);
             };
         }
-    }, [viewMode]);
-
-    useEffect(() => {
-        if (viewMode === '3d') {
-            const container = document.querySelector('.threejs-container');
-            if (container && !sceneRef.current) {
-                sceneRef.current = new BookDesignScene(container as HTMLElement);
-            }
-        }
-
-        return () => {
-            if (sceneRef.current) {
-                sceneRef.current.dispose();
-                sceneRef.current = null;
-            }
-        };
     }, [viewMode]);
 
     useEffect(() => {
@@ -242,16 +240,20 @@ export function BookDesignStudio() {
     };
 
     const handleSubmitTexture = () => {
-        if (!canSubmitTexture || !texture) return;
+        if (!canSubmitTexture || !texture) {
+            throw new Error('Texture is not loaded or not complete');
+        }
 
         // Create texture
         const threeTexture = new THREE.Texture(texture);
         threeTexture.needsUpdate = true;
 
-        if (sceneRef.current) {
-            sceneRef.current.addBookWithTexture(threeTexture, coverPositions, defaultBookParams);
-            setViewMode('3d'); // Switch to 3D view after adding
+        if (!sceneRef.current) {
+            throw new Error('Scene is not initialized');
         }
+
+        sceneRef.current.addBookWithTexture(threeTexture, coverPositions, defaultBookParams);
+        setViewMode('3d'); // Switch to 3D view after adding
     };
 
     return (
@@ -321,12 +323,11 @@ export function BookDesignStudio() {
                             onMouseLeave={handleMouseLeave}
                             onClick={handleCanvasClick}
                         />
-                    ) : (
-                        <div 
-                            key={`threejs-${viewMode}`}
-                            className="threejs-container" 
-                        />
-                    )}
+                    ) : null}
+                    <div 
+                        className="threejs-container" 
+                        style={{ display: viewMode === '3d' ? 'block' : 'none' }}
+                    />
                 </div>
             </div>
         </div>

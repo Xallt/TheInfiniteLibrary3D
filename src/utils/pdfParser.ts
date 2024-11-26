@@ -18,11 +18,35 @@ export interface PdfPage {
     pageNumber: number;
 }
 
-export interface PdfParseResult {
-    metadata: {
-        numPages: number;
-    };
-    pages: AsyncGenerator<PdfPage>;
+export class PdfParseResult {
+    public metadata: PDFMetadata;
+    public pages: AsyncGenerator<PdfPage>;
+
+    constructor(
+        metadata: PDFMetadata,
+        pages: AsyncGenerator<PdfPage>
+    ) {
+        this.metadata = metadata;
+        this.pages = pages;
+    }
+
+    async *getPairedPages(): AsyncGenerator<[PdfPage, PdfPage | null], void, unknown> {
+        let firstPage: PdfPage | null = null;
+
+        for await (const page of this.pages) {
+            if (firstPage === null) {
+                firstPage = page;
+            } else {
+                yield [firstPage, page];
+                firstPage = null;
+            }
+        }
+
+        // Handle odd number of pages
+        if (firstPage !== null) {
+            yield [firstPage, null];
+        }
+    }
 }
 
 export class PdfParser {
@@ -56,10 +80,10 @@ export class PdfParser {
         };
 
         // Return both metadata and the generator
-        return {
+        return new PdfParseResult(
             metadata,
-            pages: this.generatePages(pdf, options)
-        };
+            this.generatePages(pdf, options)
+        );
     }
 
     private async *generatePages(
@@ -112,4 +136,4 @@ export class PdfParser {
             };
         }
     }
-} 
+}

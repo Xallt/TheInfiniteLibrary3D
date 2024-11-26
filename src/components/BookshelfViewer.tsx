@@ -23,26 +23,6 @@ class BookResourceMapping {
     }
 }
 
-async function* pairPdfPages(
-    pageGenerator: AsyncGenerator<PdfPage, void, unknown>
-): AsyncGenerator<[PdfPage, PdfPage | null], void, unknown> {
-    let firstPage: PdfPage | null = null;
-    
-    for await (const page of pageGenerator) {
-        if (firstPage === null) {
-            firstPage = page;
-        } else {
-            yield [firstPage, page];
-            firstPage = null;
-        }
-    }
-    
-    // Handle odd number of pages
-    if (firstPage !== null) {
-        yield [firstPage, null];
-    }
-}
-
 export function BookshelfViewer() {
     const sceneRef = useRef<MainScene | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -170,7 +150,7 @@ export function BookshelfViewer() {
             bookResourceMapping.book.resizePageArray(actualPageCount);
 
             let pageIndex = 0;
-            for await (const [frontPage, backPage] of pairPdfPages(parseResult.pages)) {
+            for await (const [frontPage, backPage] of parseResult.getPairedPages()) {
                 const physicalPage = Page.fromPdfPages(
                     frontPage,
                     backPage,

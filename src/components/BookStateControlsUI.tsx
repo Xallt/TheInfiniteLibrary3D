@@ -1,15 +1,46 @@
 import React, { useState } from 'react';
 import { Book, PageSelectedState } from '../components/Bookshelf/Book';
+import { ControllerWrapper } from '../scenes/MainScene';
 
 interface BookStateControlsUIProps {
     book: Book | null;
+    controllers: ControllerWrapper[];
 }
 
-export function BookStateControlsUI({ book }: BookStateControlsUIProps) {
+export function BookStateControlsUI({ book, controllers }: BookStateControlsUIProps) {
     const [bookAngle, setBookAngle] = useState(Math.PI / 4);
     const [isReadingMode, setIsReadingMode] = useState(false);
 
     if (!book) return null;
+
+    const handleControllerInput = () => {
+        for (const controllerWrapper of controllers) {
+            if (controllerWrapper.gamepad) {
+                // Check for reading mode toggle (button 4 - typically the trigger button)
+                if (controllerWrapper.isButtonNewlyPressed(4)) {
+                    const currentState = book.getCurrentState();
+                    if (currentState instanceof PageSelectedState) {
+                        handleSwitchToUniform();
+                    } else {
+                        handleSwitchToReading();
+                    }
+                }
+
+                // Check for page navigation (buttons 2 and 3 - typically the grip buttons)
+                if (isReadingMode) {
+                    if (controllerWrapper.isButtonNewlyPressed(2)) {
+                        handlePrevPage();
+                    }
+                    if (controllerWrapper.isButtonNewlyPressed(3)) {
+                        handleNextPage();
+                    }
+                }
+
+                // Update button states for next frame
+                controllerWrapper.updateButtonStates();
+            }
+        }
+    };
 
     const handleAngleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const newAngle = parseFloat(event.target.value);

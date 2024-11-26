@@ -15,7 +15,7 @@ interface BookIntersection extends THREE.Intersection<THREE.Object3D<THREE.Objec
     bookIndex?: number;
 }
 
-class ControllerWrapper {
+export class ControllerWrapper {
     public controller: THREE.XRTargetRaySpace;
     public gamepad: Gamepad | null = null;
     public previousButtonStates: boolean[] = [];
@@ -26,7 +26,6 @@ class ControllerWrapper {
 
     public updateButtonStates() {
         if (this.gamepad) {
-            // Initialize or update previous button states
             if (this.previousButtonStates.length !== this.gamepad.buttons.length) {
                 this.previousButtonStates = this.gamepad.buttons.map(button => button.pressed);
             } else {
@@ -42,7 +41,6 @@ class ControllerWrapper {
         return isCurrentlyPressed && !wasPreviouslyPressed;
     }
 }
-
 
 export class MainScene {
     private camera!: THREE.PerspectiveCamera;
@@ -355,20 +353,11 @@ export class MainScene {
             this.updateGrabbedBook();
 
             // Handle controller button states
-            for (const controllerWrapper of this.controllerWrappers) {
-                if (controllerWrapper.gamepad) {
-                    // Check for newly pressed buttons before updating states
-                    if (this.isBookInViewMode && controllerWrapper.isButtonNewlyPressed(4)) {
-                        const book = this.books[this.viewingBookIndex];
-                        if (book.getCurrentState() instanceof PageSelectedState) {
-                            book.setState(new UniformlyOpenedState(Math.PI / 2));
-                        } else {
-                            this.switchToReadingMode();
-                        }
-                    }
-
-                    // Update button states for next frame
-                    controllerWrapper.updateButtonStates();
+            if (this.isBookInViewMode && this.viewingBookIndex !== -1) {
+                const book = this.books[this.viewingBookIndex];
+                const currentState = book.getCurrentState();
+                if (currentState instanceof PageSelectedState) {
+                    book.selectPage(currentState.getSelectedPageIndex());
                 }
             }
         } else {
@@ -692,5 +681,9 @@ export class MainScene {
                 }
             }
         }
+    }
+
+    public getControllers(): ControllerWrapper[] {
+        return this.controllerWrappers;
     }
 }

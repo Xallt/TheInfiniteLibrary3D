@@ -32,6 +32,10 @@ export class UniformlyOpenedState implements BookOpeningState {
             pageAngles
         };
     }
+
+    public getAngle(): number {
+        return this.angle;
+    }
 }
 
 // Add this new state class after UniformlyOpenedState

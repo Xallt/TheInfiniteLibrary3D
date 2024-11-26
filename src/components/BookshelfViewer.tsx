@@ -249,7 +249,7 @@ export function BookshelfViewer() {
 
             {isViewingBook && (
                 <BookStateControlsUI 
-                    book={sceneRef.current?.getSelectedBook() || null}
+                    book={sceneRef.current?.getSelectedBook()!}
                     controllers={sceneRef.current?.getControllers() || []}
                 />
             )}

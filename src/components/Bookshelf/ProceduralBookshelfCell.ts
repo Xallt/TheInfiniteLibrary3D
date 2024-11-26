@@ -1,7 +1,7 @@
-import { MeshConnection, MeshConnectionFace } from '../utils/MeshConnection';
+import { MeshConnection, MeshConnectionFace } from '../../utils/MeshConnection';
 import * as THREE from 'three';
 import { TextureLoader } from './Book';
-import { ProceduralMesh, RectPointIndices } from '../utils/ProceduralMesh';
+import { ProceduralMesh, RectPointIndices } from '../../utils/ProceduralMesh';
 
 type Edge = [number, number]; // Start and end vertex indices
 

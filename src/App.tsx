@@ -1,8 +1,11 @@
 import React from 'react';
+import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
 import { BookshelfViewer } from './components/BookshelfViewer';
+import { BookDesignStudio } from './components/BookDesignStudio';
 import './styles/BookshelfViewer.css';
-import { BookMeshParams } from './components/Book';
-import { BookshelfParams } from './components/Bookshelf';
+import './styles/BookDesignStudio.css';
+import { BookMeshParams } from './components/Bookshelf/Book';
+import { BookshelfParams } from './components/Bookshelf/Bookshelf';
 
 // Move the parameters from App.ts to here
 export const defaultBookParams: BookMeshParams = {
@@ -27,6 +30,15 @@ export const defaultBookshelfParams: BookshelfParams = {
 
 export function App() {
     return (
-        <BookshelfViewer />
+        <BrowserRouter>
+            <nav className="main-nav">
+                <Link to="/">Bookshelf</Link>
+                <Link to="/book-design">Book Design Studio</Link>
+            </nav>
+            <Routes>
+                <Route path="/" element={<BookshelfViewer />} />
+                <Route path="/book-design" element={<BookDesignStudio />} />
+            </Routes>
+        </BrowserRouter>
     );
 };

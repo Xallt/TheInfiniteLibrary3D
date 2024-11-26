@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { Page, PageParams } from './Page';
 import { PdfPage } from 'src/utils/pdfParser';
 import { BookTexture } from './BookTexture';
-import { ProceduralMesh } from '../utils/ProceduralMesh';
+import { ProceduralMesh } from '../../utils/ProceduralMesh';
 
 // Add these interfaces at the top of the file
 export interface BookOpeningState {

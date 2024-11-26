@@ -1,14 +1,14 @@
 import * as THREE from 'three';
-import { Book, BookMeshParams, PageSelectedState, TextureLoader, UniformlyOpenedState } from '../components/Book';
+import { Book, BookMeshParams, PageSelectedState, TextureLoader, UniformlyOpenedState } from '../components/Bookshelf/Book';
 import { createControls } from '../components/Controls';
 import Stats from 'three/examples/jsm/libs/stats.module.js';
-import { Bookshelf, BookshelfParams } from '../components/Bookshelf';
+import { Bookshelf, BookshelfParams } from '../components/Bookshelf/Bookshelf';
 import { PdfPage } from 'src/utils/pdfParser';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { VRButton } from 'three/examples/jsm/webxr/VRButton.js';
 import { XRControllerModelFactory } from 'three/examples/jsm/webxr/XRControllerModelFactory.js';
 import { TransformControls, TransformControlsGizmo } from 'three/examples/jsm/controls/TransformControls';
-import { BookTexture } from '../components/BookTexture';
+import { BookTexture } from '../components/Bookshelf/BookTexture';
 import { Raycaster, Vector3, Vector2 } from 'three';
 
 interface BookIntersection extends THREE.Intersection<THREE.Object3D<THREE.Object3DEventMap>> {

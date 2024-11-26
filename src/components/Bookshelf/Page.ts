@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { BookMeshParams, TextureLoader } from './Book';
-import { PdfPage } from '../utils/pdfParser';
+import { PdfPage } from '../../utils/pdfParser';
 
 export interface PageParams {
     width: number;

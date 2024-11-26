@@ -1,16 +1,22 @@
 import React, { useEffect, useRef, useState } from 'react';
 
-interface VerticalLine {
-    position: number;  // Normalized position (0-1)
-    pixelX: number;    // Actual pixel position
+interface CoverPositions {
+    leftCoverPosition: number | null;
+    rightCoverPosition: number | null;
 }
+
+type SelectionState = 'left' | 'right' | 'complete';
 
 export function BookDesignStudio() {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const contextRef = useRef<CanvasRenderingContext2D | null>(null);
     const [texture, setTexture] = useState<HTMLImageElement | null>(null);
     const [mouseX, setMouseX] = useState<number | null>(null);
-    const [verticalLines, setVerticalLines] = useState<VerticalLine[]>([]);
+    const [coverPositions, setCoverPositions] = useState<CoverPositions>({
+        leftCoverPosition: null,
+        rightCoverPosition: null
+    });
+    const [selectionState, setSelectionState] = useState<SelectionState>('left');
     const [imageMetrics, setImageMetrics] = useState<{x: number, y: number, width: number, height: number} | null>(null);
 
     useEffect(() => {
@@ -43,7 +49,7 @@ export function BookDesignStudio() {
 
     useEffect(() => {
         drawCanvas();
-    }, [texture, mouseX, verticalLines]);
+    }, [texture, mouseX, coverPositions, selectionState]);
 
     const calculateImageMetrics = (canvas: HTMLCanvasElement, texture: HTMLImageElement) => {
         const scale = Math.min(
@@ -85,26 +91,19 @@ export function BookDesignStudio() {
             ctx.lineWidth = 2;
             ctx.strokeRect(x, y, width, height);
 
-            // Draw saved vertical lines
-            verticalLines.forEach((line, index) => {
-                const pixelX = x + (line.position * width);
-                ctx.beginPath();
-                ctx.setLineDash([5, 5]);
-                ctx.moveTo(pixelX, y);
-                ctx.lineTo(pixelX, y + height);
-                ctx.strokeStyle = '#0000FF';
-                ctx.lineWidth = 2;
-                ctx.stroke();
-                ctx.setLineDash([]);
+            // Draw saved positions
+            if (coverPositions.leftCoverPosition !== null) {
+                const leftX = x + (coverPositions.leftCoverPosition * width);
+                drawPositionLine(ctx, leftX, y, height, '#0000FF', 'Left Cover');
+            }
+            
+            if (coverPositions.rightCoverPosition !== null) {
+                const rightX = x + (coverPositions.rightCoverPosition * width);
+                drawPositionLine(ctx, rightX, y, height, '#0000FF', 'Right Cover');
+            }
 
-                // Draw position label
-                ctx.fillStyle = '#0000FF';
-                ctx.font = '14px Arial';
-                ctx.fillText(`Line ${index + 1}: ${line.position.toFixed(3)}`, pixelX, y - 10);
-            });
-
-            // Draw current guide line
-            if (mouseX !== null && mouseX >= x && mouseX <= x + width) {
+            // Draw current guide line if not complete
+            if (mouseX !== null && mouseX >= x && mouseX <= x + width && selectionState !== 'complete') {
                 ctx.beginPath();
                 ctx.setLineDash([5, 5]);
                 ctx.moveTo(mouseX, y);
@@ -114,11 +113,14 @@ export function BookDesignStudio() {
                 ctx.stroke();
                 ctx.setLineDash([]);
 
-                // Draw normalized position for current line
                 const normalizedPosition = ((mouseX - x) / width).toFixed(3);
                 ctx.fillStyle = '#FF0000';
                 ctx.font = '14px Arial';
-                ctx.fillText(`Position: ${normalizedPosition}`, mouseX, y - 25);
+                ctx.fillText(
+                    `Select ${selectionState} cover position: ${normalizedPosition}`,
+                    mouseX,
+                    y - 25
+                );
             }
         } else {
             ctx.fillStyle = '#333333';
@@ -128,8 +130,30 @@ export function BookDesignStudio() {
         }
     };
 
+    const drawPositionLine = (
+        ctx: CanvasRenderingContext2D,
+        x: number,
+        y: number,
+        height: number,
+        color: string,
+        label: string
+    ) => {
+        ctx.beginPath();
+        ctx.setLineDash([5, 5]);
+        ctx.moveTo(x, y);
+        ctx.lineTo(x, y + height);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        ctx.fillStyle = color;
+        ctx.font = '14px Arial';
+        ctx.fillText(label, x, y - 10);
+    };
+
     const handleMouseMove = (event: React.MouseEvent<HTMLCanvasElement>) => {
-        if (!canvasRef.current || !texture) return;
+        if (!canvasRef.current || !texture || selectionState === 'complete') return;
 
         const rect = canvasRef.current.getBoundingClientRect();
         const mouseX = event.clientX - rect.left;
@@ -141,24 +165,36 @@ export function BookDesignStudio() {
     };
 
     const handleCanvasClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
-        if (!imageMetrics || !texture) return;
+        if (!imageMetrics || !texture || selectionState === 'complete') return;
 
         const rect = canvasRef.current!.getBoundingClientRect();
         const clickX = event.clientX - rect.left;
         
-        // Only add line if click is within image bounds
         if (clickX >= imageMetrics.x && clickX <= imageMetrics.x + imageMetrics.width) {
             const normalizedPosition = (clickX - imageMetrics.x) / imageMetrics.width;
             
-            setVerticalLines(prev => [...prev, {
-                position: normalizedPosition,
-                pixelX: clickX
-            }]);
+            if (selectionState === 'left') {
+                setCoverPositions(prev => ({
+                    ...prev,
+                    leftCoverPosition: normalizedPosition
+                }));
+                setSelectionState('right');
+            } else if (selectionState === 'right') {
+                setCoverPositions(prev => ({
+                    ...prev,
+                    rightCoverPosition: normalizedPosition
+                }));
+                setSelectionState('complete');
+            }
         }
     };
 
-    const handleClearLines = () => {
-        setVerticalLines([]);
+    const handleReset = () => {
+        setCoverPositions({
+            leftCoverPosition: null,
+            rightCoverPosition: null
+        });
+        setSelectionState('left');
     };
 
     const handleTextureLoad = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -170,7 +206,7 @@ export function BookDesignStudio() {
             const img = new Image();
             img.onload = () => {
                 setTexture(img);
-                setVerticalLines([]); // Clear lines when new texture is loaded
+                handleReset(); // Reset positions when new texture is loaded
             };
             img.src = e.target?.result as string;
         };
@@ -202,14 +238,20 @@ export function BookDesignStudio() {
                                     Clear Texture
                                 </button>
                                 <button 
-                                    onClick={handleClearLines}
+                                    onClick={handleReset}
                                     className="clear-button"
                                 >
-                                    Clear Lines
+                                    Reset Positions
                                 </button>
                             </>
                         )}
                     </div>
+                    {selectionState === 'complete' && (
+                        <div className="positions-display">
+                            <p>Left Cover: {coverPositions.leftCoverPosition?.toFixed(3)}</p>
+                            <p>Right Cover: {coverPositions.rightCoverPosition?.toFixed(3)}</p>
+                        </div>
+                    )}
                 </div>
                 <div className="scene-container">
                     <canvas 

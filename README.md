@@ -27,3 +27,6 @@ Collections of book cover designs:
 
 - [https://demisiriusly.wordpress.com/2019/11/25/hp-book-covers/](https://demisiriusly.wordpress.com/2019/11/25/hp-book-covers/)
 - [https://www.paperandsage.com/premades/](https://www.paperandsage.com/premades/)
+- [https://ru.pinterest.com/hannahhamsandy/full-book-covers/](https://ru.pinterest.com/hannahhamsandy/full-book-covers/)
+- [https://ru.pinterest.com/hellnyyx/book-covers/](https://ru.pinterest.com/hellnyyx/book-covers/)
+- [https://ru.pinterest.com/pin/8444318045195284/](https://ru.pinterest.com/pin/8444318045195284/)

@@ -1,0 +1,42 @@
+.book-design-studio {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    width: 100%;
+}
+
+.scene-container {
+    flex: 1;
+    position: relative;
+    background: #f0f0f0;
+}
+
+.scene-container canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.design-controls {
+    padding: 20px;
+    background-color: #f5f5f5;
+    border-top: 1px solid #ddd;
+}
+
+/* Styles for the navigation */
+.main-nav {
+    padding: 1rem;
+    background-color: #333;
+}
+
+.main-nav a {
+    color: white;
+    text-decoration: none;
+    margin-right: 1rem;
+    padding: 0.5rem 1rem;
+}
+
+.main-nav a:hover {
+    background-color: #444;
+    border-radius: 4px;
+} 

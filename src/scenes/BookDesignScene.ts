@@ -22,23 +22,36 @@ export class BookDesignScene {
             0.1,
             1000
         );
-        this.camera.position.z = 5;
+        this.camera.position.z = 2;
 
-        // Initialize renderer
-        this.renderer = new THREE.WebGLRenderer({ antialias: true });
-        this.renderer.setSize(container.clientWidth, container.clientHeight);
+        // Initialize renderer with explicit size
+        this.renderer = new THREE.WebGLRenderer({
+            antialias: true,
+            alpha: true
+        });
+
+        // Set size explicitly from container
+        this.renderer.setSize(container.clientWidth, container.clientHeight, false);
+        this.renderer.setPixelRatio(window.devicePixelRatio);
+        container.innerHTML = ''; // Clear any existing content
         container.appendChild(this.renderer.domElement);
 
         // Initialize controls
         this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+        this.controls.enableDamping = true;
+        this.controls.dampingFactor = 0.05;
 
         // Add some basic lighting
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
         this.scene.add(ambientLight);
 
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
-        directionalLight.position.set(0, 1, 0);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(1, 1, 1);
         this.scene.add(directionalLight);
+
+        // Add a grid helper for reference
+        const gridHelper = new THREE.GridHelper(2, 20);
+        this.scene.add(gridHelper);
 
         // Start animation loop
         this.animate();

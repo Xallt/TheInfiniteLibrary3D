@@ -55,8 +55,8 @@ export function BookDesignStudio() {
 
     useEffect(() => {
         if (viewMode === '3d') {
-            const container = document.querySelector('.scene-container');
-            if (container) {
+            const container = document.querySelector('.threejs-container');
+            if (container && !sceneRef.current) {
                 sceneRef.current = new BookDesignScene(container as HTMLElement);
             }
         }

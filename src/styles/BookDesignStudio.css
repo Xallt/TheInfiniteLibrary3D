@@ -133,4 +133,22 @@
 .submit-button:disabled {
     background-color: #cccccc;
     cursor: not-allowed;
+}
+
+.selected-pdf-info {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: #f5f5f5;
+    border-radius: 4px;
+}
+
+.selected-pdf-info h4 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1rem;
+}
+
+.selected-pdf-info p {
+    margin: 0 0 0.5rem 0;
+    word-break: break-all;
+    font-size: 0.9rem;
 } 

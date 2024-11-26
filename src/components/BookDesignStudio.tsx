@@ -23,6 +23,7 @@ export function BookDesignStudio() {
     const [viewMode, setViewMode] = useState<ViewMode>('2d');
     const [bookTextures, setBookTextures] = useState<BookTexture[]>([]);
     const [isPDFModalOpen, setIsPDFModalOpen] = useState(false);
+    const [selectedPDF, setSelectedPDF] = useState<PDFResource | null>(null);
 
     const canSubmitTexture = texture && selectionState === 'complete';
 
@@ -228,6 +229,14 @@ export function BookDesignStudio() {
         setViewMode(prev => prev === '2d' ? '3d' : '2d');
     };
 
+    const handlePDFSelected = (sources: PDFResource[]) => {
+        if (sources.length > 0) {
+            const selectedPDF = sources[0];
+            setSelectedPDF(selectedPDF);
+        }
+        setIsPDFModalOpen(false);
+    };
+
     const handleSubmitTexture = () => {
         if (!canSubmitTexture || !texture) {
             throw new Error('Texture is not loaded or not complete');
@@ -237,22 +246,16 @@ export function BookDesignStudio() {
         const threeTexture = new THREE.Texture(texture);
         threeTexture.needsUpdate = true;
 
-        // Create BookTexture instance
+        // Create BookTexture instance with the selected PDF
         const bookTexture = new BookTexture(threeTexture, coverPositions);
-
+        
         // Add to textures array
         setBookTextures(prev => [...prev, bookTexture]);
+        
+        // Reset the selected PDF after creating the book
+        setSelectedPDF(null);
+        
         setViewMode('3d');
-    };
-
-    const handlePDFSelected = (sources: PDFResource[]) => {
-        if (sources.length > 0) {
-            // Handle the selected PDF - you'll need to implement the logic
-            // to convert the PDF to a texture
-            const selectedPDF = sources[0]; // In single mode, we only care about the first one
-            // TODO: Convert PDF to texture
-        }
-        setIsPDFModalOpen(false);
     };
 
     return (
@@ -309,9 +312,24 @@ export function BookDesignStudio() {
                             className="button-like"
                             onClick={() => setIsPDFModalOpen(true)}
                         >
-                            Select PDF
+                            {selectedPDF ? 'Change PDF' : 'Select PDF'}
                         </button>
                     </div>
+                    
+                    {/* Show selected PDF info */}
+                    {selectedPDF && (
+                        <div className="selected-pdf-info">
+                            <h4>Selected PDF</h4>
+                            <p>{selectedPDF.getDisplayName()}</p>
+                            <button 
+                                className="clear-button"
+                                onClick={() => setSelectedPDF(null)}
+                            >
+                                Clear PDF
+                            </button>
+                        </div>
+                    )}
+
                     {viewMode === '2d' && selectionState === 'complete' && (
                         <div className="positions-display">
                             <p>Left Cover: {coverPositions.leftCoverPosition.toFixed(3)}</p>

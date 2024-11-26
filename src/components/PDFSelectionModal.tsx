@@ -11,6 +11,7 @@ interface PDFSelectionModalProps {
     onClose: () => void;
     onPDFSourcesSubmitted: (sources: PDFResource[]) => void;
     initialURLs?: string[];
+    singleBookMode?: boolean;
 }
 
 type TabType = 'url' | 'file';
@@ -19,55 +20,69 @@ export function PDFSelectionModal({
     isOpen,
     onClose,
     onPDFSourcesSubmitted,
-    initialURLs = ['https://arxiv.org/pdf/1706.03762']
+    initialURLs = [''],
+    singleBookMode = false
 }: PDFSelectionModalProps) {
     const [activeTab, setActiveTab] = useState<TabType>('url');
-    const [resourcesWithCount, setResourcesWithCount] = useState<PDFResourceWithCount[]>(() => 
+    const [urlResourcesWithCount, setUrlResourcesWithCount] = useState<PDFResourceWithCount[]>(() => 
         initialURLs.map(url => ({
             resource: new URLPDFResource(url),
             count: 1
         }))
     );
+    const [fileResourcesWithCount, setFileResourcesWithCount] = useState<PDFResourceWithCount[]>([]);
 
     if (!isOpen) return null;
 
-    const urlResources = resourcesWithCount.filter(r => r.resource instanceof URLPDFResource);
-    const fileResources = resourcesWithCount.filter(r => !(r.resource instanceof URLPDFResource));
-
     const handleAddUrl = () => {
+        if (singleBookMode && urlResourcesWithCount.length > 0) return;
+        
         const newResource = {
             resource: new URLPDFResource(''),
             count: 1
         };
-        setResourcesWithCount(prevResources => [...prevResources, newResource]);
+        setUrlResourcesWithCount(prevResources => [...prevResources, newResource]);
     };
 
     const handleRemoveResource = (index: number) => {
-        setResourcesWithCount(resourcesWithCount.filter((_, i) => i !== index));
-    };
-
-    const handleUrlChange = (index: number, value: string) => {
-        const newResources = [...resourcesWithCount];
-        const globalIndex = resourcesWithCount.findIndex((r, i) => 
-            r.resource instanceof URLPDFResource && 
-            urlResources.indexOf(r) === index
-        );
-        if (globalIndex !== -1) {
-            newResources[globalIndex] = {
-                resource: new URLPDFResource(value),
-                count: newResources[globalIndex].count
-            };
-            setResourcesWithCount(newResources);
+        if (activeTab === 'url') {
+            setUrlResourcesWithCount(prev => prev.filter((_, i) => i !== index));
+        } else {
+            setFileResourcesWithCount(prev => prev.filter((_, i) => i !== index));
         }
     };
 
+    const handleUrlChange = (index: number, value: string) => {
+        setUrlResourcesWithCount(prev => {
+            const newResources = [...prev];
+            newResources[index] = {
+                resource: new URLPDFResource(value),
+                count: newResources[index].count
+            };
+            return newResources;
+        });
+    };
+
     const handleCountChange = (index: number, value: number) => {
-        const newResources = [...resourcesWithCount];
-        newResources[index] = {
-            ...newResources[index],
-            count: value
-        };
-        setResourcesWithCount(newResources);
+        if (activeTab === 'url') {
+            setUrlResourcesWithCount(prev => {
+                const newResources = [...prev];
+                newResources[index] = {
+                    ...newResources[index],
+                    count: value
+                };
+                return newResources;
+            });
+        } else {
+            setFileResourcesWithCount(prev => {
+                const newResources = [...prev];
+                newResources[index] = {
+                    ...newResources[index],
+                    count: value
+                };
+                return newResources;
+            });
+        }
     };
 
     const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -81,44 +96,48 @@ export function PDFSelectionModal({
                 count: 1
             }));
 
-        setResourcesWithCount([...resourcesWithCount, ...newResources]);
+        if (singleBookMode) {
+            setFileResourcesWithCount([newResources[0]]);
+        } else {
+            setFileResourcesWithCount(prev => [...prev, ...newResources]);
+        }
     };
 
     const handleSubmit = () => {
-        const activeResourcesWithCount = activeTab === 'url' ? urlResources : fileResources;
+        const activeResources = activeTab === 'url' ? urlResourcesWithCount : fileResourcesWithCount;
         
-        const validResourcesWithCount = activeResourcesWithCount.filter(({ resource, count }) => {
+        const validResources = activeResources.filter(({ resource }) => {
             if (resource instanceof URLPDFResource) {
                 return resource.getDisplayName().trim() !== '';
             }
             return true;
         });
 
-        if (validResourcesWithCount.length > 0) {
-            const expandedResources = validResourcesWithCount.flatMap(({ resource, count }) => 
+        if (validResources.length > 0) {
+            const expandedResources = validResources.flatMap(({ resource, count }) => 
                 Array(Math.max(1, Math.min(100, count || 1))).fill(resource)
             );
             
             onPDFSourcesSubmitted(expandedResources);
             
-            const remainingResources = activeTab === 'url' ? 
-                fileResources : 
-                (activeTab === 'file' ? urlResources : []);
+            if (activeTab === 'url') {
+                setUrlResourcesWithCount(
+                    singleBookMode ? [] : initialURLs.map(url => ({
+                        resource: new URLPDFResource(url),
+                        count: 1
+                    }))
+                );
+            } else {
+                setFileResourcesWithCount([]);
+            }
             
-            setResourcesWithCount([
-                ...remainingResources,
-                ...(activeTab === 'url' ? initialURLs.map(url => ({
-                    resource: new URLPDFResource(url),
-                    count: 1
-                })) : [])
-            ]);
             onClose();
         }
     };
 
     const getSubmitButtonText = () => {
-        const activeResourcesWithCount = activeTab === 'url' ? urlResources : fileResources;
-        const totalCount = activeResourcesWithCount.reduce((sum, { count }) => 
+        const activeResources = activeTab === 'url' ? urlResourcesWithCount : fileResourcesWithCount;
+        const totalCount = activeResources.reduce((sum, { count }) => 
             sum + (count || 1), 0);
         return `Load ${totalCount} PDF${totalCount !== 1 ? 's' : ''}`;
     };
@@ -149,7 +168,7 @@ export function PDFSelectionModal({
         <div className="modal-overlay">
             <div className="modal-content">
                 <div className="modal-header">
-                    <h2>Add PDFs</h2>
+                    <h2>{singleBookMode ? 'Select PDF' : 'Add PDFs'}</h2>
                     <button 
                         className="modal-close"
                         onClick={onClose}
@@ -163,13 +182,13 @@ export function PDFSelectionModal({
                         className={`tab ${activeTab === 'url' ? 'active' : ''}`}
                         onClick={() => setActiveTab('url')}
                     >
-                        URLs ({urlResources.length})
+                        URLs {!singleBookMode && `(${urlResourcesWithCount.length})`}
                     </button>
                     <button 
                         className={`tab ${activeTab === 'file' ? 'active' : ''}`}
                         onClick={() => setActiveTab('file')}
                     >
-                        File Upload ({fileResources.length})
+                        File Upload {!singleBookMode && `(${fileResourcesWithCount.length})`}
                     </button>
                 </div>
 
@@ -177,23 +196,20 @@ export function PDFSelectionModal({
                     {activeTab === 'url' ? (
                         <div className="url-tab">
                             <div className="url-list">
-                                {urlResources.map(({ resource, count }, index) => (
+                                {urlResourcesWithCount.map((resourceWithCount, index) => (
                                     <div key={index} className="url-input-row">
                                         <input
                                             type="text"
                                             className="url-input"
-                                            value={resource.getDisplayName()}
+                                            value={resourceWithCount.resource.getDisplayName()}
                                             onChange={(e) => handleUrlChange(index, e.target.value)}
                                             placeholder="Enter PDF URL"
                                         />
-                                        {renderCountSelector(urlResources[index], 
-                                            resourcesWithCount.indexOf(urlResources[index]))}
-                                        {urlResources.length > 1 && (
+                                        {!singleBookMode && renderCountSelector(resourceWithCount, index)}
+                                        {!singleBookMode && urlResourcesWithCount.length > 1 && (
                                             <button
                                                 className="remove-url"
-                                                onClick={() => handleRemoveResource(
-                                                    resourcesWithCount.indexOf(urlResources[index])
-                                                )}
+                                                onClick={() => handleRemoveResource(index)}
                                             >
                                                 ×
                                             </button>
@@ -201,9 +217,11 @@ export function PDFSelectionModal({
                                     </div>
                                 ))}
                             </div>
-                            <button className="add-url" onClick={handleAddUrl}>
-                                Add Another URL
-                            </button>
+                            {(!singleBookMode || urlResourcesWithCount.length === 0) && (
+                                <button className="add-url" onClick={handleAddUrl}>
+                                    Add {singleBookMode ? 'URL' : 'Another URL'}
+                                </button>
+                            )}
                         </div>
                     ) : (
                         <div className="file-tab">
@@ -223,19 +241,16 @@ export function PDFSelectionModal({
                                     </div>
                                 </label>
                             </div>
-                            {fileResources.length > 0 && (
+                            {fileResourcesWithCount.length > 0 && (
                                 <div className="file-list">
                                     <h3>Selected Files:</h3>
-                                    {fileResources.map(({ resource, count }, index) => (
+                                    {fileResourcesWithCount.map((resourceWithCount, index) => (
                                         <div key={index} className="file-entry">
-                                            <span>{resource.getDisplayName()}</span>
-                                            {renderCountSelector(fileResources[index],
-                                                resourcesWithCount.indexOf(fileResources[index]))}
+                                            <span>{resourceWithCount.resource.getDisplayName()}</span>
+                                            {!singleBookMode && renderCountSelector(resourceWithCount, index)}
                                             <button
                                                 className="remove-url"
-                                                onClick={() => handleRemoveResource(
-                                                    resourcesWithCount.indexOf(fileResources[index])
-                                                )}
+                                                onClick={() => handleRemoveResource(index)}
                                             >
                                                 ×
                                             </button>
@@ -250,11 +265,9 @@ export function PDFSelectionModal({
                 <button 
                     className="submit-urls"
                     onClick={handleSubmit}
-                    disabled={
-                        (activeTab === 'url' ? urlResources : fileResources).length === 0
-                    }
+                    disabled={(activeTab === 'url' ? urlResourcesWithCount : fileResourcesWithCount).length === 0}
                 >
-                    {getSubmitButtonText()}
+                    {singleBookMode ? 'Select PDF' : getSubmitButtonText()}
                 </button>
             </div>
         </div>

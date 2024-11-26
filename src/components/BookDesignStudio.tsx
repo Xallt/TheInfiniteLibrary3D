@@ -3,6 +3,8 @@ import { BookDesignScene } from '../scenes/BookDesignScene';
 import { BookTexture, BookTextureParams } from './Bookshelf/BookTexture';
 import { defaultBookParams } from '../App';
 import * as THREE from 'three';
+import { PDFSelectionModal } from './PDFSelectionModal';
+import { PDFResource } from '../types/PDFResource';
 
 type SelectionState = 'left' | 'right' | 'complete';
 type ViewMode = '2d' | '3d';
@@ -20,6 +22,7 @@ export function BookDesignStudio() {
     const [imageMetrics, setImageMetrics] = useState<{x: number, y: number, width: number, height: number} | null>(null);
     const [viewMode, setViewMode] = useState<ViewMode>('2d');
     const [bookTextures, setBookTextures] = useState<BookTexture[]>([]);
+    const [isPDFModalOpen, setIsPDFModalOpen] = useState(false);
 
     const canSubmitTexture = texture && selectionState === 'complete';
 
@@ -242,6 +245,16 @@ export function BookDesignStudio() {
         setViewMode('3d');
     };
 
+    const handlePDFSelected = (sources: PDFResource[]) => {
+        if (sources.length > 0) {
+            // Handle the selected PDF - you'll need to implement the logic
+            // to convert the PDF to a texture
+            const selectedPDF = sources[0]; // In single mode, we only care about the first one
+            // TODO: Convert PDF to texture
+        }
+        setIsPDFModalOpen(false);
+    };
+
     return (
         <div className="book-design-studio">
             <div className="studio-layout">
@@ -292,6 +305,12 @@ export function BookDesignStudio() {
                                 )}
                             </>
                         )}
+                        <button 
+                            className="button-like"
+                            onClick={() => setIsPDFModalOpen(true)}
+                        >
+                            Select PDF
+                        </button>
                     </div>
                     {viewMode === '2d' && selectionState === 'complete' && (
                         <div className="positions-display">
@@ -319,6 +338,12 @@ export function BookDesignStudio() {
                     )}
                 </div>
             </div>
+            <PDFSelectionModal
+                isOpen={isPDFModalOpen}
+                onClose={() => setIsPDFModalOpen(false)}
+                onPDFSourcesSubmitted={handlePDFSelected}
+                singleBookMode={true}
+            />
         </div>
     );
 } 

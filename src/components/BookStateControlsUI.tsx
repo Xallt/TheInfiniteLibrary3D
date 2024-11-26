@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Book, PageSelectedState } from '../components/Bookshelf/Book';
 import { ControllerWrapper } from '../scenes/MainScene';
 
@@ -10,6 +10,23 @@ interface BookStateControlsUIProps {
 export function BookStateControlsUI({ book, controllers }: BookStateControlsUIProps) {
     const [bookAngle, setBookAngle] = useState(Math.PI / 4);
     const [isReadingMode, setIsReadingMode] = useState(false);
+    const animationFrameRef = useRef<number>();
+
+    useEffect(() => {
+        // Start animation loop when component mounts
+        const animate = () => {
+            handleControllerInput();
+            animationFrameRef.current = requestAnimationFrame(animate);
+        };
+        animate();
+
+        // Cleanup animation loop when component unmounts
+        return () => {
+            if (animationFrameRef.current) {
+                cancelAnimationFrame(animationFrameRef.current);
+            }
+        };
+    }, [book, controllers]); // Re-setup animation when book or controllers change
 
     if (!book) return null;
 

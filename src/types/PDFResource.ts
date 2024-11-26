@@ -60,9 +60,6 @@ export class URLPDFResource extends PDFResource {
 
     constructor(url: string) {
         super();
-        if (!url.trim()) {
-            throw new Error('URL cannot be empty');
-        }
         this.url = url;
     }
 

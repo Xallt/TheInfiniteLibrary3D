@@ -9,6 +9,7 @@
     flex: 1;
     display: flex;
     flex-direction: row;
+    height: 100%;
 }
 
 .side-controls {
@@ -25,11 +26,13 @@
     flex: 1;
     position: relative;
     background: #f0f0f0;
+    min-height: 0;
+    display: flex;
 }
 
 .scene-container canvas {
-    width: 100%;
-    height: 100%;
+    width: 100% !important;
+    height: 100% !important;
     display: block;
 }
 
@@ -85,4 +88,28 @@
 .main-nav a:hover {
     background-color: #444;
     border-radius: 4px;
+}
+
+.view-mode-button {
+    padding: 8px 16px;
+    background-color: #2196F3;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s;
+}
+
+.view-mode-button:hover {
+    background-color: #1976D2;
+}
+
+.view-mode-button.active {
+    background-color: #1565C0;
+}
+
+.threejs-container {
+    width: 100%;
+    height: 100%;
 } 

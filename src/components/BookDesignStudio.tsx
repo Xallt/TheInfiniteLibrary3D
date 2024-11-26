@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { BookDesignScene } from '../scenes/BookDesignScene';
 
 interface CoverPositions {
     leftCoverPosition: number | null;
@@ -6,6 +7,7 @@ interface CoverPositions {
 }
 
 type SelectionState = 'left' | 'right' | 'complete';
+type ViewMode = '2d' | '3d';
 
 export function BookDesignStudio() {
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -18,38 +20,60 @@ export function BookDesignStudio() {
     });
     const [selectionState, setSelectionState] = useState<SelectionState>('left');
     const [imageMetrics, setImageMetrics] = useState<{x: number, y: number, width: number, height: number} | null>(null);
+    const [viewMode, setViewMode] = useState<ViewMode>('2d');
+    const sceneRef = useRef<BookDesignScene | null>(null);
 
     useEffect(() => {
-        if (!canvasRef.current) return;
+        if (viewMode === '2d') {
+            if (!canvasRef.current) return;
 
-        const canvas = canvasRef.current;
-        const context = canvas.getContext('2d');
-        
-        if (!context) return;
-        
-        contextRef.current = context;
-
-        const resizeCanvas = () => {
-            const container = canvas.parentElement;
-            if (!container) return;
+            const canvas = canvasRef.current;
+            const context = canvas.getContext('2d');
             
-            canvas.width = container.clientWidth;
-            canvas.height = container.clientHeight;
+            if (!context) return;
             
-            drawCanvas();
-        };
+            contextRef.current = context;
 
-        resizeCanvas();
-        window.addEventListener('resize', resizeCanvas);
+            const resizeCanvas = () => {
+                const container = canvas.parentElement;
+                if (!container) return;
+                
+                canvas.width = container.clientWidth;
+                canvas.height = container.clientHeight;
+                
+                drawCanvas();
+            };
+
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+
+            return () => {
+                window.removeEventListener('resize', resizeCanvas);
+            };
+        }
+    }, [viewMode]);
+
+    useEffect(() => {
+        if (viewMode === '3d') {
+            const container = document.querySelector('.scene-container');
+            if (container) {
+                sceneRef.current = new BookDesignScene(container as HTMLElement);
+            }
+        }
 
         return () => {
-            window.removeEventListener('resize', resizeCanvas);
+            if (sceneRef.current) {
+                sceneRef.current.dispose();
+                sceneRef.current = null;
+            }
         };
-    }, []);
+    }, [viewMode]);
 
     useEffect(() => {
-        drawCanvas();
-    }, [texture, mouseX, coverPositions, selectionState]);
+        if (viewMode === '2d') {
+            drawCanvas();
+        }
+    }, [texture, mouseX, coverPositions, selectionState, viewMode]);
 
     const calculateImageMetrics = (canvas: HTMLCanvasElement, texture: HTMLImageElement) => {
         const scale = Math.min(
@@ -213,40 +237,54 @@ export function BookDesignStudio() {
         reader.readAsDataURL(file);
     };
 
+    const toggleViewMode = () => {
+        setViewMode(prev => prev === '2d' ? '3d' : '2d');
+    };
+
     return (
         <div className="book-design-studio">
             <div className="studio-layout">
                 <div className="side-controls">
                     <h3>Design Controls</h3>
                     <div className="control-group">
-                        <label htmlFor="texture-upload" className="button-like">
-                            Load Texture
-                            <input
-                                type="file"
-                                id="texture-upload"
-                                accept="image/*"
-                                onChange={handleTextureLoad}
-                                style={{ display: 'none' }}
-                            />
-                        </label>
-                        {texture && (
+                        <button 
+                            className={`view-mode-button ${viewMode === '3d' ? 'active' : ''}`}
+                            onClick={toggleViewMode}
+                        >
+                            {viewMode === '2d' ? 'Switch to 3D View' : 'Switch to 2D View'}
+                        </button>
+                        {viewMode === '2d' && (
                             <>
-                                <button 
-                                    onClick={() => setTexture(null)}
-                                    className="clear-button"
-                                >
-                                    Clear Texture
-                                </button>
-                                <button 
-                                    onClick={handleReset}
-                                    className="clear-button"
-                                >
-                                    Reset Positions
-                                </button>
+                                <label htmlFor="texture-upload" className="button-like">
+                                    Load Texture
+                                    <input
+                                        type="file"
+                                        id="texture-upload"
+                                        accept="image/*"
+                                        onChange={handleTextureLoad}
+                                        style={{ display: 'none' }}
+                                    />
+                                </label>
+                                {texture && (
+                                    <>
+                                        <button 
+                                            onClick={() => setTexture(null)}
+                                            className="clear-button"
+                                        >
+                                            Clear Texture
+                                        </button>
+                                        <button 
+                                            onClick={handleReset}
+                                            className="clear-button"
+                                        >
+                                            Reset Positions
+                                        </button>
+                                    </>
+                                )}
                             </>
                         )}
                     </div>
-                    {selectionState === 'complete' && (
+                    {viewMode === '2d' && selectionState === 'complete' && (
                         <div className="positions-display">
                             <p>Left Cover: {coverPositions.leftCoverPosition?.toFixed(3)}</p>
                             <p>Right Cover: {coverPositions.rightCoverPosition?.toFixed(3)}</p>
@@ -254,12 +292,20 @@ export function BookDesignStudio() {
                     )}
                 </div>
                 <div className="scene-container">
-                    <canvas 
-                        ref={canvasRef}
-                        onMouseMove={handleMouseMove}
-                        onMouseLeave={handleMouseLeave}
-                        onClick={handleCanvasClick}
-                    />
+                    {viewMode === '2d' ? (
+                        <canvas 
+                            key={`canvas-${viewMode}`}
+                            ref={canvasRef}
+                            onMouseMove={handleMouseMove}
+                            onMouseLeave={handleMouseLeave}
+                            onClick={handleCanvasClick}
+                        />
+                    ) : (
+                        <div 
+                            key={`threejs-${viewMode}`}
+                            className="threejs-container" 
+                        />
+                    )}
                 </div>
             </div>
         </div>

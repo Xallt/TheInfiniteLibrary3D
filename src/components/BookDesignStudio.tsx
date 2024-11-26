@@ -1,10 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { BookDesignScene } from '../scenes/BookDesignScene';
-
-interface CoverPositions {
-    leftCoverPosition: number | null;
-    rightCoverPosition: number | null;
-}
+import { BookTextureParams } from './Bookshelf/BookTexture';
+import { defaultBookParams } from '../App';
+import * as THREE from 'three';
 
 type SelectionState = 'left' | 'right' | 'complete';
 type ViewMode = '2d' | '3d';
@@ -14,14 +12,16 @@ export function BookDesignStudio() {
     const contextRef = useRef<CanvasRenderingContext2D | null>(null);
     const [texture, setTexture] = useState<HTMLImageElement | null>(null);
     const [mouseX, setMouseX] = useState<number | null>(null);
-    const [coverPositions, setCoverPositions] = useState<CoverPositions>({
-        leftCoverPosition: null,
-        rightCoverPosition: null
+    const [coverPositions, setCoverPositions] = useState<BookTextureParams>({
+        leftCoverPosition: 0,
+        rightCoverPosition: 0
     });
     const [selectionState, setSelectionState] = useState<SelectionState>('left');
     const [imageMetrics, setImageMetrics] = useState<{x: number, y: number, width: number, height: number} | null>(null);
     const [viewMode, setViewMode] = useState<ViewMode>('2d');
     const sceneRef = useRef<BookDesignScene | null>(null);
+
+    const canSubmitTexture = texture && selectionState === 'complete';
 
     useEffect(() => {
         if (viewMode === '2d') {
@@ -215,8 +215,8 @@ export function BookDesignStudio() {
 
     const handleReset = () => {
         setCoverPositions({
-            leftCoverPosition: null,
-            rightCoverPosition: null
+            leftCoverPosition: 0,
+            rightCoverPosition: 0
         });
         setSelectionState('left');
     };
@@ -239,6 +239,19 @@ export function BookDesignStudio() {
 
     const toggleViewMode = () => {
         setViewMode(prev => prev === '2d' ? '3d' : '2d');
+    };
+
+    const handleSubmitTexture = () => {
+        if (!canSubmitTexture || !texture) return;
+
+        // Create texture
+        const threeTexture = new THREE.Texture(texture);
+        threeTexture.needsUpdate = true;
+
+        if (sceneRef.current) {
+            sceneRef.current.addBookWithTexture(threeTexture, coverPositions, defaultBookParams);
+            setViewMode('3d'); // Switch to 3D view after adding
+        }
     };
 
     return (
@@ -281,13 +294,21 @@ export function BookDesignStudio() {
                                         </button>
                                     </>
                                 )}
+                                {canSubmitTexture && (
+                                    <button 
+                                        className="submit-button"
+                                        onClick={handleSubmitTexture}
+                                    >
+                                        Create 3D Book
+                                    </button>
+                                )}
                             </>
                         )}
                     </div>
                     {viewMode === '2d' && selectionState === 'complete' && (
                         <div className="positions-display">
-                            <p>Left Cover: {coverPositions.leftCoverPosition?.toFixed(3)}</p>
-                            <p>Right Cover: {coverPositions.rightCoverPosition?.toFixed(3)}</p>
+                            <p>Left Cover: {coverPositions.leftCoverPosition.toFixed(3)}</p>
+                            <p>Right Cover: {coverPositions.rightCoverPosition.toFixed(3)}</p>
                         </div>
                     )}
                 </div>

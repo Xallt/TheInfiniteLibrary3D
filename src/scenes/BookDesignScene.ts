@@ -1,11 +1,14 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+import { Book, BookMeshParams } from '../components/Bookshelf/Book';
+import { BookTexture, BookTextureParams } from '../components/Bookshelf/BookTexture';
 
 export class BookDesignScene {
     private scene: THREE.Scene;
     private camera: THREE.PerspectiveCamera;
     private renderer: THREE.WebGLRenderer;
     private controls: OrbitControls;
+    private books: Book[] = [];
 
     constructor(container: HTMLElement) {
         // Initialize scene
@@ -59,6 +62,31 @@ export class BookDesignScene {
         this.renderer.setSize(container.clientWidth, container.clientHeight);
     }
 
+    public addBookWithTexture(
+        texture: THREE.Texture,
+        textureParams: BookTextureParams,
+        bookParams: BookMeshParams
+    ) {
+        // Create BookTexture instance
+        const bookTexture = new BookTexture(texture, textureParams);
+
+        // Create Book instance
+        const book = Book.empty(bookParams, bookTexture, 1, this.books.length);
+
+        // Position the book in the scene
+        const bookMesh = book.getMesh();
+        bookMesh.position.set(0, 0, 0); // Center position
+
+        // Add to scene and store reference
+        this.scene.add(bookMesh);
+        this.books.push(book);
+
+        // Adjust camera to view the book
+        this.camera.position.set(0, 0, 2);
+        this.controls.target.set(0, 0, 0);
+        this.controls.update();
+    }
+
     public dispose() {
         // Clean up resources
         window.removeEventListener('resize', this.onWindowResize.bind(this));
@@ -74,5 +102,8 @@ export class BookDesignScene {
 
         // Dispose of controls
         this.controls.dispose();
+
+        // Clear books array
+        this.books = [];
     }
 } 

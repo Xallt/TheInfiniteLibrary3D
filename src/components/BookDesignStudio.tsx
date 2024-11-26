@@ -5,9 +5,17 @@ import { defaultBookParams } from '../App';
 import * as THREE from 'three';
 import { PDFSelectionModal } from './PDFSelectionModal';
 import { PDFResource } from '../types/PDFResource';
+import { Page } from './Bookshelf/Page';
+import { BookMeshParams } from './Bookshelf/Book';
 
 type SelectionState = 'left' | 'right' | 'complete';
 type ViewMode = '2d' | '3d';
+
+interface BookDesignSceneProps {
+    bookTextures: BookTexture[];
+    bookParams: BookMeshParams;
+    pdfResource: PDFResource | null;
+}
 
 export function BookDesignStudio() {
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -238,23 +246,19 @@ export function BookDesignStudio() {
     };
 
     const handleSubmitTexture = () => {
-        if (!canSubmitTexture || !texture) {
-            throw new Error('Texture is not loaded or not complete');
+        if (!canSubmitTexture || !texture || !selectedPDF) {
+            throw new Error('Texture is not loaded or PDF is not selected');
         }
 
         // Create Three.js texture
         const threeTexture = new THREE.Texture(texture);
         threeTexture.needsUpdate = true;
 
-        // Create BookTexture instance with the selected PDF
+        // Create BookTexture instance
         const bookTexture = new BookTexture(threeTexture, coverPositions);
         
         // Add to textures array
         setBookTextures(prev => [...prev, bookTexture]);
-        
-        // Reset the selected PDF after creating the book
-        setSelectedPDF(null);
-        
         setViewMode('3d');
     };
 
@@ -351,6 +355,7 @@ export function BookDesignStudio() {
                             <BookDesignScene 
                                 bookTextures={bookTextures}
                                 bookParams={defaultBookParams}
+                                pdfResource={selectedPDF}
                             />
                         </div>
                     )}

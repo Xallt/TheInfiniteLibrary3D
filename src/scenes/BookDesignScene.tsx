@@ -3,19 +3,23 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { Book, BookMeshParams } from '../components/Bookshelf/Book';
 import { BookTexture } from '../components/Bookshelf/BookTexture';
+import { Page } from '../components/Bookshelf/Page';
+import { PDFResource } from '../types/PDFResource';
 
 interface BookDesignSceneProps {
     bookTextures: BookTexture[];
     bookParams: BookMeshParams;
+    pdfResource: PDFResource | null;
 }
 
-export function BookDesignScene({ bookTextures, bookParams }: BookDesignSceneProps) {
+export function BookDesignScene({ bookTextures, bookParams, pdfResource }: BookDesignSceneProps) {
     const containerRef = useRef<HTMLDivElement>(null);
     const sceneRef = useRef<THREE.Scene | null>(null);
     const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
     const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
     const controlsRef = useRef<OrbitControls | null>(null);
     const booksRef = useRef<Book[]>([]);
+    const loadedPdfRef = useRef<PDFResource | null>(null);
 
     useEffect(() => {
         if (!containerRef.current) return;
@@ -96,7 +100,7 @@ export function BookDesignScene({ bookTextures, bookParams }: BookDesignScenePro
         };
     }, []); // Empty dependency array - only run once on mount
 
-    // Effect for handling book textures
+    // Effect for handling book textures and PDF loading
     useEffect(() => {
         if (!sceneRef.current) return;
 
@@ -109,12 +113,40 @@ export function BookDesignScene({ bookTextures, bookParams }: BookDesignScenePro
         booksRef.current = [];
 
         // Add new books
-        bookTextures.forEach((texture, index) => {
+        bookTextures.forEach(async (texture, index) => {
             const book = Book.empty(bookParams, texture, 1, index);
             const bookMesh = book.getMesh();
             bookMesh.position.set(index * 0.5 - (bookTextures.length - 1) * 0.25, 0, 0);
             sceneRef.current!.add(bookMesh);
             booksRef.current.push(book);
+
+            // Load PDF pages if we have a PDF resource and haven't loaded it yet
+            if (pdfResource && pdfResource !== loadedPdfRef.current) {
+                try {
+                    const parseResult = await pdfResource.getParsedPDF({
+                        imageFormat: 'png',
+                        scale: 2.0
+                    });
+
+                    const actualPageCount = Math.ceil(parseResult.metadata.numPages / 2);
+                    book.resizePageArray(actualPageCount);
+
+                    let pageIndex = 0;
+                    for await (const [frontPage, backPage] of parseResult.getPairedPages()) {
+                        const physicalPage = Page.fromPdfPages(
+                            frontPage,
+                            backPage,
+                            Page.getPageParams(book.getParams())
+                        );
+
+                        book.addPage(physicalPage, pageIndex++);
+                    }
+
+                    loadedPdfRef.current = pdfResource;
+                } catch (error) {
+                    console.error('Failed to load book pages:', error);
+                }
+            }
         });
 
         // Adjust camera if needed
@@ -124,7 +156,7 @@ export function BookDesignScene({ bookTextures, bookParams }: BookDesignScenePro
                 controlsRef.current.update();
             }
         }
-    }, [bookTextures, bookParams]);
+    }, [bookTextures, bookParams, pdfResource]);
 
     return (
         <div ref={containerRef} style={{ width: '100%', height: '100%' }} />

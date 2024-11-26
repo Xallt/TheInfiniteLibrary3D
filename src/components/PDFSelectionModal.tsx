@@ -100,6 +100,8 @@ export function PDFSelectionModal({
             setFileResourcesWithCount([newResources[0]]);
         } else {
             setFileResourcesWithCount(prev => [...prev, ...newResources]);
+            
+            event.target.value = '';
         }
     };
 

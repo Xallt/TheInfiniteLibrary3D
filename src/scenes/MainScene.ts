@@ -529,11 +529,11 @@ export class MainScene {
         return this.isBookInViewMode;
     }
 
-    public setBookAngle(angle: number): void {
+    public getViewingBook(): Book | null {
         if (this.isBookInViewMode && this.viewingBookIndex !== -1) {
-            const book = this.books[this.viewingBookIndex];
-            book.setCoverAngles(angle);
+            return this.books[this.viewingBookIndex];
         }
+        return null;
     }
 
     private updateGrabbedBook(): void {
@@ -592,65 +592,9 @@ export class MainScene {
         }
     }
 
-    public switchToReadingMode(): void {
-        if (this.isBookInViewMode && this.viewingBookIndex !== -1) {
-            const book = this.books[this.viewingBookIndex];
-            book.selectPage(0); // Start with the first page
-        }
-    }
-
-    public nextPage(): void {
-        if (this.isBookInViewMode && this.viewingBookIndex !== -1) {
-            const book = this.books[this.viewingBookIndex];
-            const currentState = book.getCurrentState();
-
-            if (currentState instanceof PageSelectedState) {
-                const currentIndex = currentState.getSelectedPageIndex();
-                const nextPageIndex = Math.min(currentIndex + 1, book.getNumPages());
-
-                // Only update if we're not already at the last page
-                if (nextPageIndex !== currentIndex) {
-                    book.selectPage(nextPageIndex);
-                }
-            }
-        }
-    }
-
-    public getSelectedBook(): Book {
+    public getSelectedBook(): Book | null {
+        if (this.selectedBookIndex === -1) return null;
         return this.books[this.selectedBookIndex];
-    }
-
-    public getSelectedBookIndex(): number {
-        return this.selectedBookIndex;
-    }
-
-    public previousPage(): void {
-        if (this.isBookInViewMode && this.viewingBookIndex !== -1) {
-            const book = this.books[this.viewingBookIndex];
-            const currentState = book.getCurrentState();
-
-            if (currentState instanceof PageSelectedState) {
-                const currentIndex = currentState.getSelectedPageIndex();
-                const prevPageIndex = Math.max(currentIndex - 1, 0);
-
-                // Only update if we're not already at the first page
-                if (prevPageIndex !== currentIndex) {
-                    book.selectPage(prevPageIndex);
-                }
-            }
-        }
-    }
-
-    public isInReadingMode(): boolean {
-        if (this.isBookInViewMode && this.viewingBookIndex !== -1) {
-            const book = this.books[this.viewingBookIndex];
-            return book.getCurrentState() instanceof PageSelectedState;
-        }
-        return false;
-    }
-
-    public isReadingBook(): boolean {
-        return this.isBookInViewMode && this.books[this.viewingBookIndex].getCurrentState() instanceof PageSelectedState;
     }
 
     private handleControllerRayIntersection(controller: THREE.XRTargetRaySpace): void {

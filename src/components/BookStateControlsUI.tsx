@@ -1,53 +1,55 @@
 import React, { useState } from 'react';
-import { MainScene } from '../scenes/MainScene';
+import { Book, PageSelectedState } from '../components/Bookshelf/Book';
 
 interface BookStateControlsUIProps {
-    sceneRef: React.MutableRefObject<MainScene | null>;
-    bookAngle: number;
-    onAngleChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
-    onSwitchToReading: () => void;
-    onNextPage: () => void;
-    onPrevPage: () => void;
+    book: Book | null;
 }
 
-export function BookStateControlsUI({ 
-    sceneRef,
-    bookAngle, 
-    onAngleChange,
-    onSwitchToReading,
-    onNextPage,
-    onPrevPage
-}: BookStateControlsUIProps) {
+export function BookStateControlsUI({ book }: BookStateControlsUIProps) {
+    const [bookAngle, setBookAngle] = useState(Math.PI / 4);
     const [isReadingMode, setIsReadingMode] = useState(false);
+
+    if (!book) return null;
+
+    const handleAngleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const newAngle = parseFloat(event.target.value);
+        setBookAngle(newAngle);
+        book.setCoverAngles(newAngle);
+    };
 
     const handleSwitchToReading = () => {
         setIsReadingMode(true);
-        onSwitchToReading();
+        book.selectPage(0); // Start with first page
     };
 
     const handleNextPage = () => {
-        if (sceneRef.current) {
-            onNextPage();
-            // Update reading mode state based on scene state
-            setIsReadingMode(sceneRef.current.isReadingBook());
+        const currentState = book.getCurrentState();
+        if ('getSelectedPageIndex' in currentState) {
+            const currentReadingState = currentState as PageSelectedState;
+            const currentIndex = currentReadingState.getSelectedPageIndex();
+            const nextPageIndex = Math.min(currentIndex + 1, book.getNumPages() - 1);
+            if (nextPageIndex !== currentIndex) {
+                book.selectPage(nextPageIndex);
+            }
         }
     };
 
     const handlePrevPage = () => {
-        if (sceneRef.current) {
-            onPrevPage();
-            // Update reading mode state based on scene state
-            setIsReadingMode(sceneRef.current.isReadingBook());
+        const currentState = book.getCurrentState();
+        if ('getSelectedPageIndex' in currentState) {
+            const currentReadingState = currentState as PageSelectedState;
+            const currentIndex = currentReadingState.getSelectedPageIndex();
+            const prevPageIndex = Math.max(currentIndex - 1, 0);
+            if (prevPageIndex !== currentIndex) {
+                book.selectPage(prevPageIndex);
+            }
         }
     };
 
     const handleSwitchToUniform = () => {
         setIsReadingMode(false);
-        // Set book angle to 90 degrees (PI/2)
-        const event = {
-            target: { value: String(Math.PI / 2) }
-        } as React.ChangeEvent<HTMLInputElement>;
-        onAngleChange(event);
+        book.setCoverAngles(Math.PI / 2);
+        setBookAngle(Math.PI / 2);
     };
 
     return (
@@ -60,7 +62,7 @@ export function BookStateControlsUI({
                         max={Math.PI}
                         step="0.01"
                         value={bookAngle}
-                        onChange={onAngleChange}
+                        onChange={handleAngleChange}
                         className="angle-slider"
                     />
                     <button 

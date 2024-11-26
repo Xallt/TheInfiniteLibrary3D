@@ -170,32 +170,6 @@ export function BookshelfViewer() {
         }
     };
 
-    const handleAngleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const angle = parseFloat(event.target.value);
-        setBookAngle(angle);
-        if (sceneRef.current) {
-            sceneRef.current.setBookAngle(angle);
-        }
-    };
-
-    const handleSwitchToReading = () => {
-        if (sceneRef.current) {
-            sceneRef.current.switchToReadingMode();
-        }
-    };
-
-    const handleNextPage = () => {
-        if (sceneRef.current) {
-            sceneRef.current.nextPage();
-        }
-    };
-
-    const handlePrevPage = () => {
-        if (sceneRef.current) {
-            sceneRef.current.previousPage();
-        }
-    };
-
     useEffect(() => {
         if (sceneRef.current) {
             const handleVRSessionStart = () => {
@@ -275,12 +249,7 @@ export function BookshelfViewer() {
 
             {isViewingBook && (
                 <BookStateControlsUI 
-                    sceneRef={sceneRef}
-                    bookAngle={bookAngle}
-                    onAngleChange={handleAngleChange}
-                    onSwitchToReading={handleSwitchToReading}
-                    onNextPage={handleNextPage}
-                    onPrevPage={handlePrevPage}
+                    book={sceneRef.current?.getSelectedBook() || null}
                 />
             )}
 

@@ -3,7 +3,7 @@ import { PDFResource, URLPDFResource, createPDFResource } from '../types/PDFReso
 
 interface PDFResourceWithCount {
     resource: PDFResource;
-    count: string;
+    count: number;
 }
 
 interface PDFSelectionModalProps {
@@ -25,7 +25,7 @@ export function PDFSelectionModal({
     const [resourcesWithCount, setResourcesWithCount] = useState<PDFResourceWithCount[]>(() => 
         initialURLs.map(url => ({
             resource: new URLPDFResource(url),
-            count: '1'
+            count: 1
         }))
     );
 
@@ -35,10 +35,11 @@ export function PDFSelectionModal({
     const fileResources = resourcesWithCount.filter(r => !(r.resource instanceof URLPDFResource));
 
     const handleAddUrl = () => {
-        setResourcesWithCount([...resourcesWithCount, {
+        const newResource = {
             resource: new URLPDFResource(''),
-            count: '1'
-        }]);
+            count: 1
+        };
+        setResourcesWithCount(prevResources => [...prevResources, newResource]);
     };
 
     const handleRemoveResource = (index: number) => {
@@ -60,7 +61,7 @@ export function PDFSelectionModal({
         }
     };
 
-    const handleCountChange = (index: number, value: string) => {
+    const handleCountChange = (index: number, value: number) => {
         const newResources = [...resourcesWithCount];
         newResources[index] = {
             ...newResources[index],
@@ -77,7 +78,7 @@ export function PDFSelectionModal({
             .filter(file => file.type.includes('pdf'))
             .map(file => ({
                 resource: createPDFResource(file),
-                count: '1'
+                count: 1
             }));
 
         setResourcesWithCount([...resourcesWithCount, ...newResources]);
@@ -95,7 +96,7 @@ export function PDFSelectionModal({
 
         if (validResourcesWithCount.length > 0) {
             const expandedResources = validResourcesWithCount.flatMap(({ resource, count }) => 
-                Array(Math.max(1, Math.min(100, parseInt(count) || 1))).fill(resource)
+                Array(Math.max(1, Math.min(100, count || 1))).fill(resource)
             );
             
             onPDFSourcesSubmitted(expandedResources);
@@ -108,7 +109,7 @@ export function PDFSelectionModal({
                 ...remainingResources,
                 ...(activeTab === 'url' ? initialURLs.map(url => ({
                     resource: new URLPDFResource(url),
-                    count: '1'
+                    count: 1
                 })) : [])
             ]);
             onClose();
@@ -118,7 +119,7 @@ export function PDFSelectionModal({
     const getSubmitButtonText = () => {
         const activeResourcesWithCount = activeTab === 'url' ? urlResources : fileResources;
         const totalCount = activeResourcesWithCount.reduce((sum, { count }) => 
-            sum + (parseInt(count) || 1), 0);
+            sum + (count || 1), 0);
         return `Load ${totalCount} PDF${totalCount !== 1 ? 's' : ''}`;
     };
 
@@ -130,13 +131,13 @@ export function PDFSelectionModal({
                 min="1"
                 max="100"
                 value={resourceWithCount.count}
-                onChange={(e) => handleCountChange(index, e.target.value)}
+                onChange={(e) => handleCountChange(index, parseInt(e.target.value))}
                 onBlur={(e) => {
                     const num = parseInt(e.target.value);
                     if (isNaN(num) || num < 1) {
-                        handleCountChange(index, '1');
+                        handleCountChange(index, 1);
                     } else if (num > 100) {
-                        handleCountChange(index, '100');
+                        handleCountChange(index, 100);
                     }
                 }}
                 className="count-input"

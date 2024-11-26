@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { Book, BookMeshParams } from '../components/Bookshelf/Book';
-import { BookTexture, BookTextureParams } from '../components/Bookshelf/BookTexture';
+import { BookTexture } from '../components/Bookshelf/BookTexture';
 
 export class BookDesignScene {
     private scene: THREE.Scene;
@@ -75,14 +75,10 @@ export class BookDesignScene {
         this.renderer.setSize(container.clientWidth, container.clientHeight);
     }
 
-    public addBookWithTexture(
-        texture: THREE.Texture,
-        textureParams: BookTextureParams,
+    public addBook(
+        bookTexture: BookTexture,
         bookParams: BookMeshParams
     ) {
-        // Create BookTexture instance
-        const bookTexture = new BookTexture(texture, textureParams);
-
         // Create Book instance
         const book = Book.empty(bookParams, bookTexture, 1, this.books.length);
 

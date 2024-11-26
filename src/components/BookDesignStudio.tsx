@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { BookDesignScene } from '../scenes/BookDesignScene';
-import { BookTextureParams } from './Bookshelf/BookTexture';
+import { BookTexture, BookTextureParams } from './Bookshelf/BookTexture';
 import { defaultBookParams } from '../App';
 import * as THREE from 'three';
 
@@ -244,15 +244,19 @@ export function BookDesignStudio() {
             throw new Error('Texture is not loaded or not complete');
         }
 
-        // Create texture
-        const threeTexture = new THREE.Texture(texture);
-        threeTexture.needsUpdate = true;
-
         if (!sceneRef.current) {
             throw new Error('Scene is not initialized');
         }
 
-        sceneRef.current.addBookWithTexture(threeTexture, coverPositions, defaultBookParams);
+        // Create Three.js texture
+        const threeTexture = new THREE.Texture(texture);
+        threeTexture.needsUpdate = true;
+
+        // Create BookTexture instance
+        const bookTexture = new BookTexture(threeTexture, coverPositions);
+
+        // Pass the BookTexture instance to the scene
+        sceneRef.current.addBook(bookTexture, defaultBookParams);
         setViewMode('3d'); // Switch to 3D view after adding
     };
 

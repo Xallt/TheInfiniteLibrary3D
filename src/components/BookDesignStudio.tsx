@@ -19,23 +19,9 @@ export function BookDesignStudio() {
     const [selectionState, setSelectionState] = useState<SelectionState>('left');
     const [imageMetrics, setImageMetrics] = useState<{x: number, y: number, width: number, height: number} | null>(null);
     const [viewMode, setViewMode] = useState<ViewMode>('2d');
-    const sceneRef = useRef<BookDesignScene | null>(null);
+    const [bookTextures, setBookTextures] = useState<BookTexture[]>([]);
 
     const canSubmitTexture = texture && selectionState === 'complete';
-
-    useEffect(() => {
-        const container = document.querySelector('.threejs-container');
-        if (container) {
-            sceneRef.current = new BookDesignScene(container as HTMLElement);
-        }
-
-        return () => {
-            if (sceneRef.current) {
-                sceneRef.current.dispose();
-                sceneRef.current = null;
-            }
-        };
-    }, []);
 
     useEffect(() => {
         if (viewMode === '2d') {
@@ -244,10 +230,6 @@ export function BookDesignStudio() {
             throw new Error('Texture is not loaded or not complete');
         }
 
-        if (!sceneRef.current) {
-            throw new Error('Scene is not initialized');
-        }
-
         // Create Three.js texture
         const threeTexture = new THREE.Texture(texture);
         threeTexture.needsUpdate = true;
@@ -255,9 +237,9 @@ export function BookDesignStudio() {
         // Create BookTexture instance
         const bookTexture = new BookTexture(threeTexture, coverPositions);
 
-        // Pass the BookTexture instance to the scene
-        sceneRef.current.addBook(bookTexture, defaultBookParams);
-        setViewMode('3d'); // Switch to 3D view after adding
+        // Add to textures array
+        setBookTextures(prev => [...prev, bookTexture]);
+        setViewMode('3d');
     };
 
     return (
@@ -327,11 +309,14 @@ export function BookDesignStudio() {
                             onMouseLeave={handleMouseLeave}
                             onClick={handleCanvasClick}
                         />
-                    ) : null}
-                    <div 
-                        className="threejs-container" 
-                        style={{ display: viewMode === '3d' ? 'block' : 'none' }}
-                    />
+                    ) : (
+                        <div className="threejs-container">
+                            <BookDesignScene 
+                                bookTextures={bookTextures}
+                                bookParams={defaultBookParams}
+                            />
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

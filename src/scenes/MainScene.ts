@@ -647,9 +647,12 @@ export class MainScene {
     }
 
     private onMouseMove(event: MouseEvent): void {
-        // Calculate normalized device coordinates (-1 to +1)
-        this.mousePosition.x = (event.clientX / window.innerWidth) * 2 - 1;
-        this.mousePosition.y = -(event.clientY / window.innerHeight) * 2 + 1;
+        // Get the renderer's DOM element bounds
+        const rect = this.renderer.domElement.getBoundingClientRect();
+
+        // Calculate normalized device coordinates (-1 to +1) relative to the renderer element
+        this.mousePosition.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        this.mousePosition.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
         // Only perform raycasting if not in VR and not viewing a book
         if (!this.isVRSupported && !this.isBookInViewMode) {

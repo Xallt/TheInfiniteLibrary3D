@@ -10,6 +10,7 @@ import { XRControllerModelFactory } from 'three/examples/jsm/webxr/XRControllerM
 import { TransformControls, TransformControlsGizmo } from 'three/examples/jsm/controls/TransformControls';
 import { BookTexture } from '../components/Bookshelf/BookTexture';
 import { Raycaster, Vector3, Vector2 } from 'three';
+import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter';
 
 interface BookIntersection extends THREE.Intersection<THREE.Object3D<THREE.Object3DEventMap>> {
     bookIndex?: number;
@@ -688,5 +689,37 @@ export class MainScene {
 
     public getControllers(): ControllerWrapper[] {
         return this.controllerWrappers;
+    }
+
+    public async exportSceneToGLB(): Promise<Blob> {
+        const exporter = new GLTFExporter();
+
+        // Create a copy of the scene for export
+        const exportScene = this.scene.clone();
+
+        // Remove any UI elements or helpers you don't want to export
+        exportScene.traverse((object) => {
+            if (object instanceof TransformControlsGizmo ||
+                object === this.selectionIndicator ||
+                object === this.controllerRayLine) {
+                object.visible = false;
+            }
+        });
+
+        // Export as GLB
+        return new Promise((resolve, reject) => {
+            exporter.parse(
+                exportScene,
+                (buffer) => {
+                    const blob = new Blob([buffer as ArrayBuffer], { type: 'application/octet-stream' });
+                    resolve(blob);
+                },
+                (error) => {
+                    console.error('An error occurred while exporting:', error);
+                    reject(error);
+                },
+                { binary: true } // This makes it export as GLB instead of GLTF
+            );
+        });
     }
 }

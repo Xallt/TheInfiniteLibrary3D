@@ -214,9 +214,51 @@ export function BookshelfViewer() {
         };
     };
 
+    const handleDownloadScene = async () => {
+        if (!sceneRef.current) return;
+
+        try {
+            const blob = await sceneRef.current.exportSceneToGLB();
+            
+            // Create download link
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'bookshelf-scene.glb';
+            
+            // Trigger download
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            // Clean up
+            URL.revokeObjectURL(link.href);
+        } catch (error) {
+            console.error('Failed to export scene:', error);
+            // You might want to show an error message to the user here
+        }
+    };
+
     return (
         <div className="bookshelf-viewer">
             <div ref={containerRef} className="scene-container" />
+            <button 
+                className="download-button"
+                onClick={handleDownloadScene}
+                style={{
+                    position: 'absolute',
+                    top: '10px',
+                    right: '10px',
+                    padding: '8px 16px',
+                    backgroundColor: '#4CAF50',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    zIndex: 1000
+                }}
+            >
+                Download Scene
+            </button>
             <div className="controls">
                 <button 
                     className="nav-button"

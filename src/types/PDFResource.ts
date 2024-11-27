@@ -33,9 +33,6 @@ export abstract class PDFResource {
 
     // Get the full parse result including pages
     async getParsedPDF(options: { imageFormat: 'png' | 'jpeg', scale?: number }): Promise<PdfParseResult> {
-        if (this.parseResult) {
-            return this.parseResult;
-        }
 
         const buffer = await this.getArrayBuffer();
         const parser = PdfParser.getInstance();
@@ -64,6 +61,7 @@ export class URLPDFResource extends PDFResource {
     }
 
     async getArrayBuffer(): Promise<ArrayBuffer> {
+        console.log("Loading PDF from URL: " + this.url);
         const response = await fetch(this.url);
         if (!response.ok) {
             throw new Error(`Failed to fetch PDF from URL: ${response.statusText}`);

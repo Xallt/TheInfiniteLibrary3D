@@ -137,16 +137,20 @@ export class MainScene extends BaseScene {
     protected async init(container: HTMLElement): Promise<void> {
         this.renderer = await this.initRenderer(container);
         this.scene = await this.initScene();
-        await this.initCamera();
-        await this.initLighting();
-        await this.initControls();
-        await this.initStats();
+        this.camera = await this.initCamera(this.scene);
+        await this.initLighting(this.scene);
+        this.controls = await this.initControls(this.camera, this.renderer);
+        this.stats = this.initStats(this.renderer);
         await this.initEnvironment();
         await this.addEventListeners();
 
         await this.initBookshelf();
 
         this.scene.add(this.selectionIndicator);
+    }
+
+    protected async setupScene(scene: THREE.Scene): Promise<void> {
+        this.sceneElevation = 0.5;
     }
 
     private initXR(container: HTMLElement): void {
@@ -183,14 +187,16 @@ export class MainScene extends BaseScene {
         }
     }
 
-    protected async initCamera(): Promise<void> {
-        this.camera = new THREE.PerspectiveCamera(
+    protected async initCamera(scene: THREE.Scene): Promise<THREE.PerspectiveCamera> {
+        const camera = new THREE.PerspectiveCamera(
             60,
             window.innerWidth / window.innerHeight,
             0.1, // Reduced near plane for VR
             5000
         );
-        this.camera.position.set(0, this.sceneElevation, 1.7); // Set initial height to average human height
+        camera.position.set(0, this.sceneElevation, 1.7); // Set initial height to average human height
+
+        return camera;
     }
 
     private initEnvironment(): void {
@@ -210,13 +216,10 @@ export class MainScene extends BaseScene {
         this.scene.add(floor);
     }
 
-    protected async setupScene(scene: THREE.Scene): Promise<void> {
-        this.sceneElevation = 0.5;
-    }
 
-    protected async initLighting(): Promise<void> {
+    protected async initLighting(scene: THREE.Scene): Promise<void> {
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.0);
-        this.scene.add(ambientLight);
+        scene.add(ambientLight);
 
         const spotLight = new THREE.SpotLight(
             0xffffff,
@@ -228,11 +231,11 @@ export class MainScene extends BaseScene {
         );
         spotLight.position.set(0, this.sceneElevation, 2);
         spotLight.target.position.set(0, this.sceneElevation, 0);
-        this.scene.add(spotLight);
-        this.scene.add(spotLight.target);
+        scene.add(spotLight);
+        scene.add(spotLight.target);
 
         // Set initial white background while HDR loads
-        this.scene.background = new THREE.Color(0xffffff);
+        scene.background = new THREE.Color(0xffffff);
 
         // Load HDR environment map asynchronously
         this.loadEnvironmentMap();
@@ -365,15 +368,19 @@ export class MainScene extends BaseScene {
         }
     }
 
-    protected async initControls(): Promise<void> {
-        this.controls = createControls(this.camera, this.renderer);
-        this.controls.target.set(0, this.sceneElevation, 0);
+    protected async initControls(camera: THREE.PerspectiveCamera, renderer: THREE.WebGLRenderer): Promise<OrbitControls> {
+        const controls = createControls(camera, renderer);
+        controls.target.set(0, this.sceneElevation, 0);
+
+        return controls;
     }
 
-    private initStats(): void {
-        this.stats = new Stats();
-        this.stats.dom.style.position = 'absolute';
-        this.renderer.domElement.parentElement?.appendChild(this.stats.dom);
+    private initStats(renderer: THREE.WebGLRenderer): Stats {
+        const stats = new Stats();
+        stats.dom.style.position = 'absolute';
+        renderer.domElement.parentElement?.appendChild(stats.dom);
+
+        return stats;
     }
 
     private addEventListeners(): void {

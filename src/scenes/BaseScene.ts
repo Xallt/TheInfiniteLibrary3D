@@ -66,10 +66,29 @@ export abstract class BaseScene {
     }
 
     /**
+     * Initialize XR support
+     */
+    protected abstract initXR(container: HTMLElement): void;
+
+    /**
      * Initialize the renderer for the scene
      * @param container The HTML element that will contain the renderer
      */
-    protected abstract initRenderer(container: HTMLElement): Promise<THREE.WebGLRenderer>;
+    protected async initRenderer(container: HTMLElement): Promise<THREE.WebGLRenderer> {
+        const renderer = new THREE.WebGLRenderer({
+            antialias: true,
+            alpha: true
+        });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+
+        this.initXR(container);
+
+
+        renderer.setAnimationLoop(this.animate.bind(this));
+        container.appendChild(renderer.domElement);
+        return renderer;
+    }
 
     /**
      * Initialize the scene with basic setup like camera, lights, etc., and the 3D content itself

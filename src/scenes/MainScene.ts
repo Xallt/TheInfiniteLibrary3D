@@ -138,7 +138,7 @@ export class MainScene extends BaseScene {
         this.bookshelf = await this.initBookshelf(scene);
     }
 
-    private initXR(container: HTMLElement): void {
+    protected initXR(container: HTMLElement): void {
         if (this.isVRSupported) {
             // Add VR session change handlers
             this.renderer.xr.addEventListener('sessionstart', () => {
@@ -264,21 +264,6 @@ export class MainScene extends BaseScene {
         }
     }
 
-    protected async initRenderer(container: HTMLElement): Promise<THREE.WebGLRenderer> {
-        const renderer = new THREE.WebGLRenderer({
-            antialias: true,
-            alpha: true
-        });
-        renderer.setPixelRatio(window.devicePixelRatio);
-        renderer.setSize(window.innerWidth, window.innerHeight);
-
-        this.initXR(container);
-
-
-        renderer.setAnimationLoop(this.animate.bind(this));
-        container.appendChild(renderer.domElement);
-        return renderer;
-    }
     private initVRControllers(): void {
         if (!this.isVRSupported) return;
 

@@ -14,6 +14,7 @@ import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter';
 import { HDRCubeTextureLoader } from 'three/examples/jsm/loaders/HDRCubeTextureLoader.js';
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
 import { PMREMGenerator } from 'three';
+import { BaseScene } from './BaseScene';
 
 interface BookIntersection extends THREE.Intersection<THREE.Object3D<THREE.Object3DEventMap>> {
     bookIndex?: number;
@@ -46,7 +47,7 @@ export class ControllerWrapper {
     }
 }
 
-export class MainScene {
+export class MainScene extends BaseScene {
     private camera!: THREE.PerspectiveCamera;
     private scene!: THREE.Scene;
     private renderer!: THREE.WebGLRenderer;
@@ -92,6 +93,8 @@ export class MainScene {
         container: HTMLElement,
         bookshelfParams: BookshelfParams
     ) {
+        super();
+
         this.bookshelfParams = bookshelfParams;
 
         // Create selection indicator first
@@ -112,8 +115,8 @@ export class MainScene {
         this.mouseRaycaster = new THREE.Raycaster();
 
         // Check VR support before initialization
-        this.checkVRSupport().then(() => {
-            this.init(container);
+        this.checkVRSupport().then(async () => {
+            await this.init(container);
         });
     }
 
@@ -131,17 +134,17 @@ export class MainScene {
         }
     }
 
-    private init(container: HTMLElement): void {
-        this.initRenderer(container);
-        this.initScene();
-        this.initCamera();
-        this.initLighting();
-        this.initControls();
-        this.initStats();
-        this.initEnvironment();
-        this.addEventListeners();
+    protected async init(container: HTMLElement): Promise<void> {
+        await this.initRenderer(container);
+        await this.initScene();
+        await this.initCamera();
+        await this.initLighting();
+        await this.initControls();
+        await this.initStats();
+        await this.initEnvironment();
+        await this.addEventListeners();
 
-        this.initBookshelf();
+        await this.initBookshelf();
 
         this.scene.add(this.selectionIndicator);
     }
@@ -180,7 +183,7 @@ export class MainScene {
         }
     }
 
-    private initCamera(): void {
+    protected async initCamera(): Promise<void> {
         this.camera = new THREE.PerspectiveCamera(
             60,
             window.innerWidth / window.innerHeight,
@@ -207,12 +210,12 @@ export class MainScene {
         this.scene.add(floor);
     }
 
-    private initScene(): void {
+    protected async initScene(): Promise<void> {
         this.scene = new THREE.Scene();
         this.sceneElevation = 0.5;
     }
 
-    private async initLighting(): Promise<void> {
+    protected async initLighting(): Promise<void> {
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.0);
         this.scene.add(ambientLight);
 
@@ -275,7 +278,7 @@ export class MainScene {
         this.scene.add(bookshelfMesh);
     }
 
-    private initRenderer(container: HTMLElement): void {
+    protected async initRenderer(container: HTMLElement): Promise<void> {
         this.renderer = new THREE.WebGLRenderer({
             antialias: true,
             alpha: true
@@ -362,7 +365,7 @@ export class MainScene {
         }
     }
 
-    private initControls(): void {
+    protected async initControls(): Promise<void> {
         this.controls = createControls(this.camera, this.renderer);
         this.controls.target.set(0, this.sceneElevation, 0);
     }

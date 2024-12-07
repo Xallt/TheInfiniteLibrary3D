@@ -139,6 +139,7 @@ export class MainScene {
         this.initRenderer(container);
         this.initControls();
         this.initStats();
+        this.initEnvironment();
         this.addEventListeners();
 
         this.initBookshelf();
@@ -187,7 +188,24 @@ export class MainScene {
             0.1, // Reduced near plane for VR
             5000
         );
-        this.camera.position.set(0, this.sceneElevation, 1.5); // Set initial height to average human height
+        this.camera.position.set(0, this.sceneElevation, 1.7); // Set initial height to average human height
+    }
+
+    private initEnvironment(): void {
+        const textureLoader = new THREE.TextureLoader();
+        const floorTexture = textureLoader.load('assets/Floor/wood parquet 12_baseColor.jpeg');
+
+        // Apply scaling to the texture
+        floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
+        floorTexture.repeat.set(100, 100);
+
+        const floor = new THREE.Mesh(
+            new THREE.PlaneGeometry(100, 100),
+            new THREE.MeshBasicMaterial({ map: floorTexture })
+        );
+        floor.rotation.x = -Math.PI / 2;
+        floor.position.y = -.2;
+        this.scene.add(floor);
     }
 
     private initScene(): void {

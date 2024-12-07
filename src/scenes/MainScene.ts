@@ -53,6 +53,7 @@ export class MainScene extends BaseScene {
     protected renderer!: THREE.WebGLRenderer;
     private controls!: OrbitControls;
     private stats!: Stats;
+    private lightingSetup!: THREE.Light[];
     private bookshelfParams!: BookshelfParams;
 
     private gizmo: THREE.Object3D | null = null;
@@ -138,13 +139,12 @@ export class MainScene extends BaseScene {
         this.renderer = await this.initRenderer(container);
         this.scene = await this.initScene();
         this.camera = await this.initCamera(this.scene);
-        await this.initLighting(this.scene);
+        this.lightingSetup = await this.initLighting(this.scene);
         this.controls = await this.initControls(this.camera, this.renderer);
         this.stats = this.initStats(this.renderer);
-        await this.initEnvironment();
+        await this.initEnvironment(this.scene);
+        this.bookshelf = await this.initBookshelf(this.scene);
         await this.addEventListeners();
-
-        await this.initBookshelf();
 
         this.scene.add(this.selectionIndicator);
     }
@@ -199,7 +199,7 @@ export class MainScene extends BaseScene {
         return camera;
     }
 
-    private initEnvironment(): void {
+    protected async initEnvironment(scene: THREE.Scene): Promise<THREE.Mesh> {
         const textureLoader = new THREE.TextureLoader();
         const floorTexture = textureLoader.load('assets/Floor/wood parquet 12_baseColor.jpeg');
 
@@ -213,11 +213,28 @@ export class MainScene extends BaseScene {
         );
         floor.rotation.x = -Math.PI / 2;
         floor.position.y = -.2;
-        this.scene.add(floor);
+
+        scene.add(floor);
+        return floor;
     }
 
+    protected async initBookshelf(scene: THREE.Scene): Promise<Bookshelf> {
+        const bookshelf = new Bookshelf(this.bookshelfParams, "assets/wood.jpeg");
+        const bookshelfMesh = bookshelf.getMesh();
+        const bookshelfOuterSize = bookshelf.getOuterSize();
 
-    protected async initLighting(scene: THREE.Scene): Promise<void> {
+        // Place the bookshelf at the center of the scene
+        bookshelfMesh.position.set(
+            -bookshelfOuterSize.x / 2,
+            bookshelfOuterSize.y / 2 + this.sceneElevation,
+            0
+        );
+
+        scene.add(bookshelfMesh);
+        return bookshelf;
+    }
+
+    protected async initLighting(scene: THREE.Scene): Promise<[THREE.AmbientLight, THREE.SpotLight]> {
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.0);
         scene.add(ambientLight);
 
@@ -239,6 +256,8 @@ export class MainScene extends BaseScene {
 
         // Load HDR environment map asynchronously
         this.loadEnvironmentMap();
+
+        return [ambientLight, spotLight];
     }
 
     private async loadEnvironmentMap(): Promise<void> {
@@ -267,19 +286,6 @@ export class MainScene extends BaseScene {
         }
     }
 
-    private initBookshelf(): void {
-        this.bookshelf = new Bookshelf(this.bookshelfParams, "assets/wood.jpeg");
-        const bookshelfMesh = this.bookshelf.getMesh();
-
-        const bookshelfOuterSize = this.bookshelf.getOuterSize();
-
-
-        // Place the bookshelf at the center of the scene
-        bookshelfMesh.position.set(-bookshelfOuterSize.x / 2, bookshelfOuterSize.y / 2 + this.sceneElevation, 0);
-
-        this.scene.add(bookshelfMesh);
-    }
-
     protected async initRenderer(container: HTMLElement): Promise<THREE.WebGLRenderer> {
         const renderer = new THREE.WebGLRenderer({
             antialias: true,
@@ -295,7 +301,6 @@ export class MainScene extends BaseScene {
         container.appendChild(renderer.domElement);
         return renderer;
     }
-
     private initVRControllers(): void {
         if (!this.isVRSupported) return;
 

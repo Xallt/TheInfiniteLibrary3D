@@ -50,7 +50,6 @@ export function BookshelfViewer() {
         // Initialize new scene with default parameters
         sceneRef.current = new MainScene(
             containerRef.current,  // Pass the container element
-            defaultBookParams,
             defaultBookshelfParams
         );
 

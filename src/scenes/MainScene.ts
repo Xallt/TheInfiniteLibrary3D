@@ -90,7 +90,6 @@ export class MainScene {
 
     constructor(
         container: HTMLElement,
-        bookParams: BookMeshParams,
         bookshelfParams: BookshelfParams
     ) {
         this.bookshelfParams = bookshelfParams;

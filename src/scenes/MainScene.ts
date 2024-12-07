@@ -52,7 +52,6 @@ export class MainScene {
     private renderer!: THREE.WebGLRenderer;
     private controls!: OrbitControls;
     private stats!: Stats;
-    private bookParams!: BookMeshParams;
     private bookshelfParams!: BookshelfParams;
 
     private gizmo: THREE.Object3D | null = null;
@@ -63,7 +62,6 @@ export class MainScene {
     private selectionIndicator: THREE.Mesh;
     private isBookInViewMode: boolean = false;
     private viewingBookIndex: number = -1;
-    private viewingBookMesh: THREE.Mesh | null = null;
     private sceneElevation!: number;
 
     private controllerWrappers: ControllerWrapper[] = [];
@@ -95,7 +93,6 @@ export class MainScene {
         bookParams: BookMeshParams,
         bookshelfParams: BookshelfParams
     ) {
-        this.bookParams = bookParams;
         this.bookshelfParams = bookshelfParams;
 
         // Create selection indicator first

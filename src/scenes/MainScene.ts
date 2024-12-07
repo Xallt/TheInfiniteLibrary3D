@@ -63,7 +63,7 @@ export class MainScene extends BaseScene {
     private controllerWrappers: ControllerWrapper[] = [];
     private controllerGrips: THREE.XRGripSpace[] = [];
 
-    private isVRSupported: boolean = false;
+    protected isVRSupported: boolean = false;
 
     private grabbedBook: Book | null = null;
     private grabbingController: THREE.XRTargetRaySpace | null = null;
@@ -109,33 +109,15 @@ export class MainScene extends BaseScene {
         this.mousePosition = new THREE.Vector2();
         this.mouseRaycaster = new THREE.Raycaster();
 
-        // Check VR support before initialization
-        this.checkVRSupport().then(async () => {
-            await this.init(container);
-        });
-    }
-
-    private async checkVRSupport(): Promise<void> {
-        if ('xr' in navigator && navigator.xr) {
-            try {
-                this.isVRSupported = await navigator.xr.isSessionSupported('immersive-vr');
-                console.log('VR Supported:', this.isVRSupported);
-            } catch (err) {
-                console.warn('VR Support check failed:', err);
-                this.isVRSupported = false;
-            }
-        } else {
-            this.isVRSupported = false;
-        }
+        // Initialize the scene
+        this.init(container);
     }
 
     protected async init(container: HTMLElement): Promise<void> {
-        await super.init(
-            container,
-            {
-                showStats: true
-            }
-        );
+        await super.init(container, {
+            showStats: true,
+            checkVR: true
+        });
 
         // Add selection indicator to scene
         this.scene.add(this.selectionIndicator);
@@ -157,10 +139,7 @@ export class MainScene extends BaseScene {
     }
 
     private initXR(container: HTMLElement): void {
-        // Only enable XR if supported
         if (this.isVRSupported) {
-            this.renderer.xr.enabled = true;
-
             // Add VR session change handlers
             this.renderer.xr.addEventListener('sessionstart', () => {
                 const xrManager = this.renderer.xr;
@@ -180,10 +159,6 @@ export class MainScene extends BaseScene {
                     xrManager.setReferenceSpace(referenceSpace);
                 }
             });
-
-            // Add VR button
-            const vrButton = VRButton.createButton(this.renderer);
-            container.appendChild(vrButton);
 
             // Initialize VR controllers
             this.initVRControllers();

@@ -49,8 +49,8 @@ export class ControllerWrapper {
 
 export class MainScene extends BaseScene {
     private camera!: THREE.PerspectiveCamera;
-    private scene!: THREE.Scene;
-    private renderer!: THREE.WebGLRenderer;
+    protected scene!: THREE.Scene;
+    protected renderer!: THREE.WebGLRenderer;
     private controls!: OrbitControls;
     private stats!: Stats;
     private bookshelfParams!: BookshelfParams;
@@ -135,8 +135,8 @@ export class MainScene extends BaseScene {
     }
 
     protected async init(container: HTMLElement): Promise<void> {
-        await this.initRenderer(container);
-        await this.initScene();
+        this.renderer = await this.initRenderer(container);
+        this.scene = await this.initScene();
         await this.initCamera();
         await this.initLighting();
         await this.initControls();
@@ -210,8 +210,7 @@ export class MainScene extends BaseScene {
         this.scene.add(floor);
     }
 
-    protected async initScene(): Promise<void> {
-        this.scene = new THREE.Scene();
+    protected async setupScene(scene: THREE.Scene): Promise<void> {
         this.sceneElevation = 0.5;
     }
 
@@ -278,19 +277,20 @@ export class MainScene extends BaseScene {
         this.scene.add(bookshelfMesh);
     }
 
-    protected async initRenderer(container: HTMLElement): Promise<void> {
-        this.renderer = new THREE.WebGLRenderer({
+    protected async initRenderer(container: HTMLElement): Promise<THREE.WebGLRenderer> {
+        const renderer = new THREE.WebGLRenderer({
             antialias: true,
             alpha: true
         });
-        this.renderer.setPixelRatio(window.devicePixelRatio);
-        this.renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(window.innerWidth, window.innerHeight);
 
         this.initXR(container);
 
 
-        this.renderer.setAnimationLoop(this.animate.bind(this));
-        container.appendChild(this.renderer.domElement);
+        renderer.setAnimationLoop(this.animate.bind(this));
+        container.appendChild(renderer.domElement);
+        return renderer;
     }
 
     private initVRControllers(): void {

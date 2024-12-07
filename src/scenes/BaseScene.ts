@@ -1,15 +1,32 @@
+import * as THREE from 'three';
+
 export abstract class BaseScene {
+    protected scene!: THREE.Scene;
+    protected renderer!: THREE.WebGLRenderer;
+
     protected async init(container: HTMLElement): Promise<void> {
-        await this.initRenderer(container);
-        await this.initScene();
-        await this.initCamera();
-        await this.initLighting();
-        await this.initControls();
+        this.renderer = await this.initRenderer(container);
+        this.scene = await this.initScene();
     }
 
-    protected abstract initRenderer(container: HTMLElement): Promise<void>;
-    protected abstract initScene(): Promise<void>;
-    protected abstract initCamera(): Promise<void>;
-    protected abstract initLighting(): Promise<void>;
-    protected abstract initControls(): Promise<void>;
+    /**
+     * Initialize the renderer for the scene
+     * @param container The HTML element that will contain the renderer
+     */
+    protected abstract initRenderer(container: HTMLElement): Promise<THREE.WebGLRenderer>;
+
+    /**
+     * Initialize the scene with basic setup like camera, lights, etc., and the 3D content itself
+     */
+    protected async initScene(): Promise<THREE.Scene> {
+        const scene = new THREE.Scene();
+        await this.setupScene(scene);
+        return scene;
+    }
+
+    /**
+     * Setup the scene with the 3D content
+     * @param scene The scene to setup
+     */
+    protected abstract setupScene(scene: THREE.Scene): Promise<void>;
 }

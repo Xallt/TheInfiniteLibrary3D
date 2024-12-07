@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import { Book, BookMeshParams, PageSelectedState, TextureLoader, UniformlyOpenedState } from '../components/Bookshelf/Book';
 import { createControls } from '../components/Controls';
-import Stats from 'three/examples/jsm/libs/stats.module.js';
 import { Bookshelf, BookshelfParams } from '../components/Bookshelf/Bookshelf';
 import { PdfPage } from 'src/utils/pdfParser';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
@@ -52,7 +51,6 @@ export class MainScene extends BaseScene {
     protected scene!: THREE.Scene;
     protected renderer!: THREE.WebGLRenderer;
     private controls!: OrbitControls;
-    private stats!: Stats;
     private lightingSetup!: THREE.Light[];
     private bookshelfParams!: BookshelfParams;
 
@@ -136,7 +134,12 @@ export class MainScene extends BaseScene {
     }
 
     protected async init(container: HTMLElement): Promise<void> {
-        await super.init(container);
+        await super.init(
+            container,
+            {
+                showStats: true
+            }
+        );
 
         // Add selection indicator to scene
         this.scene.add(this.selectionIndicator);
@@ -153,7 +156,6 @@ export class MainScene extends BaseScene {
         // Initialize all scene components
         this.lightingSetup = await this.initLighting(scene);
         this.controls = await this.initControls(this.camera, renderer);
-        this.stats = this.initStats(renderer);
         await this.initEnvironment(scene);
         this.bookshelf = await this.initBookshelf(scene);
     }
@@ -385,14 +387,6 @@ export class MainScene extends BaseScene {
         return controls;
     }
 
-    private initStats(renderer: THREE.WebGLRenderer): Stats {
-        const stats = new Stats();
-        stats.dom.style.position = 'absolute';
-        renderer.domElement.parentElement?.appendChild(stats.dom);
-
-        return stats;
-    }
-
     private addEventListeners(): void {
         window.addEventListener('resize', this.onWindowResize.bind(this));
         window.addEventListener('keydown', this.onKeyDown.bind(this));
@@ -420,7 +414,7 @@ export class MainScene extends BaseScene {
         }
     }
 
-    private animate(): void {
+    protected animate(): void {
         if (this.isVRSupported && this.renderer.xr.isPresenting) {
             // Update ray intersection for right controller only
             const rightController = this.controllerWrappers[1].controller;
@@ -444,7 +438,7 @@ export class MainScene extends BaseScene {
         }
 
         this.render();
-        this.stats.update();
+        super.animate();
     }
 
     private render(): void {

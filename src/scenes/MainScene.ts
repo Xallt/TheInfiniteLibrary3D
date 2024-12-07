@@ -48,7 +48,7 @@ export class ControllerWrapper {
 }
 
 export class MainScene extends BaseScene {
-    private camera!: THREE.PerspectiveCamera;
+    protected camera!: THREE.PerspectiveCamera;
     protected scene!: THREE.Scene;
     protected renderer!: THREE.WebGLRenderer;
     private controls!: OrbitControls;
@@ -136,21 +136,26 @@ export class MainScene extends BaseScene {
     }
 
     protected async init(container: HTMLElement): Promise<void> {
-        this.renderer = await this.initRenderer(container);
-        this.scene = await this.initScene();
-        this.camera = await this.initCamera(this.scene);
-        this.lightingSetup = await this.initLighting(this.scene);
-        this.controls = await this.initControls(this.camera, this.renderer);
-        this.stats = this.initStats(this.renderer);
-        await this.initEnvironment(this.scene);
-        this.bookshelf = await this.initBookshelf(this.scene);
-        await this.addEventListeners();
+        await super.init(container);
 
+        // Add selection indicator to scene
         this.scene.add(this.selectionIndicator);
+
+        // Add event listeners
+        this.addEventListeners();
     }
 
-    protected async setupScene(scene: THREE.Scene): Promise<void> {
+    protected async setupScene(renderer: THREE.WebGLRenderer, scene: THREE.Scene): Promise<void> {
         this.sceneElevation = 0.5;
+
+        this.camera = await this.initCamera(scene);
+
+        // Initialize all scene components
+        this.lightingSetup = await this.initLighting(scene);
+        this.controls = await this.initControls(this.camera, renderer);
+        this.stats = this.initStats(renderer);
+        await this.initEnvironment(scene);
+        this.bookshelf = await this.initBookshelf(scene);
     }
 
     private initXR(container: HTMLElement): void {

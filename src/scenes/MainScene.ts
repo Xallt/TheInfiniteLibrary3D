@@ -2,15 +2,11 @@ import * as THREE from 'three';
 import { Book, BookMeshParams, PageSelectedState, TextureLoader, UniformlyOpenedState } from '../components/Bookshelf/Book';
 import { createControls } from '../components/Controls';
 import { Bookshelf, BookshelfParams } from '../components/Bookshelf/Bookshelf';
-import { PdfPage } from 'src/utils/pdfParser';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { VRButton } from 'three/examples/jsm/webxr/VRButton.js';
 import { XRControllerModelFactory } from 'three/examples/jsm/webxr/XRControllerModelFactory.js';
 import { TransformControls, TransformControlsGizmo } from 'three/examples/jsm/controls/TransformControls';
-import { BookTexture } from '../components/Bookshelf/BookTexture';
-import { Raycaster, Vector3, Vector2 } from 'three';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter';
-import { HDRCubeTextureLoader } from 'three/examples/jsm/loaders/HDRCubeTextureLoader.js';
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
 import { PMREMGenerator } from 'three';
 import { BaseScene } from './BaseScene';
@@ -85,7 +81,7 @@ export class MainScene extends BaseScene {
 
     private controllerRayLine: THREE.Line | null = null;
 
-    private mousePosition: Vector2;
+    private mousePosition: THREE.Vector2;
     private mouseRaycaster: THREE.Raycaster;
 
     constructor(
@@ -110,7 +106,7 @@ export class MainScene extends BaseScene {
         this.raycaster = new THREE.Raycaster();
         this.tempMatrix = new THREE.Matrix4();
 
-        this.mousePosition = new Vector2();
+        this.mousePosition = new THREE.Vector2();
         this.mouseRaycaster = new THREE.Raycaster();
 
         // Check VR support before initialization
@@ -664,9 +660,9 @@ export class MainScene extends BaseScene {
         this.tempMatrix.identity().extractRotation(controller.matrixWorld);
 
         // Set raycaster from controller
-        const rayOrigin = new Vector3();
+        const rayOrigin = new THREE.Vector3();
         controller.getWorldPosition(rayOrigin);
-        const rayDirection = new Vector3(0, 0, -1).applyMatrix4(this.tempMatrix);
+        const rayDirection = new THREE.Vector3(0, 0, -1).applyMatrix4(this.tempMatrix);
         this.raycaster.set(rayOrigin, rayDirection);
 
         // Update ray visibility - only hide when in view mode

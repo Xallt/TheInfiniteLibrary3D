@@ -11,6 +11,9 @@ import { TransformControls, TransformControlsGizmo } from 'three/examples/jsm/co
 import { BookTexture } from '../components/Bookshelf/BookTexture';
 import { Raycaster, Vector3, Vector2 } from 'three';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter';
+import { HDRCubeTextureLoader } from 'three/examples/jsm/loaders/HDRCubeTextureLoader.js';
+import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
+import { PMREMGenerator } from 'three';
 
 interface BookIntersection extends THREE.Intersection<THREE.Object3D<THREE.Object3DEventMap>> {
     bookIndex?: number;
@@ -133,10 +136,10 @@ export class MainScene {
     }
 
     private init(container: HTMLElement): void {
+        this.initRenderer(container);
         this.initScene();
         this.initCamera();
         this.initLighting();
-        this.initRenderer(container);
         this.initControls();
         this.initStats();
         this.initEnvironment();
@@ -201,7 +204,7 @@ export class MainScene {
 
         const floor = new THREE.Mesh(
             new THREE.PlaneGeometry(100, 100),
-            new THREE.MeshBasicMaterial({ map: floorTexture })
+            new THREE.MeshLambertMaterial({ map: floorTexture })
         );
         floor.rotation.x = -Math.PI / 2;
         floor.position.y = -.2;
@@ -210,16 +213,57 @@ export class MainScene {
 
     private initScene(): void {
         this.scene = new THREE.Scene();
-        this.scene.background = new THREE.Color(0xf0f0f0);
-
         this.sceneElevation = 0.5;
     }
 
-    private initLighting(): void {
-        this.scene.add(new THREE.AmbientLight(0xffffff));
-        const light = new THREE.DirectionalLight(0xffffff);
-        light.position.set(1, 1, 1).normalize();
-        this.scene.add(light);
+    private async initLighting(): Promise<void> {
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.0);
+        this.scene.add(ambientLight);
+
+        const spotLight = new THREE.SpotLight(
+            0xffffff,
+            3,
+            100,
+            Math.PI / 3,
+            0.5,
+            2
+        );
+        spotLight.position.set(0, this.sceneElevation, 2);
+        spotLight.target.position.set(0, this.sceneElevation, 0);
+        this.scene.add(spotLight);
+        this.scene.add(spotLight.target);
+
+        // Set initial white background while HDR loads
+        this.scene.background = new THREE.Color(0xffffff);
+
+        // Load HDR environment map asynchronously
+        this.loadEnvironmentMap();
+    }
+
+    private async loadEnvironmentMap(): Promise<void> {
+        const pmremGenerator = new PMREMGenerator(this.renderer);
+        pmremGenerator.compileEquirectangularShader();
+
+        try {
+            const hdrEquirect = await new RGBELoader()
+                .setPath('assets/')
+                .loadAsync('HDR_hazy_nebulae.hdr');
+
+            const envMap = pmremGenerator.fromEquirectangular(hdrEquirect).texture;
+            this.scene.environment = envMap;
+            this.scene.background = envMap;
+
+            this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            this.renderer.toneMappingExposure = 1;
+            this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+            console.log('HDR environment loaded');
+
+            hdrEquirect.dispose();
+            pmremGenerator.dispose();
+        } catch (error) {
+            console.error('Failed to load HDR environment:', error);
+        }
     }
 
     private initBookshelf(): void {

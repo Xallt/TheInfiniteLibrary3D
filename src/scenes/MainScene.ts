@@ -138,32 +138,6 @@ export class MainScene extends BaseScene {
         this.bookshelf = await this.initBookshelf(scene);
     }
 
-    protected initXR(container: HTMLElement): void {
-        if (this.isVRSupported) {
-            // Add VR session change handlers
-            this.renderer.xr.addEventListener('sessionstart', () => {
-                const xrManager = this.renderer.xr;
-                const baseReferenceSpace = xrManager.getReferenceSpace();
-
-                if (baseReferenceSpace) {
-                    const quaternion = new THREE.Quaternion();
-
-                    // Create transform from current camera position and rotation
-                    const transform = new XRRigidTransform(
-                        { x: -this.camera.position.x, y: -this.camera.position.y + 1, z: -this.camera.position.z },
-                        { x: quaternion.x, y: quaternion.y, z: quaternion.z, w: quaternion.w }
-                    );
-
-                    // Apply transform to reference space
-                    const referenceSpace = baseReferenceSpace.getOffsetReferenceSpace(transform);
-                    xrManager.setReferenceSpace(referenceSpace);
-                }
-            });
-
-            // Initialize VR controllers
-            this.initVRControllers();
-        }
-    }
 
     protected async initCamera(scene: THREE.Scene): Promise<THREE.PerspectiveCamera> {
         const camera = new THREE.PerspectiveCamera(
@@ -264,7 +238,7 @@ export class MainScene extends BaseScene {
         }
     }
 
-    private initVRControllers(): void {
+    protected setupVRControllers(leftController: THREE.XRTargetRaySpace, rightController: THREE.XRTargetRaySpace): void {
         if (!this.isVRSupported) return;
 
         const controllerModelFactory = new XRControllerModelFactory();
@@ -272,9 +246,11 @@ export class MainScene extends BaseScene {
         // Create the controller ray line
         this.createControllerRay();
 
+        const controllers = [leftController, rightController];
+
         // Setup controllers
         for (let i = 0; i < 2; i++) {
-            const controller = this.renderer.xr.getController(i);
+            const controller = controllers[i];
             const controllerWrapper = new ControllerWrapper(controller);
 
             // Add ray line to right controller only

@@ -66,11 +66,6 @@ export abstract class BaseScene {
     }
 
     /**
-     * Initialize XR support
-     */
-    protected abstract initXR(container: HTMLElement): void;
-
-    /**
      * Initialize the renderer for the scene
      * @param container The HTML element that will contain the renderer
      */
@@ -82,7 +77,7 @@ export abstract class BaseScene {
         renderer.setPixelRatio(window.devicePixelRatio);
         renderer.setSize(window.innerWidth, window.innerHeight);
 
-        this.initXR(container);
+        this.initXR();
 
 
         renderer.setAnimationLoop(this.animate.bind(this));
@@ -132,5 +127,40 @@ export abstract class BaseScene {
      */
     public isVREnabled(): boolean {
         return this.isVRSupported;
+    }
+
+    protected abstract setupVRControllers(
+        leftController: THREE.XRTargetRaySpace,
+        rightController: THREE.XRTargetRaySpace
+    ): void;
+
+    /**
+     * Initialize XR support
+     */
+    protected initXR(): void {
+        if (this.isVRSupported) {
+            // Add VR session change handlers
+            this.renderer.xr.addEventListener('sessionstart', () => {
+                const xrManager = this.renderer.xr;
+                const baseReferenceSpace = xrManager.getReferenceSpace();
+
+                if (baseReferenceSpace) {
+                    const quaternion = new THREE.Quaternion();
+
+                    // Create transform from current camera position and rotation
+                    const transform = new XRRigidTransform(
+                        { x: -this.camera.position.x, y: -this.camera.position.y + 1, z: -this.camera.position.z },
+                        { x: quaternion.x, y: quaternion.y, z: quaternion.z, w: quaternion.w }
+                    );
+
+                    // Apply transform to reference space
+                    const referenceSpace = baseReferenceSpace.getOffsetReferenceSpace(transform);
+                    xrManager.setReferenceSpace(referenceSpace);
+                }
+            });
+
+            // Initialize VR controllers
+            this.setupVRControllers(this.renderer.xr.getController(0), this.renderer.xr.getController(1));
+        }
     }
 }

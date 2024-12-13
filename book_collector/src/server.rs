@@ -1,0 +1,43 @@
+use crate::books::book_provider::{BookPDFSource, BookProvider};
+use crate::books::github_repo_parser::GithubRepoParser;
+use poem::{get, handler, listener::TcpListener, IntoResponse, Response, Route, Server};
+use serde::Serialize;
+
+#[derive(Debug, Serialize)]
+#[serde(tag = "type", content = "data")]
+enum BookResponse {
+    success(Vec<BookPDFSource>),
+    error { message: String },
+}
+
+impl IntoResponse for BookResponse {
+    fn into_response(self) -> Response {
+        Response::builder()
+            .content_type("application/json")
+            .body(serde_json::to_string(&self).unwrap())
+    }
+}
+
+async fn all_guy_books_impl() -> Result<Vec<BookPDFSource>, String> {
+    const GUY_NAME: &str = "J3ke7";
+    const GUY_REPO: &str = "e-book";
+    let parser = GithubRepoParser::new(GUY_NAME.to_string(), GUY_REPO.to_string());
+    parser.load_books().await.map_err(|e| e.to_string())
+}
+
+#[handler]
+async fn all_guy_books() -> BookResponse {
+    match all_guy_books_impl().await {
+        Ok(books) => BookResponse::success(books),
+        Err(e) => BookResponse::error {
+            message: format!("Failed to fetch books: {}", e),
+        },
+    }
+}
+
+pub async fn run_server(port: u16) -> Result<(), std::io::Error> {
+    let app = Route::new().at("/all_guy_books", get(all_guy_books));
+    Server::new(TcpListener::bind(format!("0.0.0.0:{}", port)))
+        .run(app)
+        .await
+}

@@ -3,7 +3,7 @@ use crate::api::gh_api::{
 };
 use crate::books::book_provider::BookPDFSource;
 use crate::books::book_provider::BookProvider;
-
+use crate::common::{CIterator, CResult};
 pub struct GithubRepoParser {
     owner: String,
     repo: String,
@@ -14,21 +14,21 @@ impl GithubRepoParser {
         Self { owner, repo }
     }
 
-    async fn recursive_gh_traversal_pdf_paths<'a>(
+    async fn recursive_gh_traversal_pdf_paths(
         &self,
         gh_api: &GithubApi,
         gh_content: &GithubElement,
-    ) -> Result<Vec<GithubFileElement>, Box<dyn std::error::Error + Send + Sync>> {
+    ) -> CResult<CIterator<GithubFileElement>> {
         match gh_content {
             GithubElement::File(file) => match file.extension() {
                 Some(extension) => {
                     if extension.to_lowercase() == "pdf" {
-                        Ok(vec![file.clone()])
+                        Ok(Box::new(vec![file.clone()].into_iter()))
                     } else {
-                        Ok(Vec::new())
+                        Ok(Box::new(Vec::new().into_iter()))
                     }
                 }
-                None => Ok(Vec::new()),
+                None => Ok(Box::new(Vec::new().into_iter())),
             },
             GithubElement::Directory(directory) => {
                 let contents = gh_api
@@ -45,10 +45,8 @@ impl GithubRepoParser {
                     .collect();
 
                 let content_list_results = futures::future::join_all(futures).await;
-                let results_unflattened: Vec<Vec<GithubFileElement>> = content_list_results
-                    .into_iter()
-                    .collect::<Result<Vec<_>, _>>()?;
-                Ok(results_unflattened.into_iter().flatten().collect())
+                let results_unflattened = content_list_results.into_iter().map(|r| r.unwrap());
+                Ok(Box::new(results_unflattened.flatten()))
             }
         }
     }
@@ -56,7 +54,7 @@ impl GithubRepoParser {
     pub async fn recursive_list_pdf_files(
         &self,
         path: &str,
-    ) -> Result<Vec<GithubFileElement>, Box<dyn std::error::Error + Send + Sync>> {
+    ) -> CResult<CIterator<GithubFileElement>> {
         let api = GithubApi::new();
         let root_gh_element = GithubElement::Directory(GithubDirectoryElement {
             name: self.owner.clone(),
@@ -68,17 +66,14 @@ impl GithubRepoParser {
 }
 
 impl BookProvider for GithubRepoParser {
-    async fn load_books(
-        &self,
-    ) -> Result<Vec<BookPDFSource>, Box<dyn std::error::Error + Send + Sync>> {
+    async fn books_iter(&self) -> CResult<CIterator<BookPDFSource>> {
         let pdf_files = self.recursive_list_pdf_files("").await?;
-        Ok(pdf_files
-            .iter()
-            .map(|gh_content| BookPDFSource {
-                title: gh_content.name.clone(),
+        Ok(Box::new(pdf_files.into_iter().map(|gh_content| {
+            BookPDFSource {
+                title: gh_content.name,
                 author: None,
-                pdf_path: gh_content.download_url.clone(),
-            })
-            .collect())
+                pdf_path: gh_content.download_url,
+            }
+        })))
     }
 }

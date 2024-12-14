@@ -3,6 +3,7 @@ use tokio::runtime::Runtime;
 mod api;
 mod books;
 mod commands;
+mod common;
 mod server;
 
 #[derive(Parser)]

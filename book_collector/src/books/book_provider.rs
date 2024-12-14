@@ -1,3 +1,4 @@
+use crate::common::{CIterator, CResult};
 use serde::Serialize;
 
 /// Represents a source of book data
@@ -10,8 +11,12 @@ pub struct BookPDFSource {
 
 /// Provider interface for loading books from different sources
 pub trait BookProvider {
-    /// Loads books and returns them as a vector
-    async fn load_books(
-        &self,
-    ) -> Result<Vec<BookPDFSource>, Box<dyn std::error::Error + Send + Sync>>;
+    /// Returns an iterator over books
+    async fn books_iter(&self) -> CResult<CIterator<BookPDFSource>>;
+
+    /// Default implementation that collects iterator into a Vec
+    async fn books(&self) -> CResult<Vec<BookPDFSource>> {
+        let iter = self.books_iter().await?;
+        Ok(iter.collect())
+    }
 }

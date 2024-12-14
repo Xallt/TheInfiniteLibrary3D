@@ -25,7 +25,7 @@ async fn all_guy_books_impl() -> Result<Vec<BookPDFSource>, String> {
     const GUY_NAME: &str = "J3ke7";
     const GUY_REPO: &str = "e-book";
     let parser = GithubRepoParser::new(GUY_NAME.to_string(), GUY_REPO.to_string());
-    parser.load_books().await.map_err(|e| e.to_string())
+    parser.books().await.map_err(|e| e.to_string())
 }
 
 #[handler]

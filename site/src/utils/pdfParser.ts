@@ -46,6 +46,8 @@ export class PdfParseResult {
     }
 }
 
+type pdfSource = ArrayBuffer | string;
+
 export class PdfParser {
     private static instance: PdfParser;
 
@@ -58,25 +60,44 @@ export class PdfParser {
         return PdfParser.instance;
     }
 
-    public async parsePdfMetadata(pdfFile: ArrayBuffer): Promise<PDFMetadata> {
-        const loadingTask = pdfjsLib.getDocument({ data: pdfFile });
-        const pdf = await loadingTask.promise;
-        return { numPages: pdf.numPages };
+    public async parsePdfMetadata(pdfSource: pdfSource): Promise<PDFMetadata> {
+        const loadingTask = pdfjsLib.getDocument({
+            data: pdfSource,
+            disableRange: false,
+            disableStream: false,
+            disableAutoFetch: true,
+            rangeChunkSize: 65536
+        });
+
+        // Only load document metadata without parsing pages
+        const pdfDocument = await loadingTask.promise;
+        const metadata = {
+            numPages: pdfDocument.numPages
+        };
+
+        // Clean up
+        await pdfDocument.destroy();
+        return metadata;
     }
 
     public async parsePdfToImages(
-        pdfFile: ArrayBuffer,
+        pdfSource: pdfSource,
         options: PdfParseOptions
     ): Promise<PdfParseResult> {
-        // Load the PDF document
-        const loadingTask = pdfjsLib.getDocument({ data: pdfFile });
-        const pdf = await loadingTask.promise;
+        // Load the PDF document with optimization settings
+        const loadingTask = pdfjsLib.getDocument({
+            data: pdfSource,
+            disableRange: false,
+            disableStream: false,
+            disableAutoFetch: true,
+            rangeChunkSize: 65536
+        });
 
+        const pdf = await loadingTask.promise;
         const metadata: PDFMetadata = {
             numPages: pdf.numPages
         };
 
-        // Return both metadata and the generator
         return new PdfParseResult(
             metadata,
             this.generatePages(pdf, options)

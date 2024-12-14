@@ -3,21 +3,7 @@
 import * as pdfjsLib from 'pdfjs-dist';
 import { PDFMetadata } from 'src/types/PDFResource';
 
-// Initialize PDF.js worker
-const getWorkerUrl = () => {
-    if (import.meta.env.DEV) {
-        // Development: Use the worker from node_modules
-        return new URL(
-            'pdfjs-dist/build/pdf.worker.min.mjs',
-            import.meta.url
-        ).href;
-    } else {
-        // Production: Use the copied worker file from assets
-        return new URL('/assets/pdf.worker.min.mjs', window.location.origin).href;
-    }
-};
-
-pdfjsLib.GlobalWorkerOptions.workerSrc = getWorkerUrl();
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
 
 export interface PdfParseOptions {
     imageFormat: 'png' | 'jpeg';

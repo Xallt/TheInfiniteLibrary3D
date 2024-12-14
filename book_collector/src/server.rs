@@ -37,6 +37,7 @@ async fn all_guy_books() -> BookResponse {
 
 pub async fn run_server(port: u16) -> Result<(), std::io::Error> {
     let app = Route::new().at("/all_guy_books", get(all_guy_books));
+    println!("Starting server on port {}", port);
     Server::new(TcpListener::bind(format!("0.0.0.0:{}", port)))
         .run(app)
         .await

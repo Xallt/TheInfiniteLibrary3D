@@ -2,3 +2,5 @@
 /site/dist
 .DS_Store
 /book_collector/target
+
+.env

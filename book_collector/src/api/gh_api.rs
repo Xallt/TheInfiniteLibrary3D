@@ -1,6 +1,7 @@
-use reqwest::header::{HeaderMap, HeaderValue, ACCEPT, USER_AGENT};
+use reqwest::header::{HeaderMap, HeaderValue, ACCEPT, AUTHORIZATION, USER_AGENT};
 use reqwest::Client;
 use serde::Deserialize;
+use std::env;
 
 #[derive(Debug, Clone)]
 pub struct GithubFileElement {
@@ -101,6 +102,13 @@ impl GithubApi {
             HeaderValue::from_static("application/vnd.github+json"),
         );
         headers.insert(USER_AGENT, HeaderValue::from_static("rust-github-cli"));
+
+        if let Ok(token) = env::var("GITHUB_TOKEN") {
+            headers.insert(
+                AUTHORIZATION,
+                HeaderValue::from_str(&format!("Bearer {}", token)).expect("Invalid GitHub token"),
+            );
+        }
 
         let client = Client::builder()
             .default_headers(headers)

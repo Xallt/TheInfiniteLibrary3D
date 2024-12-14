@@ -35,8 +35,19 @@ async fn all_guy_books() -> BookResponse {
     }
 }
 
+#[handler]
+async fn example_book() -> BookResponse {
+    return BookResponse::Success(vec![BookPDFSource {
+        title: "My Little Prince".to_string(),
+        pdf_path: "https://blogs.ubc.ca/edcp508/files/2016/02/TheLittlePrince.pdf".to_string(),
+        author: Some("Antoine de Saint-Exupéry".to_string()),
+    }]);
+}
+
 pub async fn run_server(port: u16) -> Result<(), std::io::Error> {
-    let app = Route::new().at("/all_guy_books", get(all_guy_books));
+    let app = Route::new()
+        .at("/all_guy_books", get(all_guy_books))
+        .at("/example_book", get(example_book));
     println!("Starting server on port {}", port);
     Server::new(TcpListener::bind(format!("0.0.0.0:{}", port)))
         .run(app)

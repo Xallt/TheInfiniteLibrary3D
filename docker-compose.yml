@@ -3,14 +3,14 @@ version: '3.8'
 services:
   infinite-library:
     build:
-      context: .
-      dockerfile: site/Dockerfile
+      context: site
+      dockerfile: Dockerfile
     ports:
       - "80:80"
     depends_on:
       - book-collector
     volumes:
-      - ./site/assets:/usr/share/nginx/html/assets
+      - ./site/resources:/usr/share/nginx/html/resources
 
   book-collector:
     build:

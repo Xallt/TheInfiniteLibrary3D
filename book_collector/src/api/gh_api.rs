@@ -35,7 +35,6 @@ pub struct GithubContent {
     pub path: String,
     pub download_url: Option<String>,
     pub size: Option<u64>,
-    pub entries: Option<Vec<GithubContent>>,
 }
 
 impl GithubContent {

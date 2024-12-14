@@ -132,7 +132,7 @@ export class MainScene extends BaseScene {
         this.camera = await this.initCamera(scene);
 
         // Initialize all scene components
-        this.lightingSetup = await this.initLighting(scene);
+        this.lightingSetup = await this.initLighting(scene, renderer);
         this.controls = await this.initControls(this.camera, renderer);
         await this.initEnvironment(scene);
         this.bookshelf = await this.initBookshelf(scene);
@@ -186,7 +186,7 @@ export class MainScene extends BaseScene {
         return bookshelf;
     }
 
-    protected async initLighting(scene: THREE.Scene): Promise<[THREE.AmbientLight, THREE.SpotLight]> {
+    protected async initLighting(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Promise<[THREE.AmbientLight, THREE.SpotLight]> {
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.0);
         scene.add(ambientLight);
 
@@ -203,17 +203,17 @@ export class MainScene extends BaseScene {
         scene.add(spotLight);
         scene.add(spotLight.target);
 
-        // Set initial white background while HDR loads
-        scene.background = new THREE.Color(0xffffff);
+        // Set initial black background
+        scene.background = new THREE.Color(0x000000);
 
         // Load HDR environment map asynchronously
-        this.loadEnvironmentMap();
+        this.loadEnvironmentMap(scene, renderer);
 
         return [ambientLight, spotLight];
     }
 
-    private async loadEnvironmentMap(): Promise<void> {
-        const pmremGenerator = new PMREMGenerator(this.renderer);
+    private async loadEnvironmentMap(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Promise<void> {
+        const pmremGenerator = new PMREMGenerator(renderer);
         pmremGenerator.compileEquirectangularShader();
 
         try {
@@ -222,12 +222,12 @@ export class MainScene extends BaseScene {
                 .loadAsync('HDR_hazy_nebulae.hdr');
 
             const envMap = pmremGenerator.fromEquirectangular(hdrEquirect).texture;
-            this.scene.environment = envMap;
-            this.scene.background = envMap;
+            scene.environment = envMap;
+            scene.background = envMap;
 
-            this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-            this.renderer.toneMappingExposure = 1;
-            this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1;
+            renderer.outputColorSpace = THREE.SRGBColorSpace;
 
             console.log('HDR environment loaded');
 

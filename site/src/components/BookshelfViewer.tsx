@@ -8,6 +8,7 @@ import { Page } from './Bookshelf/Page';
 import { BookStateControlsUI } from './BookStateControlsUI';
 import { PDFResource, URLPDFResource, createPDFResource } from '../types/PDFResource';
 import { PDFSelectionModal } from './PDFSelectionModal';
+import { BookCollectorModal } from './BookCollectorModal';
 
 class BookResourceMapping {
     book: Book;
@@ -23,6 +24,12 @@ class BookResourceMapping {
     }
 }
 
+interface BookPDFSource {
+    title: string;
+    author: string | null;
+    pdf_path: string;
+}
+
 export function BookshelfViewer() {
     const sceneRef = useRef<MainScene | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -31,6 +38,7 @@ export function BookshelfViewer() {
     const [showUrlModal, setShowUrlModal] = useState(false);
     const [bookAngle, setBookAngle] = useState(Math.PI / 2); // Default open angle
     const [bookResourceMappings, setBookResourceMappings] = useState<{ [index: number]: BookResourceMapping }>({});
+    const [showBookCollectorModal, setShowBookCollectorModal] = useState(false);
 
     useEffect(() => {
         if (!containerRef.current) return;
@@ -237,6 +245,30 @@ export function BookshelfViewer() {
         }
     };
 
+    const handleBookCollectorSource = async (source: 'example' | 'all_guy_books') => {
+        try {
+            const response = await fetch(`http://book-collector/${source}`);
+            const result = await response.json();
+            
+            if (result.type === 'success') {
+                const bookSources: BookPDFSource[] = result.data;
+                
+                // Convert BookPDFSource array to PDFResource array
+                const pdfResources = bookSources.map(source => {
+                    return createPDFResource(source.pdf_path);
+                });
+
+                // Use the existing handler to add the books
+                await handlePDFSourcesSubmitted(pdfResources);
+            } else {
+                console.error('Error fetching books:', result.message);
+            }
+        } catch (error) {
+            console.error('Failed to fetch books from collector:', error);
+        }
+        setShowBookCollectorModal(false);
+    };
+
     return (
         <div className="bookshelf-viewer">
             <div ref={containerRef} className="scene-container" />
@@ -286,6 +318,12 @@ export function BookshelfViewer() {
                 >
                     Next Book
                 </button>
+                <button 
+                    className="load-collector-button"
+                    onClick={() => setShowBookCollectorModal(true)}
+                >
+                    Load from Book Collector
+                </button>
             </div>
 
             {isViewingBook && (
@@ -309,6 +347,12 @@ export function BookshelfViewer() {
                     <p>Pages: {getCurrentBookInfo()?.pageCount}</p>
                 </div>
             )}
+
+            <BookCollectorModal 
+                isOpen={showBookCollectorModal}
+                onClose={() => setShowBookCollectorModal(false)}
+                onSourceSelected={handleBookCollectorSource}
+            />
         </div>
     );
 } 

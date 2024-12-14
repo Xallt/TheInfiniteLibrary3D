@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: site/Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    volumes:
+      - ./site/assets:/usr/share/nginx/html/assets
+    env_file:
+      - book_collector/.env
+
+  backend:
+    build:
+      context: .
+      dockerfile: book_collector/Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - RUST_LOG=info
+    volumes:
+      - pdf_data:/data
+
+volumes:
+  pdf_data: 

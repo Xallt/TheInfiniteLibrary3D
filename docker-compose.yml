@@ -1,29 +1,29 @@
 version: '3.8'
 
 services:
-  frontend:
+  infinite-library:
     build:
       context: .
       dockerfile: site/Dockerfile
     ports:
       - "80:80"
     depends_on:
-      - backend
+      - book-collector
     volumes:
       - ./site/assets:/usr/share/nginx/html/assets
-    env_file:
-      - book_collector/.env
 
-  backend:
+  book-collector:
     build:
-      context: .
-      dockerfile: book_collector/Dockerfile
+      context: book_collector
+      dockerfile: Dockerfile
     ports:
       - "3000:3000"
     environment:
       - RUST_LOG=info
     volumes:
       - pdf_data:/data
+    env_file:
+      - book_collector/.env
 
 volumes:
   pdf_data: 

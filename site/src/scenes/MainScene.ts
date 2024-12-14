@@ -153,7 +153,7 @@ export class MainScene extends BaseScene {
 
     protected async initEnvironment(scene: THREE.Scene): Promise<THREE.Mesh> {
         const textureLoader = new THREE.TextureLoader();
-        const floorTexture = textureLoader.load('assets/Floor/wood parquet 12_baseColor.jpeg');
+        const floorTexture = textureLoader.load('resources/Floor/wood parquet 12_baseColor.jpeg');
 
         // Apply scaling to the texture
         floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;

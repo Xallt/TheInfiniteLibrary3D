@@ -28,6 +28,76 @@ type CellEdges = {
     bottomWall: XZWall;
 };
 
+type CellParameters = {
+    cellSize: THREE.Vector3;
+    thicknessLeft: number;
+    thicknessRight: number;
+    thicknessBack: number;
+    thicknessUp: number;
+    thicknessDown: number;
+};
+
+type CachedGeometry = {
+    geometry: THREE.BufferGeometry;
+    referenceCorner: THREE.Vector3;
+};
+
+class CellGeometryCache {
+    private static instance: CellGeometryCache;
+    private cache: Map<string, CachedGeometry> = new Map();
+
+    private constructor() { }
+
+    public static getInstance(): CellGeometryCache {
+        if (!CellGeometryCache.instance) {
+            CellGeometryCache.instance = new CellGeometryCache();
+        }
+        return CellGeometryCache.instance;
+    }
+
+    private getParameterKey(params: CellParameters): string {
+        return JSON.stringify({
+            size: { x: params.cellSize.x, y: params.cellSize.y, z: params.cellSize.z },
+            tLeft: params.thicknessLeft,
+            tRight: params.thicknessRight,
+            tBack: params.thicknessBack,
+            tUp: params.thicknessUp,
+            tDown: params.thicknessDown
+        });
+    }
+
+    public getGeometry(params: CellParameters, corner: THREE.Vector3, builder: () => THREE.BufferGeometry): THREE.BufferGeometry {
+        const key = this.getParameterKey(params);
+        let cached = this.cache.get(key);
+
+        if (!cached) {
+            const geometry = builder();
+            cached = {
+                geometry: geometry.clone(),
+                referenceCorner: corner.clone()
+            };
+            this.cache.set(key, cached);
+        }
+
+        if (!corner.equals(cached.referenceCorner)) {
+            const offsetGeometry = cached.geometry.clone();
+            const positions = offsetGeometry.getAttribute('position').array;
+            const offset = new THREE.Vector3().subVectors(corner, cached.referenceCorner);
+
+            for (let i = 0; i < positions.length; i += 3) {
+                positions[i] += offset.x;
+                positions[i + 1] += offset.y;
+                positions[i + 2] += offset.z;
+            }
+
+            offsetGeometry.getAttribute('position').needsUpdate = true;
+            return offsetGeometry;
+        }
+
+        return cached.geometry.clone();
+    }
+}
+
 export class ProceduralBookshelfCell {
     private upperLeftFarCorner: THREE.Vector3;
     private cellSize: THREE.Vector3;
@@ -244,88 +314,101 @@ export class ProceduralBookshelfCell {
     }
 
     public getMesh(): THREE.Mesh {
-        const { geometry: innerCellGeometry, cellEdges: innerCellEdges } = this.getInnerCellGeometry();
-        const { geometry: outerCellGeometry, cellEdges: outerCellEdges } = this.getOuterCellGeometry();
+        const params: CellParameters = {
+            cellSize: this.cellSize,
+            thicknessLeft: this.thicknessLeft,
+            thicknessRight: this.thicknessRight,
+            thicknessBack: this.thicknessBack,
+            thicknessUp: this.thicknessUp,
+            thicknessDown: this.thicknessDown
+        };
 
-        // Create connecting faces between inner and outer cells
-        const connectingFacesBack: MeshConnectionFace[] = [
-            ...MeshConnection.connectQuads(
-                innerCellEdges.topWall.backEdge,
-                outerCellEdges.topWall.backEdge
-            ), // Top wall
-            ...MeshConnection.connectQuads(
-                innerCellEdges.bottomWall.backEdge,
-                outerCellEdges.bottomWall.backEdge
-            ), // Bottom wall
-            ...MeshConnection.connectQuads(
-                innerCellEdges.leftWall.backEdge.reverse() as Edge,
-                outerCellEdges.leftWall.backEdge.reverse() as Edge
-            ), // Left wall
-            ...MeshConnection.connectQuads(
-                innerCellEdges.rightWall.backEdge,
-                outerCellEdges.rightWall.backEdge
-            ), // Right wall
-        ];
+        const geometryBuilder = () => {
+            const { geometry: innerCellGeometry, cellEdges: innerCellEdges } = this.getInnerCellGeometry();
+            const { geometry: outerCellGeometry, cellEdges: outerCellEdges } = this.getOuterCellGeometry();
 
-        const connectingFacesFront: MeshConnectionFace[] = [
-            ...MeshConnection.connectQuads(
-                innerCellEdges.leftWall.frontEdge.reverse() as Edge,
-                outerCellEdges.leftWall.frontEdge.reverse() as Edge
-            ), // Left wall
-            ...MeshConnection.connectQuads(
-                innerCellEdges.rightWall.frontEdge,
-                outerCellEdges.rightWall.frontEdge
-            ), // Right wall
-            ...MeshConnection.connectQuads(
-                innerCellEdges.topWall.frontEdge,
-                outerCellEdges.topWall.frontEdge
-            ), // Top wall
-            ...MeshConnection.connectQuads(
-                innerCellEdges.bottomWall.frontEdge,
-                outerCellEdges.bottomWall.frontEdge
-            ), // Bottom wall
-        ];
+            const connectingFacesBack: MeshConnectionFace[] = [
+                ...MeshConnection.connectQuads(
+                    innerCellEdges.topWall.backEdge,
+                    outerCellEdges.topWall.backEdge
+                ),
+                ...MeshConnection.connectQuads(
+                    innerCellEdges.bottomWall.backEdge,
+                    outerCellEdges.bottomWall.backEdge
+                ),
+                ...MeshConnection.connectQuads(
+                    innerCellEdges.leftWall.backEdge.reverse() as Edge,
+                    outerCellEdges.leftWall.backEdge.reverse() as Edge
+                ),
+                ...MeshConnection.connectQuads(
+                    innerCellEdges.rightWall.backEdge,
+                    outerCellEdges.rightWall.backEdge
+                ),
+            ];
 
-        const joinedGeometry = MeshConnection.joinGeometries(
-            [outerCellGeometry, innerCellGeometry],
-            [...connectingFacesBack, ...connectingFacesFront]
-        );
+            const connectingFacesFront: MeshConnectionFace[] = [
+                ...MeshConnection.connectQuads(
+                    innerCellEdges.leftWall.frontEdge.reverse() as Edge,
+                    outerCellEdges.leftWall.frontEdge.reverse() as Edge
+                ),
+                ...MeshConnection.connectQuads(
+                    innerCellEdges.rightWall.frontEdge,
+                    outerCellEdges.rightWall.frontEdge
+                ),
+                ...MeshConnection.connectQuads(
+                    innerCellEdges.topWall.frontEdge,
+                    outerCellEdges.topWall.frontEdge
+                ),
+                ...MeshConnection.connectQuads(
+                    innerCellEdges.bottomWall.frontEdge,
+                    outerCellEdges.bottomWall.frontEdge
+                ),
+            ];
 
-        // Get all vertices as Vector3 objects for UV calculation
-        const positions = joinedGeometry.getAttribute('position').array;
-        const indices = joinedGeometry.getIndex()!.array;
-        const vertices: THREE.Vector3[] = [];
-        for (let i = 0; i < positions.length; i += 3) {
-            vertices.push(new THREE.Vector3(
-                positions[i],
-                positions[i + 1],
-                positions[i + 2]
-            ));
-        }
-
-        // Instead of using a map, we'll create UVs for each vertex instance in faces
-        const uvs: number[] = new Array(vertices.length * 2).fill(0);
-
-        // Process each face (triangle) separately
-        for (let i = 0; i < indices.length; i += 3) {
-            const faceUVs = this.getFaceUVs(
-                vertices[indices[i]],
-                vertices[indices[i + 1]],
-                vertices[indices[i + 2]]
+            const joinedGeometry = MeshConnection.joinGeometries(
+                [outerCellGeometry, innerCellGeometry],
+                [...connectingFacesBack, ...connectingFacesFront]
             );
 
-            // Assign UVs directly to the vertices as they appear in faces
-            for (let j = 0; j < 3; j++) {
-                const vertexIndex = indices[i + j];
-                uvs[vertexIndex * 2] = faceUVs[j * 2];
-                uvs[vertexIndex * 2 + 1] = faceUVs[j * 2 + 1];
+            const positions = joinedGeometry.getAttribute('position').array;
+            const indices = joinedGeometry.getIndex()!.array;
+            const vertices: THREE.Vector3[] = [];
+            for (let i = 0; i < positions.length; i += 3) {
+                vertices.push(new THREE.Vector3(
+                    positions[i],
+                    positions[i + 1],
+                    positions[i + 2]
+                ));
             }
-        }
 
-        joinedGeometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+            const uvs: number[] = new Array(vertices.length * 2).fill(0);
+
+            for (let i = 0; i < indices.length; i += 3) {
+                const faceUVs = this.getFaceUVs(
+                    vertices[indices[i]],
+                    vertices[indices[i + 1]],
+                    vertices[indices[i + 2]]
+                );
+
+                for (let j = 0; j < 3; j++) {
+                    const vertexIndex = indices[i + j];
+                    uvs[vertexIndex * 2] = faceUVs[j * 2];
+                    uvs[vertexIndex * 2 + 1] = faceUVs[j * 2 + 1];
+                }
+            }
+
+            joinedGeometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+            return joinedGeometry;
+        };
+
+        const geometry = CellGeometryCache.getInstance().getGeometry(
+            params,
+            this.upperLeftFarCorner,
+            geometryBuilder
+        );
 
         return new THREE.Mesh(
-            joinedGeometry,
+            geometry,
             new THREE.MeshLambertMaterial({
                 map: TextureLoader.getInstance().load(this.texturePath),
                 side: THREE.DoubleSide

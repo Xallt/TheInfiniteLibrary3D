@@ -10,6 +10,7 @@ import { PDFResource, URLPDFResource, createPDFResource } from '../types/PDFReso
 import { PDFSelectionModal } from './PDFSelectionModal';
 import { BookCollectorModal } from './BookCollectorModal';
 import { config } from '../config';
+import { BookCollectorAPI, BookPDFSource, BookCollectorSource } from '../api/BookCollectorAPI';
 
 class BookResourceMapping {
     book: Book;
@@ -23,12 +24,6 @@ class BookResourceMapping {
         this.loaded = loaded;
         this.index = index;
     }
-}
-
-interface BookPDFSource {
-    title: string;
-    author: string | null;
-    pdf_path: string;
 }
 
 export function BookshelfViewer() {
@@ -246,24 +241,17 @@ export function BookshelfViewer() {
         }
     };
 
-    const handleBookCollectorSource = async (source: 'example_book' | 'all_guy_books') => {
+    const handleBookCollectorSource = async (source: BookCollectorSource) => {
         try {
-            const response = await fetch(`${config.bookCollectorUrl}/${source}`);
-            const result = await response.json();
+            const bookSources = await BookCollectorAPI.fetchBooks(source);
             
-            if (result.type === 'success') {
-                const bookSources: BookPDFSource[] = result.data;
-                
-                // Convert BookPDFSource array to PDFResource array
-                const pdfResources = bookSources.map(source => {
-                    return createPDFResource(source.pdf_path);
-                });
+            // Convert BookPDFSource array to PDFResource array
+            const pdfResources = bookSources.map(source => 
+                createPDFResource(source.pdf_path)
+            );
 
-                // Use the existing handler to add the books
-                await handlePDFSourcesSubmitted(pdfResources);
-            } else {
-                console.error('Error fetching books:', result.message);
-            }
+            // Use the existing handler to add the books
+            await handlePDFSourcesSubmitted(pdfResources);
         } catch (error) {
             console.error('Failed to fetch books from collector:', error);
         }

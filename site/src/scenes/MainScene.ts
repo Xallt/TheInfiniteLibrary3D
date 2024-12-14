@@ -171,7 +171,7 @@ export class MainScene extends BaseScene {
     }
 
     protected async initBookshelf(scene: THREE.Scene): Promise<Bookshelf> {
-        const bookshelf = new Bookshelf(this.bookshelfParams, "assets/wood.jpeg");
+        const bookshelf = new Bookshelf(this.bookshelfParams, "resources/wood.jpeg");
         const bookshelfMesh = bookshelf.getMesh();
         const bookshelfOuterSize = bookshelf.getOuterSize();
 
@@ -218,7 +218,7 @@ export class MainScene extends BaseScene {
 
         try {
             const hdrEquirect = await new RGBELoader()
-                .setPath('assets/')
+                .setPath('resources/')
                 .loadAsync('HDR_hazy_nebulae.hdr');
 
             const envMap = pmremGenerator.fromEquirectangular(hdrEquirect).texture;

@@ -110,7 +110,7 @@ export function BookshelfViewer() {
 
                 // Create empty book
                 const book = Book.empty(defaultBookParams, new BookTexture(
-                    TextureLoader.getInstance().load("assets/BookCovers0135_5_350.jpg"),
+                    TextureLoader.getInstance().load("resources/BookCovers0135_5_350.jpg"),
                     {
                         leftCoverPosition: 0.413,
                         rightCoverPosition: 0.582

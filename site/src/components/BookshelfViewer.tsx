@@ -9,6 +9,7 @@ import { BookStateControlsUI } from './BookStateControlsUI';
 import { PDFResource, URLPDFResource, createPDFResource } from '../types/PDFResource';
 import { PDFSelectionModal } from './PDFSelectionModal';
 import { BookCollectorModal } from './BookCollectorModal';
+import { config } from '../config';
 
 class BookResourceMapping {
     book: Book;
@@ -245,9 +246,9 @@ export function BookshelfViewer() {
         }
     };
 
-    const handleBookCollectorSource = async (source: 'example' | 'all_guy_books') => {
+    const handleBookCollectorSource = async (source: 'example_book' | 'all_guy_books') => {
         try {
-            const response = await fetch(`http://book-collector/${source}`);
+            const response = await fetch(`${config.bookCollectorUrl}/${source}`);
             const result = await response.json();
             
             if (result.type === 'success') {

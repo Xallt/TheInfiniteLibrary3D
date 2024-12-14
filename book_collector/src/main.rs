@@ -40,7 +40,7 @@ enum Commands {
     /// Start the HTTP server
     Server {
         /// Port to run the server on
-        #[arg(default_value_t = 8010)]
+        #[arg(default_value_t = 3000)]
         port: u16,
     },
 }

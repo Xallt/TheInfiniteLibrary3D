@@ -4,26 +4,33 @@ services:
   infinite-library:
     build:
       context: site
-      dockerfile: Dockerfile
     ports:
       - "80:80"
     depends_on:
       - book-collector
     volumes:
       - ./site/resources:/usr/share/nginx/html/resources
+      - ./site/.env:/app/.env
+    networks:
+      - infinite-library-network
 
   book-collector:
     build:
       context: book_collector
-      dockerfile: Dockerfile
     ports:
       - "3000:3000"
     environment:
       - RUST_LOG=info
+      - CORS_ALLOW_ORIGIN=http://localhost
     volumes:
       - pdf_data:/data
     env_file:
       - book_collector/.env
+    networks:
+      - infinite-library-network
 
 volumes:
   pdf_data: 
+
+networks:
+  infinite-library-network:

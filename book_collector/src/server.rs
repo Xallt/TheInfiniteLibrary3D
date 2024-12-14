@@ -1,6 +1,9 @@
 use crate::books::book_provider::{BookPDFSource, BookProvider};
 use crate::books::github_repo_parser::GithubRepoParser;
-use poem::{get, handler, listener::TcpListener, IntoResponse, Response, Route, Server};
+use poem::{
+    get, handler, listener::TcpListener, middleware::Cors, EndpointExt, IntoResponse, Response,
+    Route, Server,
+};
 use serde::Serialize;
 
 #[derive(Debug, Serialize)]
@@ -38,16 +41,24 @@ async fn all_guy_books() -> BookResponse {
 #[handler]
 async fn example_book() -> BookResponse {
     return BookResponse::Success(vec![BookPDFSource {
-        title: "My Little Prince".to_string(),
-        pdf_path: "https://blogs.ubc.ca/edcp508/files/2016/02/TheLittlePrince.pdf".to_string(),
-        author: Some("Antoine de Saint-Exupéry".to_string()),
+        title: "Google Research".to_string(),
+        pdf_path: "https://arxiv.org/pdf/2003.08934".to_string(),
+        author: Some("Ben Mildenhall".to_string()),
     }]);
 }
 
 pub async fn run_server(port: u16) -> Result<(), std::io::Error> {
     let app = Route::new()
         .at("/all_guy_books", get(all_guy_books))
-        .at("/example_book", get(example_book));
+        .at("/example_book", get(example_book))
+        .at("/", get(example_book))
+        .with(
+            Cors::new()
+                .allow_origin("http://localhost")
+                .allow_methods(vec!["GET", "POST"])
+                .allow_credentials(true),
+        );
+
     println!("Starting server on port {}", port);
     Server::new(TcpListener::bind(format!("0.0.0.0:{}", port)))
         .run(app)

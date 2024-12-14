@@ -4,10 +4,10 @@ use poem::{get, handler, listener::TcpListener, IntoResponse, Response, Route, S
 use serde::Serialize;
 
 #[derive(Debug, Serialize)]
-#[serde(tag = "type", content = "data")]
+#[serde(tag = "type", content = "data", rename_all = "lowercase")]
 enum BookResponse {
-    success(Vec<BookPDFSource>),
-    error { message: String },
+    Success(Vec<BookPDFSource>),
+    Error { message: String },
 }
 
 impl IntoResponse for BookResponse {
@@ -28,8 +28,8 @@ async fn all_guy_books_impl() -> Result<Vec<BookPDFSource>, String> {
 #[handler]
 async fn all_guy_books() -> BookResponse {
     match all_guy_books_impl().await {
-        Ok(books) => BookResponse::success(books),
-        Err(e) => BookResponse::error {
+        Ok(books) => BookResponse::Success(books),
+        Err(e) => BookResponse::Error {
             message: format!("Failed to fetch books: {}", e),
         },
     }

@@ -1,12 +1,23 @@
+/// <reference types="vite/client" />
+
 import * as pdfjsLib from 'pdfjs-dist';
 import { PDFMetadata } from 'src/types/PDFResource';
 
 // Initialize PDF.js worker
-const workerUrl = new URL(
-    'pdfjs-dist/build/pdf.worker.min.mjs',
-    import.meta.url
-);
-pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl.href;
+const getWorkerUrl = () => {
+    if (import.meta.env.DEV) {
+        // Development: Use the worker from node_modules
+        return new URL(
+            'pdfjs-dist/build/pdf.worker.min.mjs',
+            import.meta.url
+        ).href;
+    } else {
+        // Production: Use the copied worker file from assets
+        return new URL('/assets/pdf.worker.min.mjs', window.location.origin).href;
+    }
+};
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = getWorkerUrl();
 
 export interface PdfParseOptions {
     imageFormat: 'png' | 'jpeg';

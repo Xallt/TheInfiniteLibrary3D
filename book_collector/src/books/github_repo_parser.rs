@@ -3,7 +3,7 @@ use crate::api::gh_api::{
 };
 use crate::books::book_provider::BookPDFSource;
 use crate::books::book_provider::BookProvider;
-use crate::common::{CIterator, CResult};
+use crate::common::{SafeIterator, SafeResult};
 
 #[derive(Clone)]
 pub struct GithubRepoParser {
@@ -20,7 +20,7 @@ impl GithubRepoParser {
         &self,
         gh_api: &GithubApi,
         gh_content: &GithubElement,
-    ) -> CResult<CIterator<GithubFileElement>> {
+    ) -> SafeResult<SafeIterator<GithubFileElement>> {
         match gh_content {
             GithubElement::File(file) => match file.extension() {
                 Some(extension) => {
@@ -56,7 +56,7 @@ impl GithubRepoParser {
     pub async fn recursive_list_pdf_files(
         &self,
         path: &str,
-    ) -> CResult<CIterator<GithubFileElement>> {
+    ) -> SafeResult<SafeIterator<GithubFileElement>> {
         let api = GithubApi::new();
         let root_gh_element = GithubElement::Directory(GithubDirectoryElement {
             name: self.owner.clone(),
@@ -68,7 +68,7 @@ impl GithubRepoParser {
 }
 
 impl BookProvider for GithubRepoParser {
-    async fn books_iter(&self) -> CResult<CIterator<BookPDFSource>> {
+    async fn books_iter(&self) -> SafeResult<SafeIterator<BookPDFSource>> {
         let pdf_files = self.recursive_list_pdf_files("").await?;
         Ok(Box::new(pdf_files.into_iter().map(|gh_content| {
             BookPDFSource {

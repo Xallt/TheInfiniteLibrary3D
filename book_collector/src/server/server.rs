@@ -1,7 +1,7 @@
 use crate::books::book_provider::BookPDFSource;
 use crate::books::github_repo_parser::GithubRepoParser;
-use crate::common::CResult;
 use crate::server::book_view::BookProviderViewBuilder;
+use crate::utils::common::SafeResult;
 use rocket::{get, launch, routes, serde::json::Json};
 
 #[derive(Debug, serde::Serialize)]
@@ -69,7 +69,7 @@ fn rocket() -> _ {
         }))
 }
 
-pub async fn run_server(port: u16) -> CResult<()> {
+pub async fn run_server(port: u16) -> SafeResult<()> {
     let config = rocket::Config::figment()
         .merge(("port", port))
         .merge(("address", "0.0.0.0"));

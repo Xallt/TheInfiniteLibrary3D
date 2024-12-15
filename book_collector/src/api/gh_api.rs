@@ -1,4 +1,4 @@
-use crate::common::CResult;
+use crate::common::SafeResult;
 use reqwest::header::{HeaderMap, HeaderValue, ACCEPT, AUTHORIZATION, USER_AGENT};
 use reqwest::Client;
 use serde::Deserialize;
@@ -123,7 +123,7 @@ impl GithubApi {
         owner: &str,
         repo: &str,
         path: &str,
-    ) -> CResult<GithubContentsOutput> {
+    ) -> SafeResult<GithubContentsOutput> {
         let url = format!(
             "https://api.github.com/repos/{}/{}/contents/{}",
             owner, repo, path
@@ -143,7 +143,7 @@ impl GithubApi {
         owner: &str,
         repo: &str,
         path: &str,
-    ) -> CResult<GithubElementList> {
+    ) -> SafeResult<GithubElementList> {
         let contents = self.list_contents(owner, repo, path).await?;
         Ok(contents.to_element_list())
     }

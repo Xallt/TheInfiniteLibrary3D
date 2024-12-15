@@ -1,4 +1,4 @@
-use crate::common::{CIterator, CResult};
+use crate::common::{SafeIterator, SafeResult};
 use serde::Serialize;
 
 /// Represents a source of book data
@@ -12,10 +12,10 @@ pub struct BookPDFSource {
 /// Provider interface for loading books from different sources
 pub trait BookProvider: Clone {
     /// Returns an iterator over books
-    async fn books_iter(&self) -> CResult<CIterator<BookPDFSource>>;
+    async fn books_iter(&self) -> SafeResult<SafeIterator<BookPDFSource>>;
 
     /// Default implementation that collects iterator into a Vec
-    async fn books(&self) -> CResult<Vec<BookPDFSource>> {
+    async fn books(&self) -> SafeResult<Vec<BookPDFSource>> {
         let iter = self.books_iter().await?;
         Ok(iter.collect())
     }

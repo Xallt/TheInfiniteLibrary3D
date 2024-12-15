@@ -3,8 +3,8 @@ use tokio::runtime::Runtime;
 mod api;
 mod books;
 mod commands;
-mod common;
 mod server;
+mod utils;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]

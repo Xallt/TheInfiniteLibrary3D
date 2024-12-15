@@ -58,7 +58,7 @@ async fn run_app(cli: Cli) -> Result<(), Box<dyn std::error::Error + Send + Sync
             commands::gh_pdf_listing::execute(&owner, &repo).await?;
         }
         Commands::Server { port } => {
-            server::run_server(port).await?;
+            server::server::run_server(port).await?;
         }
     }
     Ok(())

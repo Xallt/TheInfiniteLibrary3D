@@ -10,7 +10,7 @@ pub struct BookPDFSource {
 }
 
 /// Provider interface for loading books from different sources
-pub trait BookProvider {
+pub trait BookProvider: Clone {
     /// Returns an iterator over books
     async fn books_iter(&self) -> CResult<CIterator<BookPDFSource>>;
 

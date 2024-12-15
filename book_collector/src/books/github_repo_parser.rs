@@ -4,6 +4,8 @@ use crate::api::gh_api::{
 use crate::books::book_provider::BookPDFSource;
 use crate::books::book_provider::BookProvider;
 use crate::common::{CIterator, CResult};
+
+#[derive(Clone)]
 pub struct GithubRepoParser {
     owner: String,
     repo: String,

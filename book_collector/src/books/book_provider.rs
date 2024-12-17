@@ -2,7 +2,7 @@ use crate::utils::common::{SafeIterator, SafeResult};
 use serde::Serialize;
 
 /// Represents a source of book data
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone)]
 pub struct BookPDFSource {
     pub title: String,
     pub author: Option<String>,

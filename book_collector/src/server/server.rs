@@ -43,32 +43,6 @@ async fn index() -> Json<BookResponse> {
     example_book().await
 }
 
-#[launch]
-fn rocket() -> _ {
-    let figment = rocket::Config::figment()
-        .merge(("port", 8000))
-        .merge(("address", "0.0.0.0"));
-
-    rocket::custom(figment)
-        .mount("/", routes![index, example_book, all_guy_books_handler])
-        .attach(rocket::fairing::AdHoc::on_response("CORS", |_, res| {
-            Box::pin(async move {
-                res.set_header(rocket::http::Header::new(
-                    "Access-Control-Allow-Origin",
-                    "http://localhost",
-                ));
-                res.set_header(rocket::http::Header::new(
-                    "Access-Control-Allow-Methods",
-                    "GET, POST",
-                ));
-                res.set_header(rocket::http::Header::new(
-                    "Access-Control-Allow-Credentials",
-                    "true",
-                ));
-            })
-        }))
-}
-
 pub async fn run_server(port: u16) -> SafeResult<()> {
     let config = rocket::Config::figment()
         .merge(("port", port))

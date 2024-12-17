@@ -1,4 +1,4 @@
-use crate::common::{SafeIterator, SafeResult};
+use crate::utils::common::{SafeIterator, SafeResult};
 use serde::Serialize;
 
 /// Represents a source of book data

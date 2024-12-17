@@ -3,7 +3,7 @@ use crate::api::gh_api::{
 };
 use crate::books::book_provider::BookPDFSource;
 use crate::books::book_provider::BookProvider;
-use crate::common::{SafeIterator, SafeResult};
+use crate::utils::common::{SafeIterator, SafeResult};
 
 #[derive(Clone)]
 pub struct GithubRepoParser {

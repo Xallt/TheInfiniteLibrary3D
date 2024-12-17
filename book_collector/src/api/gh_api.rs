@@ -1,4 +1,4 @@
-use crate::common::SafeResult;
+use crate::utils::common::SafeResult;
 use reqwest::header::{HeaderMap, HeaderValue, ACCEPT, AUTHORIZATION, USER_AGENT};
 use reqwest::Client;
 use serde::Deserialize;

@@ -13,7 +13,8 @@ RUN apt-get update && \
 COPY Cargo.toml Cargo.lock ./
 
 # Create a dummy main.rs to cache dependencies
-RUN mkdir src && \
+RUN --mount=type=cache,target=/root/.cargo/registry \
+    mkdir src && \
     echo "fn main() {}" > src/main.rs && \
     cargo build --release && \
     rm -rf src

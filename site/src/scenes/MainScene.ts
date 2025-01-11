@@ -10,6 +10,7 @@ import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter';
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
 import { PMREMGenerator } from 'three';
 import { BaseScene } from './BaseScene';
+import { defaultMainSceneConfig, MainSceneConfig } from '../config/mainSceneConfig';
 
 interface BookIntersection extends THREE.Intersection<THREE.Object3D<THREE.Object3DEventMap>> {
     bookIndex?: number;
@@ -43,6 +44,7 @@ export class ControllerWrapper {
 }
 
 export class MainScene extends BaseScene {
+    private sceneConfig: MainSceneConfig;
     protected camera!: THREE.PerspectiveCamera;
     protected scene!: THREE.Scene;
     protected renderer!: THREE.WebGLRenderer;
@@ -86,9 +88,12 @@ export class MainScene extends BaseScene {
 
     constructor(
         container: HTMLElement,
-        bookshelfParams: BookshelfParams
+        bookshelfParams: BookshelfParams,
+        sceneConfig: MainSceneConfig = defaultMainSceneConfig
     ) {
         super();
+
+        this.sceneConfig = sceneConfig;
 
         this.bookshelfParams = bookshelfParams;
 
@@ -118,6 +123,9 @@ export class MainScene extends BaseScene {
             showStats: true,
             checkVR: true
         });
+
+        // Set initial cursor style
+        this.renderer.domElement.style.cursor = 'default';
 
         // Add selection indicator to scene
         this.scene.add(this.selectionIndicator);
@@ -153,11 +161,11 @@ export class MainScene extends BaseScene {
 
     protected async initEnvironment(scene: THREE.Scene): Promise<THREE.Mesh> {
         const textureLoader = new THREE.TextureLoader();
-        const floorTexture = textureLoader.load('resources/Floor/wood parquet 12_baseColor.jpeg');
+        const floorTexture = textureLoader.load(this.sceneConfig.floorTexture.path);
 
         // Apply scaling to the texture
         floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
-        floorTexture.repeat.set(100, 100);
+        floorTexture.repeat.set(this.sceneConfig.floorTexture.repeat, this.sceneConfig.floorTexture.repeat);
 
         const floor = new THREE.Mesh(
             new THREE.PlaneGeometry(100, 100),
@@ -207,19 +215,21 @@ export class MainScene extends BaseScene {
         scene.background = new THREE.Color(0x000000);
 
         // Load HDR environment map asynchronously
-        this.loadEnvironmentMap(scene, renderer);
+        if (this.sceneConfig.environmentMap) {
+            this.loadEnvironmentMap(scene, renderer, this.sceneConfig.environmentMap.path);
+        }
 
         return [ambientLight, spotLight];
     }
 
-    private async loadEnvironmentMap(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Promise<void> {
+    private async loadEnvironmentMap(scene: THREE.Scene, renderer: THREE.WebGLRenderer, path: string): Promise<void> {
         const pmremGenerator = new PMREMGenerator(renderer);
         pmremGenerator.compileEquirectangularShader();
 
         try {
             const hdrEquirect = await new RGBELoader()
-                .setPath('resources/')
-                .loadAsync('HDR_hazy_nebulae.hdr');
+                .setPath("resources/")
+                .loadAsync(path);
 
             const envMap = pmremGenerator.fromEquirectangular(hdrEquirect).texture;
             scene.environment = envMap;
@@ -323,6 +333,7 @@ export class MainScene extends BaseScene {
         window.addEventListener('resize', this.onWindowResize.bind(this));
         window.addEventListener('keydown', this.onKeyDown.bind(this));
         window.addEventListener('mousemove', this.onMouseMove.bind(this));
+        window.addEventListener('click', this.onMouseClick.bind(this));
     }
 
     private onWindowResize(): void {
@@ -433,6 +444,9 @@ export class MainScene extends BaseScene {
 
         const book = this.books[this.selectedBookIndex];
         const bookMesh = book.getMesh();
+
+        // Reset cursor to default when entering view mode
+        this.renderer.domElement.style.cursor = 'default';
 
         // Store original position and rotation for returning later
         book.storeOriginalTransform();
@@ -678,14 +692,52 @@ export class MainScene extends BaseScene {
             // Sort intersections by distance
             intersects.sort((a, b) => a.distance - b.distance);
 
-            // Select the closest intersected book
+            // Update cursor style and select the closest intersected book
             if (intersects.length > 0) {
                 const closestIntersect = intersects[0];
                 const bookIndex = closestIntersect.bookIndex;
 
+                // Change cursor to pointer when hovering over a book
+                this.renderer.domElement.style.cursor = 'pointer';
+
                 // Only update selection if it's different from current selection
                 if (bookIndex !== undefined && bookIndex !== this.selectedBookIndex) {
                     this.selectBook(bookIndex);
+                }
+            } else {
+                // Reset cursor to default when not hovering over a book
+                this.renderer.domElement.style.cursor = 'default';
+            }
+        }
+    }
+
+    private onMouseClick(event: MouseEvent): void {
+        if (!this.isVRSupported && !this.isBookInViewMode) {
+            this.mouseRaycaster.setFromCamera(this.mousePosition, this.camera);
+
+            // Test intersections with all books
+            const intersects: BookIntersection[] = [];
+            this.books.forEach((book, index) => {
+                const bookMesh = book.getMesh();
+                const bookIntersects = this.mouseRaycaster.intersectObject(bookMesh, true);
+                if (bookIntersects.length > 0) {
+                    const intersection = bookIntersects[0] as BookIntersection;
+                    intersection.bookIndex = index;
+                    intersects.push(intersection);
+                }
+            });
+
+            // Sort intersections by distance
+            intersects.sort((a, b) => a.distance - b.distance);
+
+            // View the closest intersected book
+            if (intersects.length > 0) {
+                const closestIntersect = intersects[0];
+                const bookIndex = closestIntersect.bookIndex;
+
+                if (bookIndex !== undefined) {
+                    this.selectBook(bookIndex);
+                    this.viewSelectedBook();
                 }
             }
         }

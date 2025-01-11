@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { MainScene } from '../scenes/MainScene';
-import { defaultBookParams, defaultBookshelfParams } from '../App';
+import { defaultBookshelfParams, defaultBookParams, defaultBookTexture } from '../config/bookConfig';
 import { PdfPage, PdfParser } from '../utils/pdfParser';
 import { Book, TextureLoader } from './Bookshelf/Book';
 import { BookTexture } from './Bookshelf/BookTexture';
@@ -114,11 +114,8 @@ export function BookshelfViewer() {
 
                 // Create empty book
                 const book = Book.empty(defaultBookParams, new BookTexture(
-                    TextureLoader.getInstance().load("resources/BookCovers0135_5_350.jpg"),
-                    {
-                        leftCoverPosition: 0.413,
-                        rightCoverPosition: 0.582
-                    }
+                    TextureLoader.getInstance().load(defaultBookTexture.path),
+                    defaultBookTexture.coverPositions
                 ), defaultPageCount, index);
 
                 if (sceneRef.current) {
@@ -279,33 +276,32 @@ export function BookshelfViewer() {
             >
                 Download Scene
             </button>
-            <div className="controls">
+            {isViewingBook && (
                 <button 
-                    className="nav-button"
-                    onClick={handlePreviousBook}
-                    disabled={bookCount === 0 || isViewingBook}
-                >
-                    Previous Book
-                </button>
-                <button 
-                    className="view-button"
+                    className="return-book-button"
                     onClick={handleViewBook}
-                    disabled={bookCount === 0}
+                    style={{
+                        position: 'absolute',
+                        top: '10px',
+                        left: '10px',
+                        padding: '8px 16px',
+                        backgroundColor: '#f44336',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        zIndex: 1000
+                    }}
                 >
-                    {isViewingBook ? 'Return to Shelf' : 'View Book'}
+                    Return Book
                 </button>
+            )}
+            <div className="controls">
                 <button 
                     className="add-book-button"
                     onClick={() => setShowUrlModal(true)}
                 >
                     Add Books
-                </button>
-                <button 
-                    className="nav-button"
-                    onClick={handleNextBook}
-                    disabled={bookCount === 0 || isViewingBook}
-                >
-                    Next Book
                 </button>
                 <button 
                     className="load-collector-button"

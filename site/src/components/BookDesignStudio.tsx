@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { BookTexture, BookTextureParams } from './Bookshelf/BookTexture';
-import { defaultBookParams } from '../App';
+import { defaultBookParams } from '../config/bookConfig';
 import * as THREE from 'three';
 import { PDFSelectionModal } from './PDFSelectionModal';
 import { PDFResource } from '../types/PDFResource';

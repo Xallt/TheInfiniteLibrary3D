@@ -3,7 +3,8 @@ use crate::books::github_repo_parser::GithubRepoParser;
 use crate::server::book_view::BookProviderViewBuilder;
 use crate::server::pagination::PaginationState;
 use crate::utils::common::SafeResult;
-use rocket::{get, launch, routes, serde::json::Json, State};
+use rocket::{get, routes, serde::json::Json, State};
+use rocket_cors::AllowedOrigins;
 
 #[derive(Debug, serde::Serialize)]
 #[serde(tag = "type", content = "data", rename_all = "lowercase")]
@@ -78,8 +79,15 @@ pub async fn run_server(port: u16) -> SafeResult<()> {
         .merge(("port", port))
         .merge(("address", "0.0.0.0"));
 
+    let allowed_origins = AllowedOrigins::some_exact(&["http://localhost"]);
+
+    let cors = rocket_cors::CorsOptions::default()
+        .allowed_origins(allowed_origins)
+        .to_cors()?;
+
     let server_handle = rocket::custom(config)
         .manage(PaginationState::new())
+        .attach(cors)
         .mount(
             "/",
             routes![
@@ -94,7 +102,7 @@ pub async fn run_server(port: u16) -> SafeResult<()> {
         .await;
 
     match server_handle {
-        Ok(server) => Ok(()),
+        Ok(_) => Ok(()),
         Err(e) => Err(e.into()),
     }
 }

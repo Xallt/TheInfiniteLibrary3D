@@ -1,34 +1,54 @@
-use crate::books::book_provider::{BookPDFSource, BookProvider};
-use crate::utils::common::SafeIterator;
-use rocket::State;
+use crate::books::book_provider::BookPDFSource;
+use futures::Stream;
+use futures::StreamExt;
 use std::collections::HashMap;
+use std::pin::Pin;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::RwLock;
+use tokio::sync::{mpsc, RwLock};
 
 pub struct PaginationState {
     next_id: AtomicU64,
-    paginations: RwLock<HashMap<u64, Box<dyn Iterator<Item = Vec<BookPDFSource>> + Send + Sync>>>,
+    receivers: RwLock<HashMap<u64, mpsc::Receiver<Vec<BookPDFSource>>>>,
 }
 
 impl PaginationState {
     pub fn new() -> Self {
         Self {
             next_id: AtomicU64::new(0),
-            paginations: RwLock::new(HashMap::new()),
+            receivers: RwLock::new(HashMap::new()),
         }
     }
 
     pub fn create_pagination(
         &self,
-        iterator: Box<dyn Iterator<Item = Vec<BookPDFSource>> + Send + Sync>,
+        mut stream: Pin<Box<dyn Stream<Item = Vec<BookPDFSource>> + Send + Sync>>,
     ) -> u64 {
         let id = self.next_id.fetch_add(1, Ordering::SeqCst);
-        self.paginations.write().unwrap().insert(id, iterator);
+        let (tx, rx) = mpsc::channel(2); // Small buffer size since we read one at a time
+
+        // Spawn a task to drive the stream
+        tokio::spawn(async move {
+            while let Some(chunk) = stream.next().await {
+                if tx.send(chunk).await.is_err() {
+                    break; // Receiver was dropped
+                }
+            }
+        });
+
+        // Store the receiver
+        futures::executor::block_on(async {
+            self.receivers.write().await.insert(id, rx);
+        });
+
         id
     }
 
-    pub fn get_next_page(&self, id: u64) -> Option<Vec<BookPDFSource>> {
-        let mut paginations = self.paginations.write().unwrap();
-        paginations.get_mut(&id)?.next()
+    pub async fn get_next_page(&self, id: u64) -> Option<Vec<BookPDFSource>> {
+        let mut guard = self.receivers.write().await;
+        if let Some(rx) = guard.get_mut(&id) {
+            rx.recv().await
+        } else {
+            None
+        }
     }
 }

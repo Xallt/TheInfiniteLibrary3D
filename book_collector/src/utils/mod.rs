@@ -1,2 +1,2 @@
 pub mod common;
-pub mod iterator;
+pub mod stream;

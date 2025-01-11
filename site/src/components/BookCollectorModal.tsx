@@ -3,7 +3,7 @@ import React from 'react';
 interface BookCollectorModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSourceSelected: (source: 'example_book' | 'all_guy_books') => void;
+    onSourceSelected: (source: 'example_book' | 'all/guy_books') => void;
 }
 
 export function BookCollectorModal({ isOpen, onClose, onSourceSelected }: BookCollectorModalProps) {
@@ -17,7 +17,7 @@ export function BookCollectorModal({ isOpen, onClose, onSourceSelected }: BookCo
                     <button onClick={() => onSourceSelected('example_book')}>
                         Example Book
                     </button>
-                    <button onClick={() => onSourceSelected('all_guy_books')}>
+                    <button onClick={() => onSourceSelected('all/guy_books')}>
                         All Guy Books
                     </button>
                 </div>

@@ -1,31 +1,35 @@
-use crate::books::book_provider::{BookPDFSource, BookProvider};
-use crate::utils::common::{SafeIterator, SafeResult};
-use crate::utils::iterator::chunk_iterator;
+use std::pin::Pin;
 
-pub struct BookProviderViewBuilder<'a, P: BookProvider> {
-    provider: &'a P,
+use futures::Stream;
+
+use crate::books::book_provider::{BookPDFSource, BookProvider, BookProviderConfig};
+use crate::utils::common::SafeResult;
+use crate::utils::stream::chunk_stream;
+
+pub struct BookProviderViewBuilder {
+    provider_config: Box<dyn BookProviderConfig>,
 }
 
-impl<'a, P: BookProvider> BookProviderViewBuilder<'a, P> {
-    pub fn new(provider: &'a P) -> Self {
-        Self { provider }
+impl BookProviderViewBuilder {
+    pub fn new(provider_config: Box<dyn BookProviderConfig>) -> Self {
+        Self { provider_config }
     }
 
-    pub fn collection_list_view(&self) -> BookCollectionListView<'a, P> {
-        BookCollectionListView::new(self.provider)
+    pub fn collection_list_view(&self) -> BookCollectionListView {
+        BookCollectionListView::new(self.provider_config.instantiate())
     }
 
-    pub fn pagination_view(&self, books_per_page: usize) -> BookPaginationView<'a, P> {
-        BookPaginationView::new(self.provider, books_per_page)
+    pub fn pagination_view(&self, books_per_page: usize) -> BookPaginationView {
+        BookPaginationView::new(self.provider_config.instantiate(), books_per_page)
     }
 }
 
-pub struct BookCollectionListView<'a, P: BookProvider> {
-    provider: &'a P,
+pub struct BookCollectionListView {
+    provider: Box<dyn BookProvider>,
 }
 
-impl<'a, P: BookProvider> BookCollectionListView<'a, P> {
-    pub fn new(provider: &'a P) -> Self {
+impl BookCollectionListView {
+    pub fn new(provider: Box<dyn BookProvider>) -> Self {
         Self { provider }
     }
 
@@ -34,21 +38,26 @@ impl<'a, P: BookProvider> BookCollectionListView<'a, P> {
     }
 }
 
-pub struct BookPaginationView<'a, P: BookProvider> {
-    provider: &'a P,
+pub struct BookPaginationView {
+    provider: Box<dyn BookProvider>,
     books_per_page: usize,
 }
 
-impl<'a, P: BookProvider> BookPaginationView<'a, P> {
-    pub fn new(provider: &'a P, books_per_page: usize) -> Self {
+impl BookPaginationView {
+    pub fn new(provider: Box<dyn BookProvider>, books_per_page: usize) -> Self {
         Self {
             provider,
             books_per_page,
         }
     }
 
-    pub async fn pagination_view(&self) -> SafeResult<SafeIterator<Vec<BookPDFSource>>> {
-        let books_iter = self.provider.books_iter().await?;
-        Ok(chunk_iterator(books_iter, self.books_per_page))
+    pub async fn pagination_view(
+        &self,
+    ) -> SafeResult<Pin<Box<dyn Stream<Item = Vec<BookPDFSource>> + Send + Sync>>> {
+        let books_stream = self.provider.books_stream().await?;
+
+        let books_chunks = chunk_stream(books_stream, self.books_per_page);
+
+        Ok(books_chunks)
     }
 }

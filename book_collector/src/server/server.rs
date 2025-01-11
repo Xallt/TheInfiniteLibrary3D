@@ -1,5 +1,5 @@
 use crate::books::book_provider::BookPDFSource;
-use crate::books::github_repo_parser::GithubRepoParser;
+use crate::server::book_providers::BookProviderRegistry;
 use crate::server::book_view::BookProviderViewBuilder;
 use crate::server::pagination::PaginationState;
 use crate::utils::common::SafeResult;
@@ -13,60 +13,75 @@ enum BookResponse {
     Error { message: String },
 }
 
-#[derive(Debug, serde::Serialize)]
-struct PaginationId {
-    id: u64,
+#[get("/all/<provider_id>")]
+async fn all_books(
+    provider_id: &str,
+    registry: &State<BookProviderRegistry>,
+) -> Json<BookResponse> {
+    match registry.get_provider_config(provider_id) {
+        Some(provider_config) => {
+            let view_builder = BookProviderViewBuilder::new(provider_config);
+            let list_view = view_builder.collection_list_view();
+
+            match list_view.all_books().await {
+                Ok(books) => Json(BookResponse::Success(books)),
+                Err(e) => Json(BookResponse::Error {
+                    message: format!("Failed to fetch books: {}", e),
+                }),
+            }
+        }
+        None => Json(BookResponse::Error {
+            message: format!("Book provider '{}' not found", provider_id),
+        }),
+    }
 }
 
-#[get("/all_guy_books")]
-async fn all_guy_books_handler() -> Json<BookResponse> {
-    const GUY_NAME: &str = "J3ke7";
-    const GUY_REPO: &str = "e-book";
-    let provider = GithubRepoParser::new(GUY_NAME.to_string(), GUY_REPO.to_string());
-    let view_builder = BookProviderViewBuilder::new(&provider);
-    let list_view = view_builder.collection_list_view();
+#[get("/pagination_init/<provider_id>")]
+async fn pagination_init(
+    provider_id: &str,
+    registry: &State<BookProviderRegistry>,
+    state: &State<PaginationState>,
+) -> Json<BookResponse> {
+    match registry.get_provider_config(provider_id) {
+        Some(provider_config) => {
+            let view_builder = BookProviderViewBuilder::new(provider_config);
+            let pagination_view = view_builder.pagination_view(10); // 10 books per page
 
-    let response = match list_view.all_books().await {
-        Ok(books) => BookResponse::Success(books),
-        Err(e) => BookResponse::Error {
-            message: format!("Failed to fetch books: {}", e),
-        },
-    };
-
-    Json(response)
+            match pagination_view.pagination_view().await {
+                Ok(stream) => {
+                    let id = state.create_pagination(stream);
+                    Json(BookResponse::Success(vec![BookPDFSource {
+                        title: format!("pagination_id:{}", id),
+                        pdf_path: String::new(),
+                        author: None,
+                    }]))
+                }
+                Err(e) => Json(BookResponse::Error {
+                    message: format!("Failed to initialize pagination: {}", e),
+                }),
+            }
+        }
+        None => Json(BookResponse::Error {
+            message: format!("Book provider '{}' not found", provider_id),
+        }),
+    }
 }
 
-#[get("/example_book")]
-async fn example_book() -> Json<BookResponse> {
-    Json(BookResponse::Success(vec![BookPDFSource {
-        title: "Google Research".to_string(),
-        pdf_path: "https://arxiv.org/pdf/2003.08934".to_string(),
-        author: Some("Ben Mildenhall".to_string()),
-    }]))
-}
+#[get("/pagination_next/<provider_id>/<pagination_id>")]
+async fn pagination_next(
+    provider_id: &str,
+    pagination_id: u64,
+    registry: &State<BookProviderRegistry>,
+    state: &State<PaginationState>,
+) -> Json<BookResponse> {
+    // We first verify the provider exists
+    if registry.get_provider_config(provider_id).is_none() {
+        return Json(BookResponse::Error {
+            message: format!("Book provider '{}' not found", provider_id),
+        });
+    }
 
-#[get("/")]
-async fn index() -> Json<BookResponse> {
-    example_book().await
-}
-
-#[get("/init_all_guy_pagination")]
-async fn init_all_guy_pagination(state: &State<PaginationState>) -> Json<PaginationId> {
-    const GUY_NAME: &str = "J3ke7";
-    const GUY_REPO: &str = "e-book";
-    let provider = GithubRepoParser::new(GUY_NAME.to_string(), GUY_REPO.to_string());
-    let view_builder = BookProviderViewBuilder::new(&provider);
-    let pagination_view = view_builder.pagination_view(10); // 10 books per page
-
-    let iterator = pagination_view.pagination_view().await.unwrap();
-    let id = state.create_pagination(Box::new(iterator));
-
-    Json(PaginationId { id })
-}
-
-#[get("/all_guy_pagination_next/<id>")]
-async fn all_guy_pagination_next(id: u64, state: &State<PaginationState>) -> Json<BookResponse> {
-    match state.get_next_page(id) {
+    match state.get_next_page(pagination_id).await {
         Some(books) => Json(BookResponse::Success(books)),
         None => Json(BookResponse::Error {
             message: "No more pages available".to_string(),
@@ -87,17 +102,9 @@ pub async fn run_server(port: u16) -> SafeResult<()> {
 
     let server_handle = rocket::custom(config)
         .manage(PaginationState::new())
+        .manage(BookProviderRegistry::new())
         .attach(cors)
-        .mount(
-            "/",
-            routes![
-                index,
-                example_book,
-                all_guy_books_handler,
-                init_all_guy_pagination,
-                all_guy_pagination_next
-            ],
-        )
+        .mount("/", routes![all_books, pagination_init, pagination_next])
         .launch()
         .await;
 

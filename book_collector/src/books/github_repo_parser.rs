@@ -1,11 +1,28 @@
 use crate::api::gh_api::{
     GithubApi, GithubDirectoryElement, GithubElement, GithubElementList, GithubFileElement,
 };
-use crate::books::book_provider::BookPDFSource;
-use crate::books::book_provider::BookProvider;
-use crate::utils::common::{SafeIterator, SafeResult};
+use crate::books::book_provider::{BookPDFSource, BookProvider, BookProviderConfig};
+use crate::utils::common::SafeResult;
+use async_trait::async_trait;
+use futures::{Stream, StreamExt};
+use std::pin::Pin;
 
 #[derive(Clone)]
+pub struct GithubRepoConfig {
+    owner: String,
+    repo: String,
+}
+
+impl BookProviderConfig for GithubRepoConfig {
+    fn instantiate(&self) -> Box<dyn BookProvider> {
+        Box::new(GithubRepoParser::new(self.owner.clone(), self.repo.clone()))
+    }
+
+    fn clone_box(&self) -> Box<dyn BookProviderConfig> {
+        Box::new(self.clone())
+    }
+}
+
 pub struct GithubRepoParser {
     owner: String,
     repo: String,
@@ -20,35 +37,42 @@ impl GithubRepoParser {
         &self,
         gh_api: &GithubApi,
         gh_content: &GithubElement,
-    ) -> SafeResult<SafeIterator<GithubFileElement>> {
+    ) -> SafeResult<Pin<Box<dyn Stream<Item = GithubFileElement> + Send + Sync>>> {
         match gh_content {
-            GithubElement::File(file) => match file.extension() {
-                Some(extension) => {
-                    if extension.to_lowercase() == "pdf" {
-                        Ok(Box::new(vec![file.clone()].into_iter()))
-                    } else {
-                        Ok(Box::new(Vec::new().into_iter()))
+            GithubElement::File(file) => {
+                let file = file.clone();
+                match file.extension() {
+                    Some(extension) => {
+                        if extension.to_lowercase() == "pdf" {
+                            Ok(Box::pin(futures::stream::once(async move { file })))
+                        } else {
+                            Ok(Box::pin(futures::stream::empty()))
+                        }
                     }
+                    None => Ok(Box::pin(futures::stream::empty())),
                 }
-                None => Ok(Box::new(Vec::new().into_iter())),
-            },
+            }
             GithubElement::Directory(directory) => {
-                let contents = gh_api
-                    .get_elements(&self.owner, &self.repo, &directory.path)
-                    .await?;
+                let owner = self.owner.clone();
+                let repo = self.repo.clone();
+                let path = directory.path.clone();
+
+                let contents = gh_api.get_elements(&owner, &repo, &path).await?;
                 let entries = match contents {
                     GithubElementList::SingleFile(_) => Vec::new(),
                     GithubElementList::DirectoryContents(contents) => contents,
                 };
 
-                let futures: Vec<_> = entries
-                    .iter()
-                    .map(|c| self.recursive_gh_traversal_pdf_paths(gh_api, c))
-                    .collect();
+                let streams_future = futures::future::join_all(
+                    entries
+                        .iter()
+                        .map(|c| self.recursive_gh_traversal_pdf_paths(gh_api, c)),
+                )
+                .await;
 
-                let content_list_results = futures::future::join_all(futures).await;
-                let results_unflattened = content_list_results.into_iter().map(|r| r.unwrap());
-                Ok(Box::new(results_unflattened.flatten()))
+                let streams = streams_future.into_iter().collect::<Result<Vec<_>, _>>()?;
+
+                Ok(Box::pin(futures::stream::select_all(streams)))
             }
         }
     }
@@ -56,7 +80,7 @@ impl GithubRepoParser {
     pub async fn recursive_list_pdf_files(
         &self,
         path: &str,
-    ) -> SafeResult<SafeIterator<GithubFileElement>> {
+    ) -> SafeResult<Pin<Box<dyn Stream<Item = GithubFileElement> + Send + Sync>>> {
         let api = GithubApi::new();
         let root_gh_element = GithubElement::Directory(GithubDirectoryElement {
             name: self.owner.clone(),
@@ -67,15 +91,23 @@ impl GithubRepoParser {
     }
 }
 
+#[async_trait]
 impl BookProvider for GithubRepoParser {
-    async fn books_iter(&self) -> SafeResult<SafeIterator<BookPDFSource>> {
+    async fn books_stream(
+        &self,
+    ) -> SafeResult<Pin<Box<dyn Stream<Item = BookPDFSource> + Send + Sync>>> {
         let pdf_files = self.recursive_list_pdf_files("").await?;
-        Ok(Box::new(pdf_files.into_iter().map(|gh_content| {
-            BookPDFSource {
-                title: gh_content.name,
-                author: None,
-                pdf_path: gh_content.download_url,
-            }
+        Ok(Box::pin(pdf_files.map(|gh_content| BookPDFSource {
+            title: gh_content.name,
+            author: None,
+            pdf_path: gh_content.download_url,
         })))
+    }
+
+    fn create_config(&self) -> Box<dyn BookProviderConfig> {
+        Box::new(GithubRepoConfig {
+            owner: self.owner.clone(),
+            repo: self.repo.clone(),
+        })
     }
 }

@@ -12,7 +12,7 @@ interface BookCollectorResponse {
     message?: string;
 }
 
-export type BookCollectorSource = 'example_book' | 'all_guy_books';
+export type BookCollectorSource = 'example_book' | 'all/guy_books';
 
 export class BookCollectorAPI {
     private static baseUrl = config.bookCollectorUrl;

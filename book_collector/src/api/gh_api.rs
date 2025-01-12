@@ -4,6 +4,7 @@ use reqwest::Client;
 use serde::Deserialize;
 use std::env;
 
+/// Repesents a single file in a Github repository
 #[derive(Debug, Clone)]
 pub struct GithubFileElement {
     pub name: String,
@@ -12,22 +13,26 @@ pub struct GithubFileElement {
     pub size: u64,
 }
 
+/// Represents a directory in a Github repository
 pub struct GithubDirectoryElement {
     pub name: String,
     pub path: String,
 }
 
 impl GithubFileElement {
+    /// Returns the extension of the file
     pub fn extension(&self) -> Option<String> {
         self.name.split('.').last().map(|s| s.to_string())
     }
 }
 
+/// Represents a single element in a Github repository (either a file or a directory)
 pub enum GithubElement {
     File(GithubFileElement),
     Directory(GithubDirectoryElement),
 }
 
+/// Element returned by the Github API, which can be either a file or a directory
 #[derive(Deserialize, Debug, Clone)]
 pub struct GithubContent {
     #[serde(rename = "type")]
@@ -39,10 +44,12 @@ pub struct GithubContent {
 }
 
 impl GithubContent {
+    /// Returns true if the content is a file
     pub fn is_file(&self) -> bool {
         return self.content_type == "file";
     }
 
+    /// Converts the GithubContent to a GithubElement
     pub fn to_github_element(&self) -> GithubElement {
         if self.is_file() {
             GithubElement::File(GithubFileElement {
@@ -60,6 +67,7 @@ impl GithubContent {
     }
 }
 
+/// Represents the output of the Github API, which can be either a single file or a list of files/directories in a directory
 #[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum GithubContentsOutput {
@@ -68,7 +76,8 @@ pub enum GithubContentsOutput {
 }
 
 impl GithubContentsOutput {
-    fn to_element_list(&self) -> GithubElementList {
+    /// Converts the GithubContentsOutput to a GithubElementList
+    pub fn to_element_list(&self) -> GithubElementList {
         match self {
             GithubContentsOutput::SingleFile(content) => {
                 GithubElementList::SingleFile(content.to_github_element())
@@ -85,16 +94,19 @@ impl GithubContentsOutput {
     }
 }
 
+/// Represents a parsed list of Github elements (either a single file or a list of files/directories)
 pub enum GithubElementList {
     SingleFile(GithubElement),
     DirectoryContents(Vec<GithubElement>),
 }
 
+/// The Github API client
 pub struct GithubApi {
     client: Client,
 }
 
 impl GithubApi {
+    /// Creates a new Github API client
     pub fn new() -> Self {
         let mut headers = HeaderMap::new();
         headers.insert(
@@ -118,6 +130,7 @@ impl GithubApi {
         Self { client }
     }
 
+    /// Lists the contents of a directory in a Github repository
     pub async fn list_contents(
         &self,
         owner: &str,
@@ -138,6 +151,7 @@ impl GithubApi {
         Ok(response.json().await?)
     }
 
+    /// Gets the elements in a directory in a Github repository
     pub async fn get_elements(
         &self,
         owner: &str,

@@ -100,13 +100,6 @@ export function BookshelfViewer() {
             throw new Error("Book not found");
         }
         
-        // Only load pages if they haven't been loaded yet
-        if (!currentBookResource.loaded) {
-            await loadBookPages(currentBookResource);
-        }
-        else {
-            console.log("Book already loaded");
-        }
         
         sceneRef.current.viewBook(bookIndex);
         if (sceneRef.current.isInVR()) {
@@ -114,6 +107,15 @@ export function BookshelfViewer() {
         }
 
         setIsViewingBook(true);
+
+        // Only load pages if they haven't been loaded yet
+        if (!currentBookResource.loaded) {
+            await loadBookPages(currentBookResource);
+        }
+        else {
+            console.log("Book already loaded");
+        }
+
     };
 
     const handlePDFSourcesSubmitted = async (sources: PDFResource[]) => {

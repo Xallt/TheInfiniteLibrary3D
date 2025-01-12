@@ -51,7 +51,7 @@ export class MainScene extends BaseScene {
     private controls!: OrbitControls;
     private lightingSetup!: THREE.Light[];
     private bookshelfParams!: BookshelfParams;
-    private onBookSelectedCallback?: () => void;
+    private onBookSelectedCallback?: (bookIndex: number) => void;
 
     private gizmo: THREE.Object3D | null = null;
 
@@ -428,10 +428,8 @@ export class MainScene extends BaseScene {
         return this.books.length;
     }
 
-    public viewSelectedBook(): void {
-        if (this.selectedBookIndex === -1 || this.isBookInViewMode) return;
-
-        const book = this.books[this.selectedBookIndex];
+    public viewBook(bookIndex: number): void {
+        const book = this.books[bookIndex];
         const bookMesh = book.getMesh();
 
         // Reset cursor to default when entering view mode
@@ -446,6 +444,7 @@ export class MainScene extends BaseScene {
         // Remove book from bookshelf and add it directly to the scene
         const bookshelfMesh = this.bookshelf.getMesh();
         bookshelfMesh.remove(bookMesh);
+
 
         // If it's VR mode, add to the scene
         // Otherwise, add to a new transform control group
@@ -484,6 +483,13 @@ export class MainScene extends BaseScene {
 
         this.isBookInViewMode = true;
         this.viewingBookIndex = this.selectedBookIndex;
+    }
+
+    public viewSelectedBook(): void {
+        if (this.selectedBookIndex === -1) throw new Error("No book selected");
+        if (this.isBookInViewMode) throw new Error("Book already in view");
+
+        this.viewBook(this.selectedBookIndex);
     }
 
     public returnBookToShelf(): void {
@@ -589,9 +595,13 @@ export class MainScene extends BaseScene {
         }
     }
 
-    public getSelectedBook(): Book | null {
-        if (this.selectedBookIndex === -1) return null;
-        return this.books[this.selectedBookIndex];
+    public getBook(index: number): Book {
+        if (index < 0 || index >= this.books.length) throw new Error("Book index out of bounds");
+        return this.books[index];
+    }
+
+    public getSelectedBook(): Book {
+        return this.getBook(this.selectedBookIndex);
     }
 
     private handleControllerRayIntersection(controller: THREE.XRTargetRaySpace): void {
@@ -699,7 +709,7 @@ export class MainScene extends BaseScene {
         if (intersection) {
             this.selectBook(intersection.bookIndex);
             if (this.onBookSelectedCallback) {
-                this.onBookSelectedCallback();
+                this.onBookSelectedCallback(intersection.bookIndex);
             }
         }
     }
@@ -750,7 +760,7 @@ export class MainScene extends BaseScene {
         });
     }
 
-    public setOnBookSelectedCallback(callback: () => void) {
+    public setOnBookSelectedCallback(callback: (bookIndex: number) => void) {
         this.onBookSelectedCallback = callback;
     }
 }

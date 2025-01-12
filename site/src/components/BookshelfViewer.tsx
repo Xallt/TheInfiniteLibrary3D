@@ -29,8 +29,10 @@ class BookResourceMapping {
 export function BookshelfViewer() {
     const sceneRef = useRef<MainScene | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
+    const bookResourceMappingsRef = useRef<{ [index: number]: BookResourceMapping }>({});
     const [bookCount, setBookCount] = useState(0);
     const [isViewingBook, setIsViewingBook] = useState(false);
+    const [currentViewingBookIndex, setCurrentViewingBookIndex] = useState(-1);
     const [showUrlModal, setShowUrlModal] = useState(false);
     const [bookAngle, setBookAngle] = useState(Math.PI / 2); // Default open angle
     const [bookResourceMappings, setBookResourceMappings] = useState<{ [index: number]: BookResourceMapping }>({});
@@ -58,8 +60,8 @@ export function BookshelfViewer() {
         );
 
         // Set up the book selection callback
-        sceneRef.current.setOnBookSelectedCallback(() => {
-            handleViewBook();
+        sceneRef.current.setOnBookSelectedCallback((bookIndex) => {
+            handleViewBook(bookIndex);
         });
 
         // Cleanup function
@@ -77,30 +79,41 @@ export function BookshelfViewer() {
         };
     }, []); // Empty dependency array means this runs once on mount
 
-    const handleViewBook = async () => {
+    const returnBook = () => {
+        if (!sceneRef.current) return;
+        sceneRef.current.returnBookToShelf();
+        setIsViewingBook(false);
+        setCurrentViewingBookIndex(-1);
+    }
+
+    const handleViewBook = async (bookIndex: number) => {
         if (!sceneRef.current) return;
 
-        if (!isViewingBook) {
-            const currentBookResource = getCurrentBookResource();
-            
-            if (currentBookResource) {
-                // Only load pages if they haven't been loaded yet
-                if (!currentBookResource.loaded) {
-                    loadBookPages(currentBookResource);
-                }
-                else {
-                    console.log("Book already loaded");
-                }
-                
-                sceneRef.current.viewSelectedBook();
-                if (sceneRef.current.isInVR()) {
-                    setBookAngle(Math.PI / 2);
-                }
-            }
-        } else {
-            sceneRef.current.returnBookToShelf();
+        if (isViewingBook) {
+            throw new Error("Book already in view");
         }
-        setIsViewingBook(!isViewingBook);
+
+        setCurrentViewingBookIndex(bookIndex);
+
+        const currentBookResource = bookResourceMappingsRef.current[bookIndex];
+        if (!currentBookResource) {
+            throw new Error("Book not found");
+        }
+        
+        // Only load pages if they haven't been loaded yet
+        if (!currentBookResource.loaded) {
+            await loadBookPages(currentBookResource);
+        }
+        else {
+            console.log("Book already loaded");
+        }
+        
+        sceneRef.current.viewBook(bookIndex);
+        if (sceneRef.current.isInVR()) {
+            setBookAngle(Math.PI / 2);
+        }
+
+        setIsViewingBook(true);
     };
 
     const handlePDFSourcesSubmitted = async (sources: PDFResource[]) => {
@@ -129,10 +142,14 @@ export function BookshelfViewer() {
         const results = (await Promise.all(bookPromises)).filter((result): result is BookResourceMapping => result !== null);
         const resultsSorted = results.sort((a, b) => a.index - b.index);
 
-        setBookResourceMappings(resultsSorted.reduce((acc, mapping) => {
+        // Update both the ref and the state
+        const newMappings = resultsSorted.reduce((acc, mapping) => {
             acc[mapping.index] = mapping;
             return acc;
-        }, {} as { [index: number]: BookResourceMapping }));
+        }, {} as { [index: number]: BookResourceMapping });
+        
+        bookResourceMappingsRef.current = newMappings;
+        setBookResourceMappings(newMappings);
     };
 
     const loadBookPages = async (bookResourceMapping: BookResourceMapping) => {
@@ -156,6 +173,11 @@ export function BookshelfViewer() {
                 bookResourceMapping.book.addPage(physicalPage, pageIndex++);
             }
 
+            // Update both the ref and the state
+            bookResourceMappingsRef.current = {
+                ...bookResourceMappingsRef.current,
+                [bookResourceMapping.index]: { ...bookResourceMapping, loaded: true }
+            };
             setBookResourceMappings(prevMappings => ({
                 ...prevMappings,
                 [bookResourceMapping.index]: { ...bookResourceMapping, loaded: true }
@@ -191,15 +213,8 @@ export function BookshelfViewer() {
         }
     }, [isViewingBook]);
 
-    const getCurrentBookResource = (): BookResourceMapping => {
-        if (!sceneRef.current) throw new Error("Scene not initialized");
-        const book = sceneRef.current.getSelectedBook();
-        if (!book) throw new Error("No book selected");
-        return bookResourceMappings[book.id] || null;
-    };
-
     const getCurrentBookInfo = (): { title: string; author: string; pageCount: number } | null => {
-        const resource = getCurrentBookResource();
+        const resource = bookResourceMappingsRef.current[currentViewingBookIndex];
         if (!resource || !resource.source.getMetadata()) return null;
         
         const metadata = resource.source.getMetadata();
@@ -290,7 +305,7 @@ export function BookshelfViewer() {
             {isViewingBook && (
                 <button 
                     className="return-book-button"
-                    onClick={handleViewBook}
+                    onClick={returnBook}
                     style={{
                         position: 'absolute',
                         top: '10px',
@@ -324,7 +339,7 @@ export function BookshelfViewer() {
 
             {isViewingBook && (
                 <BookStateControlsUI 
-                    book={sceneRef.current?.getSelectedBook()!}
+                    book={sceneRef.current?.getBook(currentViewingBookIndex)!}
                     controllers={sceneRef.current?.getControllers() || []}
                 />
             )}

@@ -1,27 +1,11 @@
 use crate::api::gh_api::{
     GithubApi, GithubDirectoryElement, GithubElement, GithubElementList, GithubFileElement,
 };
-use crate::books::book_provider::{BookPDFSource, BookProvider, BookProviderConfig};
+use crate::books::book_provider::{BookPDFSource, BookProvider};
 use crate::utils::common::SafeResult;
 use async_trait::async_trait;
 use futures::{Stream, StreamExt};
 use std::pin::Pin;
-
-#[derive(Clone)]
-pub struct GithubRepoConfig {
-    owner: String,
-    repo: String,
-}
-
-impl BookProviderConfig for GithubRepoConfig {
-    fn instantiate(&self) -> Box<dyn BookProvider> {
-        Box::new(GithubRepoParser::new(self.owner.clone(), self.repo.clone()))
-    }
-
-    fn clone_box(&self) -> Box<dyn BookProviderConfig> {
-        Box::new(self.clone())
-    }
-}
 
 pub struct GithubRepoParser {
     owner: String,
@@ -104,8 +88,8 @@ impl BookProvider for GithubRepoParser {
         })))
     }
 
-    fn create_config(&self) -> Box<dyn BookProviderConfig> {
-        Box::new(GithubRepoConfig {
+    fn clone_box(&self) -> Box<dyn BookProvider> {
+        Box::new(Self {
             owner: self.owner.clone(),
             repo: self.repo.clone(),
         })

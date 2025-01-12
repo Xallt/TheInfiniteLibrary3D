@@ -2,25 +2,25 @@ use std::pin::Pin;
 
 use futures::Stream;
 
-use crate::books::book_provider::{BookPDFSource, BookProvider, BookProviderConfig};
+use crate::books::book_provider::{BookPDFSource, BookProvider};
 use crate::utils::common::SafeResult;
 use crate::utils::stream::chunk_stream;
 
 pub struct BookProviderViewBuilder {
-    provider_config: Box<dyn BookProviderConfig>,
+    provider: Box<dyn BookProvider>,
 }
 
 impl BookProviderViewBuilder {
-    pub fn new(provider_config: Box<dyn BookProviderConfig>) -> Self {
-        Self { provider_config }
+    pub fn new(provider: Box<dyn BookProvider>) -> Self {
+        Self { provider }
     }
 
     pub fn collection_list_view(&self) -> BookCollectionListView {
-        BookCollectionListView::new(self.provider_config.instantiate())
+        BookCollectionListView::new(self.provider.clone())
     }
 
     pub fn pagination_view(&self, books_per_page: usize) -> BookPaginationView {
-        BookPaginationView::new(self.provider_config.instantiate(), books_per_page)
+        BookPaginationView::new(self.provider.clone(), books_per_page)
     }
 }
 

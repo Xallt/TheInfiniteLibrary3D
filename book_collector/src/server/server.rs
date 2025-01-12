@@ -18,9 +18,9 @@ async fn all_books(
     provider_id: &str,
     registry: &State<BookProviderRegistry>,
 ) -> Json<BookResponse> {
-    match registry.get_provider_config(provider_id) {
-        Some(provider_config) => {
-            let view_builder = BookProviderViewBuilder::new(provider_config);
+    match registry.get_provider(provider_id) {
+        Some(provider) => {
+            let view_builder = BookProviderViewBuilder::new(provider);
             let list_view = view_builder.collection_list_view();
 
             match list_view.all_books().await {
@@ -42,9 +42,9 @@ async fn pagination_init(
     registry: &State<BookProviderRegistry>,
     state: &State<PaginationState>,
 ) -> Json<BookResponse> {
-    match registry.get_provider_config(provider_id) {
-        Some(provider_config) => {
-            let view_builder = BookProviderViewBuilder::new(provider_config);
+    match registry.get_provider(provider_id) {
+        Some(provider) => {
+            let view_builder = BookProviderViewBuilder::new(provider);
             let pagination_view = view_builder.pagination_view(10); // 10 books per page
 
             match pagination_view.pagination_view().await {
@@ -75,7 +75,7 @@ async fn pagination_next(
     state: &State<PaginationState>,
 ) -> Json<BookResponse> {
     // We first verify the provider exists
-    if registry.get_provider_config(provider_id).is_none() {
+    if registry.get_provider(provider_id).is_none() {
         return Json(BookResponse::Error {
             message: format!("Book provider '{}' not found", provider_id),
         });

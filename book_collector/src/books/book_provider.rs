@@ -12,18 +12,6 @@ pub struct BookPDFSource {
     pub pdf_path: String,
 }
 
-/// Configuration trait for book providers
-pub trait BookProviderConfig: Send + Sync {
-    fn instantiate(&self) -> Box<dyn BookProvider>;
-    fn clone_box(&self) -> Box<dyn BookProviderConfig>;
-}
-
-impl Clone for Box<dyn BookProviderConfig> {
-    fn clone(&self) -> Self {
-        self.clone_box()
-    }
-}
-
 /// Provider interface for loading books from different sources
 #[async_trait]
 pub trait BookProvider: Send + Sync {
@@ -32,8 +20,8 @@ pub trait BookProvider: Send + Sync {
         &self,
     ) -> SafeResult<Pin<Box<dyn Stream<Item = BookPDFSource> + Send + Sync>>>;
 
-    /// Creates a lightweight handle that can be used to reconstruct this provider
-    fn create_config(&self) -> Box<dyn BookProviderConfig>;
+    /// Clone this provider into a new boxed instance
+    fn clone_box(&self) -> Box<dyn BookProvider>;
 
     /// Default implementation that collects stream into a Vec
     async fn books(&self) -> SafeResult<Vec<BookPDFSource>> {
@@ -44,5 +32,11 @@ pub trait BookProvider: Send + Sync {
             books.push(book);
         }
         Ok(books)
+    }
+}
+
+impl Clone for Box<dyn BookProvider> {
+    fn clone(&self) -> Self {
+        self.clone_box()
     }
 }

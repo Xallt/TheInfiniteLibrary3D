@@ -1,4 +1,4 @@
-use crate::books::book_provider::{BookProvider, BookProviderConfig};
+use crate::books::book_provider::BookProvider;
 use crate::books::github_repo_parser::GithubRepoParser;
 use std::collections::HashMap;
 use std::sync::RwLock;
@@ -25,12 +25,8 @@ impl BookProviderRegistry {
         }
     }
 
-    pub fn get_provider_config(&self, id: &str) -> Option<Box<dyn BookProviderConfig>> {
-        self.providers
-            .read()
-            .ok()?
-            .get(id)
-            .map(|p| p.create_config())
+    pub fn get_provider(&self, id: &str) -> Option<Box<dyn BookProvider>> {
+        self.providers.read().ok()?.get(id).cloned()
     }
 }
 

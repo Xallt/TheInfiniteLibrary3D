@@ -8,7 +8,7 @@ import { Page } from './Bookshelf/Page';
 import { BookStateControlsUI } from './BookStateControlsUI';
 import { PDFResource, URLPDFResource, createPDFResource } from '../types/PDFResource';
 import { PDFSelectionModal } from './PDFSelectionModal';
-import { BookCollectorModal } from './BookCollectorModal';
+import { BookCollectorModal, BookFetchingMethod } from './BookCollectorModal';
 import { config } from '../config';
 import { BookCollectorAPI, BookPDFSource, BookCollectorSource } from '../api/BookCollectorAPI';
 
@@ -238,21 +238,36 @@ export function BookshelfViewer() {
         }
     };
 
-    const handleBookCollectorSource = async (source: BookCollectorSource) => {
+    const handleBookCollectorSource = async (source: BookCollectorSource, method: BookFetchingMethod) => {
+        setShowBookCollectorModal(false);
         try {
-            const bookSources = await BookCollectorAPI.fetchBooks(source);
-            
-            // Convert BookPDFSource array to PDFResource array
-            const pdfResources = bookSources.map(source => 
-                createPDFResource(source.pdf_path)
-            );
-
-            // Use the existing handler to add the books
-            await handlePDFSourcesSubmitted(pdfResources);
+            if (method === 'all') {
+                const bookSources = await BookCollectorAPI.fetchBooks(source);
+                const pdfResources = bookSources.map(source => 
+                    createPDFResource(source.pdf_path)
+                );
+                await handlePDFSourcesSubmitted(pdfResources);
+            } else {
+                // Start paginated loading
+                const iterator = await BookCollectorAPI.createPaginatedBooks(source);
+                
+                // We don't want to await this as it will continuously load books
+                (async () => {
+                    try {
+                        for await (const bookChunk of iterator) {
+                            const pdfResources = bookChunk.map(source =>
+                                createPDFResource(source.pdf_path)
+                            );
+                            await handlePDFSourcesSubmitted(pdfResources);
+                        }
+                    } catch (error) {
+                        console.error('Error during paginated book loading:', error);
+                    }
+                })();
+            }
         } catch (error) {
             console.error('Failed to fetch books from collector:', error);
         }
-        setShowBookCollectorModal(false);
     };
 
     return (

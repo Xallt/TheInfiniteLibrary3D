@@ -36,16 +36,17 @@ async fn all_books(
     }
 }
 
-#[get("/pagination_init/<provider_id>")]
+#[get("/pagination_init/<provider_id>?<chunk_size>")]
 async fn pagination_init(
     provider_id: &str,
     registry: &State<BookProviderRegistry>,
     state: &State<PaginationState>,
+    chunk_size: Option<usize>,
 ) -> Json<BookResponse> {
     match registry.get_provider(provider_id) {
         Some(provider) => {
             let view_builder = BookProviderViewBuilder::new(provider);
-            let pagination_view = view_builder.pagination_view(10); // 10 books per page
+            let pagination_view = view_builder.pagination_view(chunk_size.unwrap_or(1)); // 10 books per page
 
             match pagination_view.pagination_view().await {
                 Ok(stream) => {

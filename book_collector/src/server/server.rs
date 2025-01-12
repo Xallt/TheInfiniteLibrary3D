@@ -13,6 +13,13 @@ enum BookResponse {
     Error { message: String },
 }
 
+#[derive(Debug, serde::Serialize)]
+#[serde(tag = "type", content = "data", rename_all = "lowercase")]
+enum PaginationInitResponse {
+    Success { pagination_id: u64 },
+    Error { message: String },
+}
+
 #[get("/all/<provider_id>")]
 async fn all_books(
     provider_id: &str,
@@ -42,7 +49,7 @@ async fn pagination_init(
     registry: &State<BookProviderRegistry>,
     state: &State<PaginationState>,
     chunk_size: Option<usize>,
-) -> Json<BookResponse> {
+) -> Json<PaginationInitResponse> {
     match registry.get_provider(provider_id) {
         Some(provider) => {
             let view_builder = BookProviderViewBuilder::new(provider);
@@ -51,18 +58,14 @@ async fn pagination_init(
             match pagination_view.pagination_view().await {
                 Ok(stream) => {
                     let id = state.create_pagination(stream);
-                    Json(BookResponse::Success(vec![BookPDFSource {
-                        title: format!("pagination_id:{}", id),
-                        pdf_path: String::new(),
-                        author: None,
-                    }]))
+                    Json(PaginationInitResponse::Success { pagination_id: id })
                 }
-                Err(e) => Json(BookResponse::Error {
-                    message: format!("Failed to initialize pagination: {}", e),
+                Err(e) => Json(PaginationInitResponse::Error {
+                    message: e.to_string(),
                 }),
             }
         }
-        None => Json(BookResponse::Error {
+        None => Json(PaginationInitResponse::Error {
             message: format!("Book provider '{}' not found", provider_id),
         }),
     }

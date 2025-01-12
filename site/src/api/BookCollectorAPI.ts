@@ -6,11 +6,9 @@ export interface BookPDFSource {
     pdf_path: string;
 }
 
-interface BookCollectorResponse {
-    type: 'success' | 'error';
-    data?: BookPDFSource[];
-    message?: string;
-}
+export type BookCollectorResponse = { type: 'success', data: BookPDFSource[] } | { type: 'error', data: { message: string } };
+
+export type PaginationInitResponse = { type: 'success', data: { pagination_id: number } } | { type: 'error', data: { message: string } };
 
 export type BookCollectorSource = 'guy_books';
 
@@ -25,19 +23,19 @@ export class BookPaginationIterator implements AsyncIterator<BookPDFSource[]> {
 
     async init(): Promise<void> {
         const response = await fetch(`${this.baseUrl}/pagination_init/${this.source}`);
-        const result: BookCollectorResponse = await response.json();
+        const result: PaginationInitResponse = await response.json();
 
-        if (result.type === 'error' || !result.data || result.data.length === 0) {
-            throw new Error(result.message || 'Failed to initialize pagination');
+        if (result.type === 'error') {
+            throw new Error(result.data.message || 'Failed to initialize pagination');
         }
 
         // Server returns pagination ID in the title field of the first book
-        const paginationIdMatch = result.data[0].title.match(/pagination_id:(\d+)/);
-        if (!paginationIdMatch) {
+        const paginationIdMatch = result.data.pagination_id;
+        if (isNaN(paginationIdMatch)) {
             throw new Error('Invalid pagination ID format received');
         }
 
-        this.paginationId = parseInt(paginationIdMatch[1], 10);
+        this.paginationId = paginationIdMatch;
     }
 
     async next(): Promise<IteratorResult<BookPDFSource[]>> {
@@ -49,11 +47,11 @@ export class BookPaginationIterator implements AsyncIterator<BookPDFSource[]> {
         const result: BookCollectorResponse = await response.json();
 
         if (result.type === 'error') {
-            if (result.message === 'No more pages available') {
+            if (result.data.message === 'No more pages available') {
                 this.hasMore = false;
                 return { done: true, value: undefined };
             }
-            throw new Error(result.message || 'Failed to fetch next page');
+            throw new Error(result.data.message || 'Failed to fetch next page');
         }
 
         if (!result.data) {
@@ -79,8 +77,8 @@ export class BookCollectorAPI {
         const response = await fetch(`${this.baseUrl}/all/${source}`);
         const result: BookCollectorResponse = await response.json();
 
-        if (result.type === 'error' || !result.data) {
-            throw new Error(result.message || 'Failed to fetch books');
+        if (result.type === 'error') {
+            throw new Error(result.data.message || 'Failed to fetch books');
         }
 
         return result.data;

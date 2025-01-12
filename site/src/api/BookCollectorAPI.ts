@@ -12,13 +12,13 @@ interface BookCollectorResponse {
     message?: string;
 }
 
-export type BookCollectorSource = 'example_book' | 'all/guy_books';
+export type BookCollectorSource = 'guy_books';
 
 export class BookCollectorAPI {
     private static baseUrl = config.bookCollectorUrl;
 
     static async fetchBooks(source: BookCollectorSource): Promise<BookPDFSource[]> {
-        const response = await fetch(`${this.baseUrl}/${source}`);
+        const response = await fetch(`${this.baseUrl}/all/${source}`);
         const result: BookCollectorResponse = await response.json();
 
         if (result.type === 'error' || !result.data) {

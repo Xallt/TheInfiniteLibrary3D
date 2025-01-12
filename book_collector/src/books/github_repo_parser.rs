@@ -7,6 +7,7 @@ use async_trait::async_trait;
 use futures::{Stream, StreamExt};
 use std::pin::Pin;
 
+#[derive(Clone)]
 pub struct GithubRepoParser {
     owner: String,
     repo: String,
@@ -86,12 +87,5 @@ impl BookProvider for GithubRepoParser {
             author: None,
             pdf_path: gh_content.download_url,
         })))
-    }
-
-    fn clone_box(&self) -> Box<dyn BookProvider> {
-        Box::new(Self {
-            owner: self.owner.clone(),
-            repo: self.repo.clone(),
-        })
     }
 }

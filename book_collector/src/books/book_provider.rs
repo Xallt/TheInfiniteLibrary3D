@@ -1,5 +1,6 @@
 use crate::utils::common::SafeResult;
 use async_trait::async_trait;
+use dyn_clone::{clone_trait_object, DynClone};
 use futures::Stream;
 use serde::Serialize;
 use std::pin::Pin;
@@ -14,14 +15,11 @@ pub struct BookPDFSource {
 
 /// Provider interface for loading books from different sources
 #[async_trait]
-pub trait BookProvider: Send + Sync {
+pub trait BookProvider: DynClone + Send + Sync {
     /// Returns a stream of books
     async fn books_stream(
         &self,
     ) -> SafeResult<Pin<Box<dyn Stream<Item = BookPDFSource> + Send + Sync>>>;
-
-    /// Clone this provider into a new boxed instance
-    fn clone_box(&self) -> Box<dyn BookProvider>;
 
     /// Default implementation that collects stream into a Vec
     async fn books(&self) -> SafeResult<Vec<BookPDFSource>> {
@@ -35,8 +33,4 @@ pub trait BookProvider: Send + Sync {
     }
 }
 
-impl Clone for Box<dyn BookProvider> {
-    fn clone(&self) -> Self {
-        self.clone_box()
-    }
-}
+clone_trait_object!(BookProvider);

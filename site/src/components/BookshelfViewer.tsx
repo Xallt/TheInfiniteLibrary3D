@@ -57,6 +57,11 @@ export function BookshelfViewer() {
             defaultBookshelfParams
         );
 
+        // Set up the book selection callback
+        sceneRef.current.setOnBookSelectedCallback(() => {
+            handleViewBook();
+        });
+
         // Cleanup function
         return () => {
             if (sceneRef.current && containerRef.current) {
@@ -83,6 +88,9 @@ export function BookshelfViewer() {
                 if (!currentBookResource.loaded) {
                     loadBookPages(currentBookResource);
                 }
+                else {
+                    console.log("Book already loaded");
+                }
                 
                 sceneRef.current.viewSelectedBook();
                 if (sceneRef.current.isInVR()) {
@@ -93,18 +101,6 @@ export function BookshelfViewer() {
             sceneRef.current.returnBookToShelf();
         }
         setIsViewingBook(!isViewingBook);
-    };
-
-    const handlePreviousBook = () => {
-        if (sceneRef.current) {
-            sceneRef.current.selectPreviousBook();
-        }
-    };
-
-    const handleNextBook = () => {
-        if (sceneRef.current) {
-            sceneRef.current.selectNextBook();
-        }
     };
 
     const handlePDFSourcesSubmitted = async (sources: PDFResource[]) => {

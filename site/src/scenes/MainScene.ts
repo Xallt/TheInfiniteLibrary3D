@@ -13,7 +13,7 @@ import { BaseScene } from './BaseScene';
 import { defaultMainSceneConfig, MainSceneConfig } from '../config/mainSceneConfig';
 
 interface BookIntersection extends THREE.Intersection<THREE.Object3D<THREE.Object3DEventMap>> {
-    bookIndex?: number;
+    bookIndex: number;
 }
 
 export class ControllerWrapper {
@@ -51,6 +51,7 @@ export class MainScene extends BaseScene {
     private controls!: OrbitControls;
     private lightingSetup!: THREE.Light[];
     private bookshelfParams!: BookshelfParams;
+    private onBookSelectedCallback?: () => void;
 
     private gizmo: THREE.Object3D | null = null;
 
@@ -423,18 +424,6 @@ export class MainScene extends BaseScene {
         }
     }
 
-    public selectNextBook(): void {
-        if (this.books.length === 0) return;
-        const nextIndex = (this.selectedBookIndex + 1) % this.books.length;
-        this.selectBook(nextIndex);
-    }
-
-    public selectPreviousBook(): void {
-        if (this.books.length === 0) return;
-        const prevIndex = (this.selectedBookIndex + this.books.length - 1) % this.books.length;
-        this.selectBook(prevIndex);
-    }
-
     public getBookCount(): number {
         return this.books.length;
     }
@@ -665,17 +654,10 @@ export class MainScene extends BaseScene {
         this.controllerRayLine.visible = true; // Ensure initial visibility
     }
 
-    private onMouseMove(event: MouseEvent): void {
-        // Get the renderer's DOM element bounds
-        const rect = this.renderer.domElement.getBoundingClientRect();
-
-        // Calculate normalized device coordinates (-1 to +1) relative to the renderer element
-        this.mousePosition.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-        this.mousePosition.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-
+    private rayBookIntersection(mousePosition: THREE.Vector2): BookIntersection | null {
         // Only perform raycasting if not in VR and not viewing a book
         if (!this.isVRSupported && !this.isBookInViewMode) {
-            this.mouseRaycaster.setFromCamera(this.mousePosition, this.camera);
+            this.mouseRaycaster.setFromCamera(mousePosition, this.camera);
 
             // Test intersections with all books
             const intersects: BookIntersection[] = [];
@@ -694,52 +676,41 @@ export class MainScene extends BaseScene {
 
             // Update cursor style and select the closest intersected book
             if (intersects.length > 0) {
-                const closestIntersect = intersects[0];
-                const bookIndex = closestIntersect.bookIndex;
+                return intersects[0];
+            }
+        }
+        return null;
+    }
 
-                // Change cursor to pointer when hovering over a book
-                this.renderer.domElement.style.cursor = 'pointer';
+    private mousePositionFromEvent(event: MouseEvent): THREE.Vector2 {
+        // Get the renderer's DOM element bounds
+        const rect = this.renderer.domElement.getBoundingClientRect();
 
-                // Only update selection if it's different from current selection
-                if (bookIndex !== undefined && bookIndex !== this.selectedBookIndex) {
-                    this.selectBook(bookIndex);
-                }
-            } else {
-                // Reset cursor to default when not hovering over a book
-                this.renderer.domElement.style.cursor = 'default';
+        // Calculate normalized device coordinates (-1 to +1) relative to the renderer element
+        const mousePosition = new THREE.Vector2();
+        mousePosition.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        mousePosition.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+        return mousePosition;
+    }
+
+    private onMouseClick(event: MouseEvent): void {
+        const mousePosition = this.mousePositionFromEvent(event);
+        const intersection = this.rayBookIntersection(mousePosition);
+        if (intersection) {
+            this.selectBook(intersection.bookIndex);
+            if (this.onBookSelectedCallback) {
+                this.onBookSelectedCallback();
             }
         }
     }
 
-    private onMouseClick(event: MouseEvent): void {
-        if (!this.isVRSupported && !this.isBookInViewMode) {
-            this.mouseRaycaster.setFromCamera(this.mousePosition, this.camera);
-
-            // Test intersections with all books
-            const intersects: BookIntersection[] = [];
-            this.books.forEach((book, index) => {
-                const bookMesh = book.getMesh();
-                const bookIntersects = this.mouseRaycaster.intersectObject(bookMesh, true);
-                if (bookIntersects.length > 0) {
-                    const intersection = bookIntersects[0] as BookIntersection;
-                    intersection.bookIndex = index;
-                    intersects.push(intersection);
-                }
-            });
-
-            // Sort intersections by distance
-            intersects.sort((a, b) => a.distance - b.distance);
-
-            // View the closest intersected book
-            if (intersects.length > 0) {
-                const closestIntersect = intersects[0];
-                const bookIndex = closestIntersect.bookIndex;
-
-                if (bookIndex !== undefined) {
-                    this.selectBook(bookIndex);
-                    this.viewSelectedBook();
-                }
-            }
+    private onMouseMove(event: MouseEvent): void {
+        const mousePosition = this.mousePositionFromEvent(event);
+        const intersection = this.rayBookIntersection(mousePosition);
+        if (intersection) {
+            this.selectBook(intersection.bookIndex);
+        } else {
+            this.selectBook(-1);
         }
     }
 
@@ -777,5 +748,9 @@ export class MainScene extends BaseScene {
                 { binary: true } // This makes it export as GLB instead of GLTF
             );
         });
+    }
+
+    public setOnBookSelectedCallback(callback: () => void) {
+        this.onBookSelectedCallback = callback;
     }
 }

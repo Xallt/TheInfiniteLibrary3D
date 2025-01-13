@@ -144,11 +144,12 @@ export function BookshelfViewer() {
         const results = (await Promise.all(bookPromises)).filter((result): result is BookResourceMapping => result !== null);
         const resultsSorted = results.sort((a, b) => a.index - b.index);
 
+        const offset_index = Object.keys(bookResourceMappingsRef.current).length;
         // Update both the ref and the state
         const newMappings = resultsSorted.reduce((acc, mapping) => {
-            acc[mapping.index] = mapping;
+            acc[mapping.index + offset_index] = mapping;
             return acc;
-        }, {} as { [index: number]: BookResourceMapping });
+        }, { ...bookResourceMappingsRef.current } as { [index: number]: BookResourceMapping });
         
         bookResourceMappingsRef.current = newMappings;
         setBookResourceMappings(newMappings);

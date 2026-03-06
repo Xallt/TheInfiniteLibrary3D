@@ -58,6 +58,10 @@ async fn run_app(cli: Cli) -> Result<(), Box<dyn std::error::Error + Send + Sync
             commands::gh_pdf_listing::execute(&owner, &repo).await?;
         }
         Commands::Server { port } => {
+            if std::env::var("GITHUB_TOKEN").unwrap_or_default().is_empty() {
+                eprintln!("Error: GITHUB_TOKEN environment variable is required to run the server");
+                std::process::exit(1);
+            }
             server::server::run_server(port).await?;
         }
     }

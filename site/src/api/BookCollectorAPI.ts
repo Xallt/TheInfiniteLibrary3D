@@ -10,11 +10,12 @@ export type BookCollectorSource = 'guy_books';
 
 interface GitTreeItem {
     path: string;
-    type: string;
+    type: 'blob' | 'tree' | 'commit';
 }
 
 interface GitTreeResponse {
     tree: GitTreeItem[];
+    truncated: boolean;
 }
 
 export async function fetchBooks(_source: BookCollectorSource): Promise<BookPDFSource[]> {
@@ -28,6 +29,10 @@ export async function fetchBooks(_source: BookCollectorSource): Promise<BookPDFS
     }
 
     const data: GitTreeResponse = await response.json();
+
+    if (data.truncated) {
+        throw new Error('GitHub tree response was truncated — results would be incomplete');
+    }
 
     return data.tree
         .filter(item => item.type === 'blob' && item.path.toLowerCase().endsWith('.pdf'))

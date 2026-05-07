@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { BookCollectorSource, fetchBooks } from '../api/BookCollectorAPI';
 import { defaultBookParams, defaultBookTexture, defaultBookshelfParams } from '../config/bookConfig';
 import { MainScene } from '../scenes/MainScene';
@@ -9,6 +9,7 @@ import { BookTexture } from './Bookshelf/BookTexture';
 import { Page } from './Bookshelf/Page';
 import { BookStateControlsUI } from './BookStateControlsUI';
 import { PDFSelectionModal } from './PDFSelectionModal';
+import { useBaseScene } from '../hooks/useBaseScene';
 
 class BookResourceMapping {
     book: Book;
@@ -25,39 +26,29 @@ class BookResourceMapping {
 }
 
 export function BookshelfViewer() {
-    const sceneRef = useRef<MainScene | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
+    const sceneRef = useRef<MainScene | null>(null);
     const bookResourceMappingsRef = useRef<{ [index: number]: BookResourceMapping }>({});
     const [isViewingBook, setIsViewingBook] = useState(false);
     const [currentViewingBookIndex, setCurrentViewingBookIndex] = useState(-1);
     const [showUrlModal, setShowUrlModal] = useState(false);
     const [showBookCollectorModal, setShowBookCollectorModal] = useState(false);
 
-    useEffect(() => {
-        if (!containerRef.current) return;
+    const mainScene = useMemo(() => new MainScene(defaultBookshelfParams), []);
+    sceneRef.current = mainScene;
 
-        if (sceneRef.current) {
-            const canvas = containerRef.current.querySelector('canvas');
-            if (canvas) canvas.remove();
-            const stats = containerRef.current.querySelector('.stats');
-            if (stats) stats.remove();
-        }
-
-        sceneRef.current = new MainScene(containerRef.current, defaultBookshelfParams);
-
-        sceneRef.current.setOnBookSelectedCallback((bookIndex) => {
+    useBaseScene(containerRef, mainScene.getCallbacks(), { showStats: true, checkVR: true }, (base) => {
+        mainScene.initialize(base);
+        mainScene.setOnBookSelectedCallback((bookIndex) => {
             handleViewBook(bookIndex);
         });
+    });
 
+    useEffect(() => {
         return () => {
-            if (sceneRef.current && containerRef.current) {
-                const canvas = containerRef.current.querySelector('canvas');
-                if (canvas) canvas.remove();
-                const stats = containerRef.current.querySelector('.stats');
-                if (stats) stats.remove();
-            }
+            mainScene.dispose();
         };
-    }, []);
+    }, [mainScene]);
 
     const returnBook = () => {
         if (!sceneRef.current) return;

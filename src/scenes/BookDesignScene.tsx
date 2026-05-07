@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { Book, BookMeshParams } from '../components/Bookshelf/Book';
@@ -6,7 +6,8 @@ import { BookTexture } from '../components/Bookshelf/BookTexture';
 import { Page } from '../components/Bookshelf/Page';
 import { PDFResource } from '../types/PDFResource';
 import { BookStateControlsUI } from '../components/BookStateControlsUI';
-import { BaseScene, buildBaseScene } from './BaseScene';
+import { BaseSceneCallbacks } from './BaseScene';
+import { useBaseScene } from '../hooks/useBaseScene';
 
 interface BookDesignSceneProps {
     bookTextures: BookTexture[];
@@ -16,66 +17,62 @@ interface BookDesignSceneProps {
 
 export function BookDesignScene({ bookTextures, bookParams, pdfResource }: BookDesignSceneProps) {
     const containerRef = useRef<HTMLDivElement>(null);
-    const baseRef = useRef<BaseScene | null>(null);
     const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
     const controlsRef = useRef<OrbitControls | null>(null);
     const booksRef = useRef<Book[]>([]);
     const loadedPdfRef = useRef<PDFResource | null>(null);
     const [currentBook, setCurrentBook] = useState<Book | null>(null);
 
+    const callbacks = useMemo<BaseSceneCallbacks>(() => ({
+        setupScene: async (renderer, scene) => {
+            const container = containerRef.current;
+            if (!container) return;
+
+            renderer.setSize(container.clientWidth, container.clientHeight, false);
+            scene.background = new THREE.Color(0xf0f0f0);
+
+            const camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.z = 2;
+            cameraRef.current = camera;
+
+            const controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controlsRef.current = controls;
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(1, 1, 1);
+            scene.add(directionalLight);
+
+            scene.add(new THREE.GridHelper(2, 20));
+        },
+        onAnimate: (renderer, scene) => {
+            controlsRef.current?.update();
+            if (cameraRef.current) renderer.render(scene, cameraRef.current);
+        },
+    }), []);
+
+    const baseRef = useBaseScene(containerRef, callbacks, { showStats: false });
+
     useEffect(() => {
         const container = containerRef.current;
         if (!container) return;
 
-        let camera: THREE.PerspectiveCamera;
-        let controls: OrbitControls;
-
-        const base = buildBaseScene({
-            setupScene: async (renderer, scene) => {
-                renderer.setSize(container.clientWidth, container.clientHeight, false);
-
-                scene.background = new THREE.Color(0xf0f0f0);
-
-                camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
-                camera.position.z = 2;
-                cameraRef.current = camera;
-
-                controls = new OrbitControls(camera, renderer.domElement);
-                controls.enableDamping = true;
-                controls.dampingFactor = 0.05;
-                controlsRef.current = controls;
-
-                const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
-                scene.add(ambientLight);
-
-                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-                directionalLight.position.set(1, 1, 1);
-                scene.add(directionalLight);
-
-                scene.add(new THREE.GridHelper(2, 20));
-            },
-            onAnimate: () => {
-                controls.update();
-                base.renderer.render(base.scene, camera);
-            },
-        });
-
-        baseRef.current = base;
-        base.init(container, { showStats: false });
-
         const handleResize = () => {
+            const camera = cameraRef.current;
             if (!camera) return;
             camera.aspect = container.clientWidth / container.clientHeight;
             camera.updateProjectionMatrix();
-            base.renderer.setSize(container.clientWidth, container.clientHeight);
+            baseRef.current?.renderer.setSize(container.clientWidth, container.clientHeight);
         };
         window.addEventListener('resize', handleResize);
 
         return () => {
             window.removeEventListener('resize', handleResize);
-            controls?.dispose();
-            base.renderer.dispose();
-            container.innerHTML = '';
+            controlsRef.current?.dispose();
         };
     }, []);
 

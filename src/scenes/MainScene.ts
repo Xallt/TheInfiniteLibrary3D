@@ -8,7 +8,7 @@ import { TransformControls, TransformControlsGizmo } from 'three/examples/jsm/co
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter';
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
 import { PMREMGenerator } from 'three';
-import { BaseScene, buildBaseScene } from './BaseScene';
+import { BaseScene, BaseSceneCallbacks } from './BaseScene';
 import { defaultMainSceneConfig, MainSceneConfig } from '../config/mainSceneConfig';
 
 interface BookIntersection extends THREE.Intersection<THREE.Object3D<THREE.Object3DEventMap>> {
@@ -39,9 +39,16 @@ export class ControllerWrapper {
 }
 
 export class MainScene {
-    private readonly base: BaseScene;
     private readonly sceneConfig: MainSceneConfig;
     private readonly bookshelfParams: BookshelfParams;
+
+    private sceneInternal!: THREE.Scene;
+    private rendererInternal!: THREE.WebGLRenderer;
+    private isVRSupportedValue: boolean = false;
+
+    private get scene(): THREE.Scene { return this.sceneInternal; }
+    private get renderer(): THREE.WebGLRenderer { return this.rendererInternal; }
+    private get isVRSupported(): boolean { return this.isVRSupportedValue; }
 
     private camera!: THREE.PerspectiveCamera;
     private controls!: OrbitControls;
@@ -77,12 +84,12 @@ export class MainScene {
     private onVRSessionStartHandler?: () => void;
     private onVRSessionEndHandler?: () => void;
 
-    private get scene(): THREE.Scene { return this.base.scene; }
-    private get renderer(): THREE.WebGLRenderer { return this.base.renderer; }
-    private get isVRSupported(): boolean { return this.base.isVRSupported; }
+    private readonly boundOnWindowResize: () => void;
+    private readonly boundOnKeyDown: (e: KeyboardEvent) => void;
+    private readonly boundOnMouseMove: (e: MouseEvent) => void;
+    private readonly boundOnMouseClick: (e: MouseEvent) => void;
 
     constructor(
-        container: HTMLElement,
         bookshelfParams: BookshelfParams,
         sceneConfig: MainSceneConfig = defaultMainSceneConfig
     ) {
@@ -92,21 +99,26 @@ export class MainScene {
         this.tempMatrix = new THREE.Matrix4();
         this.mouseRaycaster = new THREE.Raycaster();
 
-        this.base = buildBaseScene({
+        this.boundOnWindowResize = this.onWindowResize.bind(this);
+        this.boundOnKeyDown = this.onKeyDown.bind(this);
+        this.boundOnMouseMove = this.onMouseMove.bind(this);
+        this.boundOnMouseClick = this.onMouseClick.bind(this);
+    }
+
+    public getCallbacks(): BaseSceneCallbacks {
+        return {
             setupScene: this.setupScene.bind(this),
             setupVRControllers: this.setupVRControllers.bind(this),
             onAnimate: this.tick.bind(this),
-        });
-
-        this.init(container);
+        };
     }
 
-    private async init(container: HTMLElement): Promise<void> {
-        await this.base.init(container, { showStats: true, checkVR: true });
+    public initialize(base: BaseScene): void {
+        this.isVRSupportedValue = base.isVRSupported;
 
-        if (this.isVRSupported) {
-            this.renderer.xr.addEventListener('sessionstart', () => {
-                const xrManager = this.renderer.xr;
+        if (this.isVRSupportedValue) {
+            this.rendererInternal.xr.addEventListener('sessionstart', () => {
+                const xrManager = this.rendererInternal.xr;
                 const baseReferenceSpace = xrManager.getReferenceSpace();
                 if (baseReferenceSpace) {
                     const quaternion = new THREE.Quaternion();
@@ -119,11 +131,22 @@ export class MainScene {
             });
         }
 
-        this.renderer.domElement.style.cursor = 'default';
+        this.rendererInternal.domElement.style.cursor = 'default';
         this.addEventListeners();
     }
 
+    public dispose(): void {
+        window.removeEventListener('resize', this.boundOnWindowResize);
+        window.removeEventListener('keydown', this.boundOnKeyDown);
+        window.removeEventListener('mousemove', this.boundOnMouseMove);
+        window.removeEventListener('click', this.boundOnMouseClick);
+        this.removeVRSessionListeners();
+        this.controls?.dispose();
+    }
+
     private async setupScene(renderer: THREE.WebGLRenderer, scene: THREE.Scene): Promise<void> {
+        this.rendererInternal = renderer;
+        this.sceneInternal = scene;
         this.sceneElevation = 0.5;
         this.camera = await this.initCamera();
         await this.initLighting(scene, renderer);
@@ -270,10 +293,10 @@ export class MainScene {
     }
 
     private addEventListeners(): void {
-        window.addEventListener('resize', this.onWindowResize.bind(this));
-        window.addEventListener('keydown', this.onKeyDown.bind(this));
-        window.addEventListener('mousemove', this.onMouseMove.bind(this));
-        window.addEventListener('click', this.onMouseClick.bind(this));
+        window.addEventListener('resize', this.boundOnWindowResize);
+        window.addEventListener('keydown', this.boundOnKeyDown);
+        window.addEventListener('mousemove', this.boundOnMouseMove);
+        window.addEventListener('click', this.boundOnMouseClick);
     }
 
     private onWindowResize(): void {
@@ -297,6 +320,8 @@ export class MainScene {
     }
 
     private tick(): void {
+        if (!this.rendererInternal || !this.sceneInternal || !this.camera) return;
+
         if (this.isVRSupported && this.renderer.xr.isPresenting) {
             const rightController = this.controllerWrappers[1]?.controller;
             if (rightController) {
@@ -480,8 +505,8 @@ export class MainScene {
         }
     }
 
-    public isVREnabled(): boolean { return this.base.isVREnabled(); }
-    public isInVR(): boolean { return this.isVRSupported && this.renderer.xr.isPresenting; }
+    public isVREnabled(): boolean { return this.isVRSupportedValue; }
+    public isInVR(): boolean { return this.isVRSupportedValue && this.rendererInternal?.xr.isPresenting; }
 
     public selectBookPage(pageIndex: number): void {
         if (this.isBookInViewMode && this.viewingBookIndex !== -1) {

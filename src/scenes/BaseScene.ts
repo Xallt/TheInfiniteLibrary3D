@@ -21,7 +21,7 @@ export type BaseSceneCallbacks = {
         leftController: THREE.XRTargetRaySpace,
         rightController: THREE.XRTargetRaySpace
     ): void;
-    onAnimate?(): void;
+    onAnimate?(renderer: THREE.WebGLRenderer, scene: THREE.Scene): void;
 };
 
 export function buildBaseScene(callbacks: BaseSceneCallbacks): BaseScene {
@@ -31,7 +31,7 @@ export function buildBaseScene(callbacks: BaseSceneCallbacks): BaseScene {
     let isVRSupported = false;
 
     function animate(): void {
-        callbacks.onAnimate?.();
+        callbacks.onAnimate?.(renderer, scene);
         stats?.update();
     }
 

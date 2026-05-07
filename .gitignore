@@ -1,6 +1,5 @@
-/site/node_modules
-/site/dist
+node_modules
+dist
 .DS_Store
-/book_collector/target
 
 .env

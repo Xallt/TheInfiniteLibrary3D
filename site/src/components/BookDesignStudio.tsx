@@ -28,115 +28,87 @@ export function BookDesignStudio() {
     const canSubmitTexture = texture && selectionState === 'complete';
 
     useEffect(() => {
-        if (viewMode === '2d') {
-            if (!canvasRef.current) return;
+        if (viewMode !== '2d') return;
+        if (!canvasRef.current) return;
 
-            const canvas = canvasRef.current;
-            const context = canvas.getContext('2d');
-            
-            if (!context) return;
-            
-            contextRef.current = context;
+        const canvas = canvasRef.current;
+        const context = canvas.getContext('2d');
+        if (!context) return;
 
-            const resizeCanvas = () => {
-                const container = canvas.parentElement;
-                if (!container) return;
-                
-                canvas.width = container.clientWidth;
-                canvas.height = container.clientHeight;
-                
-                drawCanvas();
-            };
+        contextRef.current = context;
 
-            resizeCanvas();
-            window.addEventListener('resize', resizeCanvas);
+        const resizeCanvas = () => {
+            const container = canvas.parentElement;
+            if (!container) return;
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            drawCanvas();
+        };
 
-            return () => {
-                window.removeEventListener('resize', resizeCanvas);
-            };
-        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+        return () => window.removeEventListener('resize', resizeCanvas);
     }, [viewMode]);
 
     useEffect(() => {
-        if (viewMode === '2d') {
-            drawCanvas();
-        }
+        if (viewMode === '2d') drawCanvas();
     }, [texture, mouseX, coverPositions, selectionState, viewMode]);
 
     const calculateImageMetrics = (canvas: HTMLCanvasElement, texture: HTMLImageElement) => {
-        const scale = Math.min(
-            canvas.width / texture.width,
-            canvas.height / texture.height
-        ) * 0.8;
-
+        const scale = Math.min(canvas.width / texture.width, canvas.height / texture.height) * 0.8;
         const width = texture.width * scale;
         const height = texture.height * scale;
         const x = (canvas.width - width) / 2;
         const y = (canvas.height - height) / 2;
-
         return { x, y, width, height };
     };
 
     const drawCanvas = () => {
         if (!contextRef.current || !canvasRef.current) return;
-        
+
         const ctx = contextRef.current;
         const canvas = canvasRef.current;
 
-        // Clear canvas
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        // Set background
-        ctx.fillStyle = '#ffffff';
+        ctx.fillStyle = '#111';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
+
         if (texture) {
             const metrics = calculateImageMetrics(canvas, texture);
             setImageMetrics(metrics);
             const { x, y, width, height } = metrics;
 
-            // Draw the texture
             ctx.drawImage(texture, x, y, width, height);
-            
-            // Draw border around the texture
-            ctx.strokeStyle = '#333';
-            ctx.lineWidth = 2;
+
+            ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+            ctx.lineWidth = 1;
             ctx.strokeRect(x, y, width, height);
 
-            // Draw saved positions
             if (coverPositions.leftCoverPosition !== null) {
-                const leftX = x + (coverPositions.leftCoverPosition * width);
-                drawPositionLine(ctx, leftX, y, height, '#0000FF', 'Left Cover');
+                drawPositionLine(ctx, x + coverPositions.leftCoverPosition * width, y, height, 'rgba(100,180,255,0.8)', 'Left Cover');
             }
-            
             if (coverPositions.rightCoverPosition !== null) {
-                const rightX = x + (coverPositions.rightCoverPosition * width);
-                drawPositionLine(ctx, rightX, y, height, '#0000FF', 'Right Cover');
+                drawPositionLine(ctx, x + coverPositions.rightCoverPosition * width, y, height, 'rgba(100,180,255,0.8)', 'Right Cover');
             }
 
-            // Draw current guide line if not complete
             if (mouseX !== null && mouseX >= x && mouseX <= x + width && selectionState !== 'complete') {
                 ctx.beginPath();
                 ctx.setLineDash([5, 5]);
                 ctx.moveTo(mouseX, y);
                 ctx.lineTo(mouseX, y + height);
-                ctx.strokeStyle = '#FF0000';
+                ctx.strokeStyle = 'rgba(255,200,50,0.8)';
                 ctx.lineWidth = 1;
                 ctx.stroke();
                 ctx.setLineDash([]);
 
                 const normalizedPosition = ((mouseX - x) / width).toFixed(3);
-                ctx.fillStyle = '#FF0000';
-                ctx.font = '14px Arial';
-                ctx.fillText(
-                    `Select ${selectionState} cover position: ${normalizedPosition}`,
-                    mouseX,
-                    y - 25
-                );
+                ctx.fillStyle = 'rgba(255,200,50,0.9)';
+                ctx.font = '13px system-ui, sans-serif';
+                ctx.fillText(`Select ${selectionState} cover: ${normalizedPosition}`, mouseX + 8, y + 20);
             }
         } else {
-            ctx.fillStyle = '#333333';
-            ctx.font = '20px Arial';
+            ctx.fillStyle = 'rgba(255,255,255,0.3)';
+            ctx.font = '16px system-ui, sans-serif';
             ctx.textAlign = 'center';
             ctx.fillText('Load a texture to begin', canvas.width / 2, canvas.height / 2);
         }
@@ -144,11 +116,8 @@ export function BookDesignStudio() {
 
     const drawPositionLine = (
         ctx: CanvasRenderingContext2D,
-        x: number,
-        y: number,
-        height: number,
-        color: string,
-        label: string
+        x: number, y: number, height: number,
+        color: string, label: string
     ) => {
         ctx.beginPath();
         ctx.setLineDash([5, 5]);
@@ -160,52 +129,39 @@ export function BookDesignStudio() {
         ctx.setLineDash([]);
 
         ctx.fillStyle = color;
-        ctx.font = '14px Arial';
-        ctx.fillText(label, x, y - 10);
+        ctx.font = '12px system-ui, sans-serif';
+        ctx.fillText(label, x + 4, y + 14);
     };
 
     const handleMouseMove = (event: React.MouseEvent<HTMLCanvasElement>) => {
         if (!canvasRef.current || !texture || selectionState === 'complete') return;
-
         const rect = canvasRef.current.getBoundingClientRect();
-        const mouseX = event.clientX - rect.left;
-        setMouseX(mouseX);
+        setMouseX(event.clientX - rect.left);
     };
 
-    const handleMouseLeave = () => {
-        setMouseX(null);
-    };
+    const handleMouseLeave = () => setMouseX(null);
 
     const handleCanvasClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
         if (!imageMetrics || !texture || selectionState === 'complete') return;
 
         const rect = canvasRef.current!.getBoundingClientRect();
         const clickX = event.clientX - rect.left;
-        
+
         if (clickX >= imageMetrics.x && clickX <= imageMetrics.x + imageMetrics.width) {
             const normalizedPosition = (clickX - imageMetrics.x) / imageMetrics.width;
-            
+
             if (selectionState === 'left') {
-                setCoverPositions(prev => ({
-                    ...prev,
-                    leftCoverPosition: normalizedPosition
-                }));
+                setCoverPositions(prev => ({ ...prev, leftCoverPosition: normalizedPosition }));
                 setSelectionState('right');
             } else if (selectionState === 'right') {
-                setCoverPositions(prev => ({
-                    ...prev,
-                    rightCoverPosition: normalizedPosition
-                }));
+                setCoverPositions(prev => ({ ...prev, rightCoverPosition: normalizedPosition }));
                 setSelectionState('complete');
             }
         }
     };
 
     const handleReset = () => {
-        setCoverPositions({
-            leftCoverPosition: 0,
-            rightCoverPosition: 0
-        });
+        setCoverPositions({ leftCoverPosition: 0, rightCoverPosition: 0 });
         setSelectionState('left');
     };
 
@@ -218,22 +174,17 @@ export function BookDesignStudio() {
             const img = new Image();
             img.onload = () => {
                 setTexture(img);
-                handleReset(); // Reset positions when new texture is loaded
+                handleReset();
             };
             img.src = e.target?.result as string;
         };
         reader.readAsDataURL(file);
     };
 
-    const toggleViewMode = () => {
-        setViewMode(prev => prev === '2d' ? '3d' : '2d');
-    };
+    const toggleViewMode = () => setViewMode(prev => prev === '2d' ? '3d' : '2d');
 
     const handlePDFSelected = (sources: PDFResource[]) => {
-        if (sources.length > 0) {
-            const selectedPDF = sources[0];
-            setSelectedPDF(selectedPDF);
-        }
+        if (sources.length > 0) setSelectedPDF(sources[0]);
         setIsPDFModalOpen(false);
     };
 
@@ -242,117 +193,87 @@ export function BookDesignStudio() {
             throw new Error('Texture is not loaded or PDF is not selected');
         }
 
-        // Create Three.js texture
         const threeTexture = new THREE.Texture(texture);
         threeTexture.needsUpdate = true;
 
-        // Create BookTexture instance
         const bookTexture = new BookTexture(threeTexture, coverPositions);
-        
-        // Add to textures array
         setBookTextures(prev => [...prev, bookTexture]);
         setViewMode('3d');
     };
 
     return (
-        <div className="book-design-studio">
-            <div className="studio-layout">
-                <div className="side-controls">
-                    <h3>Design Controls</h3>
-                    <div className="control-group">
-                        <button 
-                            className={`view-mode-button ${viewMode === '3d' ? 'active' : ''}`}
-                            onClick={toggleViewMode}
-                        >
-                            {viewMode === '2d' ? 'Switch to 3D View' : 'Switch to 2D View'}
-                        </button>
-                        {viewMode === '2d' && (
+        <div style={{ position: 'relative', width: '100vw', height: '100vh' }}>
+            {viewMode === '2d' ? (
+                <canvas
+                    key="canvas-2d"
+                    ref={canvasRef}
+                    style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
+                    onMouseMove={handleMouseMove}
+                    onMouseLeave={handleMouseLeave}
+                    onClick={handleCanvasClick}
+                />
+            ) : (
+                <div style={{ width: '100%', height: '100%' }}>
+                    <BookDesignScene
+                        bookTextures={bookTextures}
+                        bookParams={defaultBookParams}
+                        pdfResource={selectedPDF}
+                    />
+                </div>
+            )}
+
+            <div className="controls-panel panel">
+                <button className={`panel-btn ${viewMode === '3d' ? 'active' : ''}`} onClick={toggleViewMode}>
+                    {viewMode === '2d' ? '3D View' : '2D View'}
+                </button>
+
+                {viewMode === '2d' && (
+                    <>
+                        <label htmlFor="texture-upload" className="panel-btn" style={{ cursor: 'pointer' }}>
+                            Load Texture
+                            <input
+                                type="file"
+                                id="texture-upload"
+                                accept="image/*"
+                                onChange={handleTextureLoad}
+                                style={{ display: 'none' }}
+                            />
+                        </label>
+                        {texture && (
                             <>
-                                <label htmlFor="texture-upload" className="button-like">
-                                    Load Texture
-                                    <input
-                                        type="file"
-                                        id="texture-upload"
-                                        accept="image/*"
-                                        onChange={handleTextureLoad}
-                                        style={{ display: 'none' }}
-                                    />
-                                </label>
-                                {texture && (
-                                    <>
-                                        <button 
-                                            onClick={() => setTexture(null)}
-                                            className="clear-button"
-                                        >
-                                            Clear Texture
-                                        </button>
-                                        <button 
-                                            onClick={handleReset}
-                                            className="clear-button"
-                                        >
-                                            Reset Positions
-                                        </button>
-                                    </>
-                                )}
-                                {canSubmitTexture && (
-                                    <button 
-                                        className="submit-button"
-                                        onClick={handleSubmitTexture}
-                                    >
-                                        Create 3D Book
-                                    </button>
-                                )}
+                                <button className="panel-btn" onClick={() => setTexture(null)}>Clear Texture</button>
+                                <button className="panel-btn" onClick={handleReset}>Reset Positions</button>
                             </>
                         )}
-                        <button 
-                            className="button-like"
-                            onClick={() => setIsPDFModalOpen(true)}
-                        >
-                            {selectedPDF ? 'Change PDF' : 'Select PDF'}
-                        </button>
-                    </div>
-                    
-                    {/* Show selected PDF info */}
-                    {selectedPDF && (
-                        <div className="selected-pdf-info">
-                            <h4>Selected PDF</h4>
-                            <p>{selectedPDF.getDisplayName()}</p>
-                            <button 
-                                className="clear-button"
-                                onClick={() => setSelectedPDF(null)}
-                            >
-                                Clear PDF
-                            </button>
-                        </div>
-                    )}
+                        {canSubmitTexture && (
+                            <button className="panel-btn" onClick={handleSubmitTexture}>Create 3D Book</button>
+                        )}
+                    </>
+                )}
 
-                    {viewMode === '2d' && selectionState === 'complete' && (
-                        <div className="positions-display">
-                            <p>Left Cover: {coverPositions.leftCoverPosition.toFixed(3)}</p>
-                            <p>Right Cover: {coverPositions.rightCoverPosition.toFixed(3)}</p>
-                        </div>
-                    )}
-                </div>
-                <div className="scene-container">
-                    {viewMode === '2d' ? (
-                        <canvas 
-                            key={`canvas-${viewMode}`}
-                            ref={canvasRef}
-                            onMouseMove={handleMouseMove}
-                            onMouseLeave={handleMouseLeave}
-                            onClick={handleCanvasClick}
-                        />
-                    ) : (
-                        <div className="threejs-container">
-                            <BookDesignScene 
-                                bookTextures={bookTextures}
-                                bookParams={defaultBookParams}
-                                pdfResource={selectedPDF}
-                            />
-                        </div>
-                    )}
-                </div>
+                <hr className="panel-divider" />
+
+                <button className="panel-btn" onClick={() => setIsPDFModalOpen(true)}>
+                    {selectedPDF ? 'Change PDF' : 'Select PDF'}
+                </button>
+                {selectedPDF && (
+                    <>
+                        <span className="panel-label">Selected PDF</span>
+                        <span className="panel-text">{selectedPDF.getDisplayName()}</span>
+                        <button className="panel-btn" onClick={() => setSelectedPDF(null)}>Clear PDF</button>
+                    </>
+                )}
+
+                {viewMode === '2d' && selectionState === 'complete' && (
+                    <>
+                        <hr className="panel-divider" />
+                        <span className="panel-label">Cover Positions</span>
+                        <span className="panel-text">Left: {coverPositions.leftCoverPosition.toFixed(3)}</span>
+                        <span className="panel-text">Right: {coverPositions.rightCoverPosition.toFixed(3)}</span>
+                    </>
+                )}
             </div>
+
             <PDFSelectionModal
                 isOpen={isPDFModalOpen}
                 onClose={() => setIsPDFModalOpen(false)}
@@ -361,4 +282,4 @@ export function BookDesignStudio() {
             />
         </div>
     );
-} 
+}

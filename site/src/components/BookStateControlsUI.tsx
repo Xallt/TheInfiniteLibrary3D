@@ -14,10 +14,9 @@ interface UniformControlsProps {
 
 function UniformControls({ book, onSwitchToReading }: UniformControlsProps) {
     const currentState = book.getCurrentState() as UniformlyOpenedState;
-    
+
     const handleAngleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const newAngle = parseFloat(event.target.value);
-        book.setState(new UniformlyOpenedState(newAngle));
+        book.setState(new UniformlyOpenedState(parseFloat(event.target.value)));
     };
 
     return (
@@ -31,12 +30,7 @@ function UniformControls({ book, onSwitchToReading }: UniformControlsProps) {
                 onChange={handleAngleChange}
                 className="angle-slider"
             />
-            <button 
-                className="reading-mode-button"
-                onClick={onSwitchToReading}
-            >
-                Read Book
-            </button>
+            <button className="panel-btn" onClick={onSwitchToReading}>Read Book</button>
         </>
     );
 }
@@ -47,45 +41,23 @@ interface ReadingControlsProps {
 }
 
 function ReadingControls({ book, onSwitchToUniform }: ReadingControlsProps) {
-    const getPageNum = () => {
-        const bookState = book.getCurrentState() as PageSelectedState;
-        return bookState.getSelectedPageIndex();
-    };
+    const getPageNum = () => (book.getCurrentState() as PageSelectedState).getSelectedPageIndex();
 
     const handlePrevPage = () => {
-        const prevPageIndex = Math.max(getPageNum() - 1, 0);
-        if (prevPageIndex !== getPageNum()) {
-            book.setState(new PageSelectedState(Math.PI / 2, prevPageIndex));
-        }
+        const prev = Math.max(getPageNum() - 1, 0);
+        if (prev !== getPageNum()) book.setState(new PageSelectedState(Math.PI / 2, prev));
     };
 
     const handleNextPage = () => {
-        const nextPageIndex = Math.min(getPageNum() + 1, book.getNumPages());
-        if (nextPageIndex !== getPageNum()) {
-            book.setState(new PageSelectedState(Math.PI / 2, nextPageIndex));
-        }
+        const next = Math.min(getPageNum() + 1, book.getNumPages());
+        if (next !== getPageNum()) book.setState(new PageSelectedState(Math.PI / 2, next));
     };
 
     return (
         <div className="page-controls">
-            <button 
-                className="page-nav-button"
-                onClick={handlePrevPage}
-            >
-                ←
-            </button>
-            <button 
-                className="page-nav-button"
-                onClick={handleNextPage}
-            >
-                →
-            </button>
-            <button 
-                className="uniform-mode-button"
-                onClick={onSwitchToUniform}
-            >
-                Uniform Open
-            </button>
+            <button className="panel-btn" onClick={handlePrevPage}>←</button>
+            <button className="panel-btn" onClick={handleNextPage}>→</button>
+            <button className="panel-btn" onClick={onSwitchToUniform}>Uniform Open</button>
         </div>
     );
 }
@@ -104,9 +76,7 @@ export function BookStateControlsUI({ book, controllers }: BookStateControlsUIPr
         animate();
 
         return () => {
-            if (animationFrameRef.current) {
-                cancelAnimationFrame(animationFrameRef.current);
-            }
+            if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
         };
     }, [book, controllers]);
 
@@ -114,7 +84,7 @@ export function BookStateControlsUI({ book, controllers }: BookStateControlsUIPr
         for (const controllerWrapper of controllers) {
             if (controllerWrapper.gamepad) {
                 const currentState = book.getCurrentState();
-                
+
                 if (controllerWrapper.isButtonNewlyPressed(4)) {
                     if (currentState instanceof PageSelectedState) {
                         book.setState(new UniformlyOpenedState(Math.PI / 2));
@@ -126,16 +96,12 @@ export function BookStateControlsUI({ book, controllers }: BookStateControlsUIPr
                 if (currentState instanceof PageSelectedState) {
                     const currentPage = currentState.getSelectedPageIndex();
                     if (controllerWrapper.isButtonNewlyPressed(2)) {
-                        const prevPageIndex = Math.max(currentPage - 1, 0);
-                        if (prevPageIndex !== currentPage) {
-                            book.setState(new PageSelectedState(Math.PI / 2, prevPageIndex));
-                        }
+                        const prev = Math.max(currentPage - 1, 0);
+                        if (prev !== currentPage) book.setState(new PageSelectedState(Math.PI / 2, prev));
                     }
                     if (controllerWrapper.isButtonNewlyPressed(3)) {
-                        const nextPageIndex = Math.min(currentPage + 1, book.getNumPages() - 1);
-                        if (nextPageIndex !== currentPage) {
-                            book.setState(new PageSelectedState(Math.PI / 2, nextPageIndex));
-                        }
+                        const next = Math.min(currentPage + 1, book.getNumPages() - 1);
+                        if (next !== currentPage) book.setState(new PageSelectedState(Math.PI / 2, next));
                     }
                 }
 
@@ -154,17 +120,12 @@ export function BookStateControlsUI({ book, controllers }: BookStateControlsUIPr
         book.setState(new PageSelectedState(Math.PI / 2, 0));
     };
 
-    const renderControls = () => {
-        if (bookStateMode === 'reading') {
-            return <ReadingControls book={book} onSwitchToUniform={onSwitchToUniform} />;
-        } else {
-            return <UniformControls book={book} onSwitchToReading={onSwitchToReading} />;
-        }
-    };
-
     return (
-        <div className="angle-control">
-            {renderControls()}
+        <div className="book-controls-panel panel">
+            {bookStateMode === 'reading'
+                ? <ReadingControls book={book} onSwitchToUniform={onSwitchToUniform} />
+                : <UniformControls book={book} onSwitchToReading={onSwitchToReading} />
+            }
         </div>
     );
-} 
+}

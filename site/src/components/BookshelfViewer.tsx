@@ -34,57 +34,42 @@ export function BookshelfViewer() {
     const [isViewingBook, setIsViewingBook] = useState(false);
     const [currentViewingBookIndex, setCurrentViewingBookIndex] = useState(-1);
     const [showUrlModal, setShowUrlModal] = useState(false);
-    const [bookAngle, setBookAngle] = useState(Math.PI / 2); // Default open angle
+    const [bookAngle, setBookAngle] = useState(Math.PI / 2);
     const [bookResourceMappings, setBookResourceMappings] = useState<{ [index: number]: BookResourceMapping }>({});
     const [showBookCollectorModal, setShowBookCollectorModal] = useState(false);
 
     useEffect(() => {
         if (!containerRef.current) return;
 
-        // Clean up any existing scene
         if (sceneRef.current) {
             const canvas = containerRef.current.querySelector('canvas');
-            if (canvas) {
-                canvas.remove();
-            }
+            if (canvas) canvas.remove();
             const stats = containerRef.current.querySelector('.stats');
-            if (stats) {
-                stats.remove();
-            }
+            if (stats) stats.remove();
         }
 
-        // Initialize new scene with default parameters
-        sceneRef.current = new MainScene(
-            containerRef.current,  // Pass the container element
-            defaultBookshelfParams
-        );
+        sceneRef.current = new MainScene(containerRef.current, defaultBookshelfParams);
 
-        // Set up the book selection callback
         sceneRef.current.setOnBookSelectedCallback((bookIndex) => {
             handleViewBook(bookIndex);
         });
 
-        // Cleanup function
         return () => {
             if (sceneRef.current && containerRef.current) {
                 const canvas = containerRef.current.querySelector('canvas');
-                if (canvas) {
-                    canvas.remove();
-                }
+                if (canvas) canvas.remove();
                 const stats = containerRef.current.querySelector('.stats');
-                if (stats) {
-                    stats.remove();
-                }
+                if (stats) stats.remove();
             }
         };
-    }, []); // Empty dependency array means this runs once on mount
+    }, []);
 
     const returnBook = () => {
         if (!sceneRef.current) return;
         sceneRef.current.returnBookToShelf();
         setIsViewingBook(false);
         setCurrentViewingBookIndex(-1);
-    }
+    };
 
     const handleViewBook = async (bookIndex: number) => {
         if (!sceneRef.current) return;
@@ -99,8 +84,7 @@ export function BookshelfViewer() {
         if (!currentBookResource) {
             throw new Error("Book not found");
         }
-        
-        
+
         sceneRef.current.viewBook(bookIndex);
         if (sceneRef.current.isInVR()) {
             setBookAngle(Math.PI / 2);
@@ -108,26 +92,20 @@ export function BookshelfViewer() {
 
         setIsViewingBook(true);
 
-        // Only load pages if they haven't been loaded yet
         if (!currentBookResource.loaded) {
             await loadBookPages(currentBookResource);
-        }
-        else {
+        } else {
             console.log("Book already loaded");
         }
-
     };
 
     const handlePDFSourcesSubmitted = async (sources: PDFResource[]) => {
         const bookPromises = sources.map(async (resource, index) => {
             try {
-                const defaultPageCount = 1; // Start with just 1 page as a placeholder
-
-                // Create empty book
                 const book = Book.empty(defaultBookParams, new BookTexture(
                     TextureLoader.getInstance().load(defaultBookTexture.path),
                     defaultBookTexture.coverPositions
-                ), defaultPageCount, index);
+                ), 1, index);
 
                 if (sceneRef.current) {
                     sceneRef.current.addBook(book);
@@ -145,12 +123,11 @@ export function BookshelfViewer() {
         const resultsSorted = results.sort((a, b) => a.index - b.index);
 
         const offset_index = Object.keys(bookResourceMappingsRef.current).length;
-        // Update both the ref and the state
         const newMappings = resultsSorted.reduce((acc, mapping) => {
             acc[mapping.index + offset_index] = mapping;
             return acc;
         }, { ...bookResourceMappingsRef.current } as { [index: number]: BookResourceMapping });
-        
+
         bookResourceMappingsRef.current = newMappings;
         setBookResourceMappings(newMappings);
     };
@@ -172,11 +149,9 @@ export function BookshelfViewer() {
                     backPage,
                     Page.getPageParams(bookResourceMapping.book.getParams())
                 );
-
                 bookResourceMapping.book.addPage(physicalPage, pageIndex++);
             }
 
-            // Update both the ref and the state
             bookResourceMappingsRef.current = {
                 ...bookResourceMappingsRef.current,
                 [bookResourceMapping.index]: { ...bookResourceMapping, loaded: true }
@@ -185,7 +160,6 @@ export function BookshelfViewer() {
                 ...prevMappings,
                 [bookResourceMapping.index]: { ...bookResourceMapping, loaded: true }
             }));
-
         } catch (error) {
             console.error('Failed to load book pages:', error);
         }
@@ -194,24 +168,16 @@ export function BookshelfViewer() {
     useEffect(() => {
         if (sceneRef.current) {
             const handleVRSessionStart = () => {
-                if (isViewingBook) {
-                    setBookAngle(Math.PI / 2);
-                }
-            };
-
-            const handleVRSessionEnd = () => {
-                // Reset any VR-specific states if needed
+                if (isViewingBook) setBookAngle(Math.PI / 2);
             };
 
             if (sceneRef.current.isInVR()) {
                 sceneRef.current.onVRSessionStart(handleVRSessionStart);
-                sceneRef.current.onVRSessionEnd(handleVRSessionEnd);
+                sceneRef.current.onVRSessionEnd(() => {});
             }
 
             return () => {
-                if (sceneRef.current) {
-                    sceneRef.current.removeVRSessionListeners();
-                }
+                if (sceneRef.current) sceneRef.current.removeVRSessionListeners();
             };
         }
     }, [isViewingBook]);
@@ -219,7 +185,7 @@ export function BookshelfViewer() {
     const getCurrentBookInfo = (): { title: string; author: string; pageCount: number } | null => {
         const resource = bookResourceMappingsRef.current[currentViewingBookIndex];
         if (!resource || !resource.source.getMetadata()) return null;
-        
+
         const metadata = resource.source.getMetadata();
         return {
             title: metadata?.title || 'Untitled',
@@ -233,22 +199,15 @@ export function BookshelfViewer() {
 
         try {
             const blob = await sceneRef.current.exportSceneToGLB();
-            
-            // Create download link
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
             link.download = 'bookshelf-scene.glb';
-            
-            // Trigger download
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-            
-            // Clean up
             URL.revokeObjectURL(link.href);
         } catch (error) {
             console.error('Failed to export scene:', error);
-            // You might want to show an error message to the user here
         }
     };
 
@@ -257,21 +216,14 @@ export function BookshelfViewer() {
         try {
             if (method === 'all') {
                 const bookSources = await BookCollectorAPI.fetchBooks(source);
-                const pdfResources = bookSources.map(source => 
-                    createPDFResource(source.pdf_path)
-                );
+                const pdfResources = bookSources.map(s => createPDFResource(s.pdf_path));
                 await handlePDFSourcesSubmitted(pdfResources);
             } else {
-                // Start paginated loading
                 const iterator = await BookCollectorAPI.createPaginatedBooks(source);
-                
-                // We don't want to await this as it will continuously load books
                 (async () => {
                     try {
                         for await (const bookChunk of iterator) {
-                            const pdfResources = bookChunk.map(source =>
-                                createPDFResource(source.pdf_path)
-                            );
+                            const pdfResources = bookChunk.map(s => createPDFResource(s.pdf_path));
                             await handlePDFSourcesSubmitted(pdfResources);
                         }
                     } catch (error) {
@@ -284,89 +236,52 @@ export function BookshelfViewer() {
         }
     };
 
+    const bookInfo = getCurrentBookInfo();
+
     return (
-        <div className="bookshelf-viewer">
-            <div ref={containerRef} className="scene-container" />
-            <button 
-                className="download-button"
-                onClick={handleDownloadScene}
-                style={{
-                    position: 'absolute',
-                    top: '10px',
-                    right: '10px',
-                    padding: '8px 16px',
-                    backgroundColor: '#4CAF50',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    zIndex: 1000
-                }}
-            >
-                Download Scene
-            </button>
-            {isViewingBook && (
-                <button 
-                    className="return-book-button"
-                    onClick={returnBook}
-                    style={{
-                        position: 'absolute',
-                        top: '10px',
-                        left: '10px',
-                        padding: '8px 16px',
-                        backgroundColor: '#f44336',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: 'pointer',
-                        zIndex: 1000
-                    }}
-                >
-                    Return Book
-                </button>
-            )}
-            <div className="controls">
-                <button 
-                    className="add-book-button"
-                    onClick={() => setShowUrlModal(true)}
-                >
-                    Add Books
-                </button>
-                <button 
-                    className="load-collector-button"
-                    onClick={() => setShowBookCollectorModal(true)}
-                >
-                    Load from Book Collector
-                </button>
+        <div style={{ position: 'relative', width: '100vw', height: '100vh' }}>
+            <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
+
+            <div className="controls-panel panel">
+                <button className="panel-btn" onClick={handleDownloadScene}>Download Scene</button>
+                <button className="panel-btn" onClick={() => setShowUrlModal(true)}>Add Books</button>
+                <button className="panel-btn" onClick={() => setShowBookCollectorModal(true)}>Load from Collector</button>
+                {isViewingBook && (
+                    <>
+                        <hr className="panel-divider" />
+                        <button className="panel-btn" onClick={returnBook}>Return Book</button>
+                        {bookInfo && (
+                            <>
+                                <span className="panel-label">Now viewing</span>
+                                <span className="panel-text">{bookInfo.title}</span>
+                                <span className="panel-text" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                                    {bookInfo.author} · {bookInfo.pageCount}p
+                                </span>
+                            </>
+                        )}
+                    </>
+                )}
             </div>
 
             {isViewingBook && (
-                <BookStateControlsUI 
+                <BookStateControlsUI
                     book={sceneRef.current?.getBook(currentViewingBookIndex)!}
                     controllers={sceneRef.current?.getControllers() || []}
                 />
             )}
 
-            <PDFSelectionModal 
+            <PDFSelectionModal
                 isOpen={showUrlModal}
                 onClose={() => setShowUrlModal(false)}
                 onPDFSourcesSubmitted={handlePDFSourcesSubmitted}
                 initialURLs={['https://arxiv.org/pdf/1706.03762']}
             />
 
-            {isViewingBook && getCurrentBookInfo() && (
-                <div className="book-info">
-                    <h3>{getCurrentBookInfo()?.title}</h3>
-                    <p>By {getCurrentBookInfo()?.author}</p>
-                    <p>Pages: {getCurrentBookInfo()?.pageCount}</p>
-                </div>
-            )}
-
-            <BookCollectorModal 
+            <BookCollectorModal
                 isOpen={showBookCollectorModal}
                 onClose={() => setShowBookCollectorModal(false)}
                 onSourceSelected={handleBookCollectorSource}
             />
         </div>
     );
-} 
+}

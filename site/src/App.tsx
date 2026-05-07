@@ -1,21 +1,30 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
+import React, { useState } from 'react';
 import { BookshelfViewer } from './components/BookshelfViewer';
 import { BookDesignStudio } from './components/BookDesignStudio';
-import './styles/BookshelfViewer.css';
-import './styles/BookDesignStudio.css';
+import './styles/panel.css';
+
+type Tab = 'bookshelf' | 'design';
 
 export function App() {
+    const [tab, setTab] = useState<Tab>('bookshelf');
+
     return (
-        <BrowserRouter>
-            <nav className="main-nav">
-                <Link to="/">Bookshelf</Link>
-                <Link to="/book-design">Book Design Studio</Link>
-            </nav>
-            <Routes>
-                <Route path="/" element={<BookshelfViewer />} />
-                <Route path="/book-design" element={<BookDesignStudio />} />
-            </Routes>
-        </BrowserRouter>
+        <>
+            {tab === 'bookshelf' ? <BookshelfViewer /> : <BookDesignStudio />}
+            <div className="tab-switcher">
+                <button
+                    className={`panel-btn ${tab === 'bookshelf' ? 'active' : ''}`}
+                    onClick={() => setTab('bookshelf')}
+                >
+                    Bookshelf
+                </button>
+                <button
+                    className={`panel-btn ${tab === 'design' ? 'active' : ''}`}
+                    onClick={() => setTab('design')}
+                >
+                    Book Design
+                </button>
+            </div>
+        </>
     );
-};
+}

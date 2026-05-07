@@ -147,10 +147,14 @@ export function BookshelfViewer() {
 
     return (
         <div style={{ position: 'relative', width: '100vw', height: '100vh' }}>
-            <Canvas gl={{ antialias: true, alpha: true }}>
-                <XR store={xrStore}>
+            <Canvas gl={{ antialias: true, alpha: true }} flat>
+                {isVRSupported ? (
+                    <XR store={xrStore}>
+                        <BookshelfSceneInner mainScene={mainScene} isVRSupported={isVRSupported} />
+                    </XR>
+                ) : (
                     <BookshelfSceneInner mainScene={mainScene} isVRSupported={isVRSupported} />
-                </XR>
+                )}
             </Canvas>
 
             <div className="controls-panel panel">

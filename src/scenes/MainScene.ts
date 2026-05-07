@@ -293,7 +293,6 @@ public initialize(isVRSupported: boolean): void {
     private onWindowResize(): void {
         this.camera.aspect = window.innerWidth / window.innerHeight;
         this.camera.updateProjectionMatrix();
-        this.renderer.setSize(window.innerWidth, window.innerHeight);
     }
 
     private onKeyDown(event: KeyboardEvent): void {
@@ -595,7 +594,7 @@ public initialize(isVRSupported: boolean): void {
     }
 
     private rayBookIntersection(mousePosition: THREE.Vector2): BookIntersection | null {
-        if (this.isVRSupported || this.isBookInViewMode) return null;
+        if (this.isInVR() || this.isBookInViewMode) return null;
 
         this.mouseRaycaster.setFromCamera(mousePosition, this.camera);
 

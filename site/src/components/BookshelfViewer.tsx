@@ -9,7 +9,7 @@ import { BookStateControlsUI } from './BookStateControlsUI';
 import { PDFResource, URLPDFResource, createPDFResource } from '../types/PDFResource';
 import { PDFSelectionModal } from './PDFSelectionModal';
 import { BookCollectorModal } from './BookCollectorModal';
-import { fetchBooks, BookPDFSource, BookCollectorSource } from '../api/BookCollectorAPI';
+import { fetchBooks, BookCollectorSource } from '../api/BookCollectorAPI';
 
 class BookResourceMapping {
     book: Book;

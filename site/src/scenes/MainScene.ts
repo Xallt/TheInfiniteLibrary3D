@@ -58,7 +58,9 @@ export class MainScene extends BaseScene {
     private bookshelf!: Bookshelf;
     private books: Book[] = [];
     private selectedBookIndex: number = -1;
-    private selectionIndicator: THREE.Mesh;
+    private hoveredBookIndex: number = -1;
+    private bookRestZ: number[] = [];
+    private bookHoverOffsets: number[] = [];
     private isBookInViewMode: boolean = false;
     private viewingBookIndex: number = -1;
     private sceneElevation!: number;
@@ -98,17 +100,6 @@ export class MainScene extends BaseScene {
 
         this.bookshelfParams = bookshelfParams;
 
-        // Create selection indicator first
-        const geometry = new THREE.SphereGeometry(0.02, 32, 32);
-        const material = new THREE.MeshBasicMaterial({
-            color: 0xff0000,
-            transparent: true,
-            opacity: 0.5,
-            depthTest: false  // Make sure it's always visible
-        });
-        this.selectionIndicator = new THREE.Mesh(geometry, material);
-        this.selectionIndicator.visible = false;
-
         this.raycaster = new THREE.Raycaster();
         this.tempMatrix = new THREE.Matrix4();
 
@@ -127,9 +118,6 @@ export class MainScene extends BaseScene {
 
         // Set initial cursor style
         this.renderer.domElement.style.cursor = 'default';
-
-        // Add selection indicator to scene
-        this.scene.add(this.selectionIndicator);
 
         // Add event listeners
         this.addEventListeners();
@@ -381,6 +369,7 @@ export class MainScene extends BaseScene {
             this.controls.update();
         }
 
+        this.updateBookHover();
         this.render();
         super.animate();
     }
@@ -394,33 +383,35 @@ export class MainScene extends BaseScene {
         const added = this.bookshelf.addBook(book);
         if (added) {
             this.books.push(book);
+            this.bookRestZ.push(book.getMesh().position.z);
+            this.bookHoverOffsets.push(0);
         }
         if (this.books.length >= 1) {
             this.selectBook(0);
         }
+    }
 
+    private static readonly HOVER_PERK = 0.05;
+    private static readonly HOVER_LERP = 0.15;
+
+    private updateBookHover(): void {
+        if (this.isBookInViewMode) return;
+        for (let i = 0; i < this.books.length; i++) {
+            const target = i === this.hoveredBookIndex ? MainScene.HOVER_PERK : 0;
+            this.bookHoverOffsets[i] += (target - this.bookHoverOffsets[i]) * MainScene.HOVER_LERP;
+            this.books[i].getMesh().position.z = this.bookRestZ[i] + this.bookHoverOffsets[i];
+        }
     }
 
     public selectBook(index: number): void {
         if (index >= 0 && index < this.books.length) {
             this.selectedBookIndex = index;
-            const position = this.bookshelf.getBookPosition(index);
-
-            if (position) {
-                // Get the book's dimensions
-                const book = this.books[index];
-                const bookMesh = book.getMesh();
-                const bookBounds = new THREE.Box3().setFromObject(bookMesh);
-                const bookDepth = bookBounds.max.z - bookBounds.min.z;
-
-                // Position indicator in front of the book's center
-                this.selectionIndicator.position.copy(position);
-                this.selectionIndicator.position.z += bookDepth + 0.05; // Offset by book depth plus a small gap
-                this.selectionIndicator.visible = true;
-            }
+            this.hoveredBookIndex = index;
+            this.renderer.domElement.style.cursor = 'pointer';
         } else {
-            this.selectionIndicator.visible = false;
             this.selectedBookIndex = -1;
+            this.hoveredBookIndex = -1;
+            this.renderer.domElement.style.cursor = 'default';
         }
     }
 
@@ -432,14 +423,16 @@ export class MainScene extends BaseScene {
         const book = this.books[bookIndex];
         const bookMesh = book.getMesh();
 
-        // Reset cursor to default when entering view mode
+        // Reset cursor and hover state when entering view mode
         this.renderer.domElement.style.cursor = 'default';
+        this.hoveredBookIndex = -1;
+        if (this.bookHoverOffsets[bookIndex] !== undefined) {
+            this.bookHoverOffsets[bookIndex] = 0;
+            bookMesh.position.z = this.bookRestZ[bookIndex];
+        }
 
         // Store original position and rotation for returning later
         book.storeOriginalTransform();
-
-        // Hide selection indicator while book is being viewed
-        this.selectionIndicator.visible = false;
 
         // Remove book from bookshelf and add it directly to the scene
         const bookshelfMesh = this.bookshelf.getMesh();
@@ -516,15 +509,6 @@ export class MainScene extends BaseScene {
         book.restoreOriginalTransform();
 
         this.isBookInViewMode = false;
-
-        // Show and update selection indicator
-        this.selectionIndicator.visible = true;
-        const position = this.bookshelf.getBookPosition(this.viewingBookIndex);
-        if (position) {
-            position.z += 0.2;
-            this.selectionIndicator.position.copy(position);
-        }
-
         this.viewingBookIndex = -1;
     }
 
@@ -559,9 +543,6 @@ export class MainScene extends BaseScene {
             bookMesh.quaternion.copy(quaternion);
             bookMesh.scale.copy(scale);
 
-            // Update selection indicator position
-            this.selectionIndicator.position.copy(position);
-            this.selectionIndicator.position.z += 0.2;
         }
     }
 
@@ -743,7 +724,6 @@ export class MainScene extends BaseScene {
         // Remove any UI elements or helpers you don't want to export
         exportScene.traverse((object) => {
             if (object instanceof TransformControlsGizmo ||
-                object === this.selectionIndicator ||
                 object === this.controllerRayLine) {
                 object.visible = false;
             }

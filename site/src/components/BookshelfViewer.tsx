@@ -8,9 +8,8 @@ import { Page } from './Bookshelf/Page';
 import { BookStateControlsUI } from './BookStateControlsUI';
 import { PDFResource, URLPDFResource, createPDFResource } from '../types/PDFResource';
 import { PDFSelectionModal } from './PDFSelectionModal';
-import { BookCollectorModal, BookFetchingMethod } from './BookCollectorModal';
-import { config } from '../config';
-import { BookCollectorAPI, BookPDFSource, BookCollectorSource } from '../api/BookCollectorAPI';
+import { BookCollectorModal } from './BookCollectorModal';
+import { fetchBooks, BookPDFSource, BookCollectorSource } from '../api/BookCollectorAPI';
 
 class BookResourceMapping {
     book: Book;
@@ -211,26 +210,12 @@ export function BookshelfViewer() {
         }
     };
 
-    const handleBookCollectorSource = async (source: BookCollectorSource, method: BookFetchingMethod) => {
+    const handleBookCollectorSource = async (source: BookCollectorSource) => {
         setShowBookCollectorModal(false);
         try {
-            if (method === 'all') {
-                const bookSources = await BookCollectorAPI.fetchBooks(source);
-                const pdfResources = bookSources.map(s => createPDFResource(s.pdf_path));
-                await handlePDFSourcesSubmitted(pdfResources);
-            } else {
-                const iterator = await BookCollectorAPI.createPaginatedBooks(source);
-                (async () => {
-                    try {
-                        for await (const bookChunk of iterator) {
-                            const pdfResources = bookChunk.map(s => createPDFResource(s.pdf_path));
-                            await handlePDFSourcesSubmitted(pdfResources);
-                        }
-                    } catch (error) {
-                        console.error('Error during paginated book loading:', error);
-                    }
-                })();
-            }
+            const bookSources = await fetchBooks(source);
+            const pdfResources = bookSources.map(s => createPDFResource(s.pdf_path));
+            await handlePDFSourcesSubmitted(pdfResources);
         } catch (error) {
             console.error('Failed to fetch books from collector:', error);
         }

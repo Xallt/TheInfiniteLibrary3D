@@ -8,7 +8,6 @@ import { TransformControls, TransformControlsGizmo } from 'three/examples/jsm/co
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter';
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
 import { PMREMGenerator } from 'three';
-import { BaseScene, BaseSceneCallbacks } from './BaseScene';
 import { defaultMainSceneConfig, MainSceneConfig } from '../config/mainSceneConfig';
 
 interface BookIntersection extends THREE.Intersection<THREE.Object3D<THREE.Object3DEventMap>> {
@@ -105,15 +104,7 @@ export class MainScene {
         this.boundOnMouseClick = this.onMouseClick.bind(this);
     }
 
-    public getCallbacks(): BaseSceneCallbacks {
-        return {
-            setupScene: this.setupScene.bind(this),
-            setupVRControllers: this.setupVRControllers.bind(this),
-            onAnimate: this.tick.bind(this),
-        };
-    }
-
-    public initialize(isVRSupported: boolean): void {
+public initialize(isVRSupported: boolean): void {
         this.isVRSupportedValue = isVRSupported;
 
         if (this.isVRSupportedValue) {
@@ -319,6 +310,30 @@ export class MainScene {
         }
     }
 
+    public updateLogic(): void {
+        if (!this.rendererInternal || !this.sceneInternal || !this.camera) return;
+
+        if (this.isVRSupported && this.renderer.xr.isPresenting) {
+            const rightController = this.controllerWrappers[1]?.controller;
+            if (rightController) {
+                this.handleControllerRayIntersection(rightController);
+            }
+            this.updateGrabbedBook();
+
+            if (this.isBookInViewMode && this.viewingBookIndex !== -1) {
+                const book = this.books[this.viewingBookIndex];
+                const currentState = book.getCurrentState();
+                if (currentState instanceof PageSelectedState) {
+                    book.selectPage(currentState.getSelectedPageIndex());
+                }
+            }
+        } else {
+            this.controls?.update();
+        }
+
+        this.updateBookHover();
+    }
+
     public tick(): void {
         if (!this.rendererInternal || !this.sceneInternal || !this.camera) return;
 
@@ -347,6 +362,10 @@ export class MainScene {
     private render(): void {
         this.renderer.clear();
         this.renderer.render(this.scene, this.camera);
+    }
+
+    public getCamera(): THREE.PerspectiveCamera | null {
+        return this.camera ?? null;
     }
 
     public addBook(book: Book): void {

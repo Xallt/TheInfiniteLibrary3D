@@ -29,6 +29,9 @@ export default defineConfig({
             },
         },
     },
+    resolve: {
+        dedupe: ['three'],
+    },
     optimizeDeps: {
         include: ['pdfjs-dist'],
     },

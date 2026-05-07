@@ -6,6 +6,7 @@ import { BookTexture } from '../components/Bookshelf/BookTexture';
 import { Page } from '../components/Bookshelf/Page';
 import { PDFResource } from '../types/PDFResource';
 import { BookStateControlsUI } from '../components/BookStateControlsUI';
+import { BaseScene, buildBaseScene } from './BaseScene';
 
 interface BookDesignSceneProps {
     bookTextures: BookTexture[];
@@ -15,137 +16,98 @@ interface BookDesignSceneProps {
 
 export function BookDesignScene({ bookTextures, bookParams, pdfResource }: BookDesignSceneProps) {
     const containerRef = useRef<HTMLDivElement>(null);
-    const sceneRef = useRef<THREE.Scene | null>(null);
+    const baseRef = useRef<BaseScene | null>(null);
     const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
-    const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
     const controlsRef = useRef<OrbitControls | null>(null);
     const booksRef = useRef<Book[]>([]);
     const loadedPdfRef = useRef<PDFResource | null>(null);
     const [currentBook, setCurrentBook] = useState<Book | null>(null);
 
     useEffect(() => {
-        if (!containerRef.current) return;
+        const container = containerRef.current;
+        if (!container) return;
 
-        // Initialize scene
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0xf0f0f0);
-        sceneRef.current = scene;
+        let camera: THREE.PerspectiveCamera;
+        let controls: OrbitControls;
 
-        // Initialize camera
-        const camera = new THREE.PerspectiveCamera(
-            75,
-            containerRef.current.clientWidth / containerRef.current.clientHeight,
-            0.1,
-            1000
-        );
-        camera.position.z = 2;
-        cameraRef.current = camera;
+        const base = buildBaseScene({
+            setupScene: async (renderer, scene) => {
+                renderer.setSize(container.clientWidth, container.clientHeight, false);
 
-        // Initialize renderer
-        const renderer = new THREE.WebGLRenderer({
-            antialias: true,
-            alpha: true
+                scene.background = new THREE.Color(0xf0f0f0);
+
+                camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
+                camera.position.z = 2;
+                cameraRef.current = camera;
+
+                controls = new OrbitControls(camera, renderer.domElement);
+                controls.enableDamping = true;
+                controls.dampingFactor = 0.05;
+                controlsRef.current = controls;
+
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+                scene.add(ambientLight);
+
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                directionalLight.position.set(1, 1, 1);
+                scene.add(directionalLight);
+
+                scene.add(new THREE.GridHelper(2, 20));
+            },
+            onAnimate: () => {
+                controls.update();
+                base.renderer.render(base.scene, camera);
+            },
         });
-        renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight, false);
-        renderer.setPixelRatio(window.devicePixelRatio);
-        containerRef.current.appendChild(renderer.domElement);
-        rendererRef.current = renderer;
 
-        // Initialize controls
-        const controls = new OrbitControls(camera, renderer.domElement);
-        controls.enableDamping = true;
-        controls.dampingFactor = 0.05;
-        controlsRef.current = controls;
+        baseRef.current = base;
+        base.init(container, { showStats: false });
 
-        // Add lighting
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
-        scene.add(ambientLight);
-
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        directionalLight.position.set(1, 1, 1);
-        scene.add(directionalLight);
-
-        // Add grid helper
-        const gridHelper = new THREE.GridHelper(2, 20);
-        scene.add(gridHelper);
-
-        // Handle window resize
         const handleResize = () => {
-            if (!containerRef.current || !camera || !renderer) return;
-
-            camera.aspect = containerRef.current.clientWidth / containerRef.current.clientHeight;
+            if (!camera) return;
+            camera.aspect = container.clientWidth / container.clientHeight;
             camera.updateProjectionMatrix();
-            renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
+            base.renderer.setSize(container.clientWidth, container.clientHeight);
         };
-
         window.addEventListener('resize', handleResize);
 
-        // Animation loop
-        const animate = () => {
-            if (!scene || !camera || !renderer || !controls) return;
-
-            requestAnimationFrame(animate);
-            controls.update();
-            renderer.render(scene, camera);
-        };
-        animate();
-
-        // Cleanup
         return () => {
             window.removeEventListener('resize', handleResize);
-            renderer.dispose();
-            scene.clear();
-            controls.dispose();
-            if (containerRef.current) {
-                containerRef.current.innerHTML = '';
-            }
+            controls?.dispose();
+            base.renderer.dispose();
+            container.innerHTML = '';
         };
-    }, []); // Empty dependency array - only run once on mount
+    }, []);
 
-    // Effect for handling book textures and PDF loading
     useEffect(() => {
-        if (!sceneRef.current) return;
+        const scene = baseRef.current?.scene;
+        if (!scene) return;
 
-        // Clear existing books
         booksRef.current.forEach(book => {
-            if (book.getMesh()?.parent) {
-                book.getMesh()?.parent?.remove(book.getMesh());
-            }
+            book.getMesh().parent?.remove(book.getMesh());
         });
         booksRef.current = [];
 
-        // Add new books
         bookTextures.forEach(async (texture, index) => {
             const book = Book.empty(bookParams, texture, 1, index);
             const bookMesh = book.getMesh();
             bookMesh.position.set(index * 0.5 - (bookTextures.length - 1) * 0.25, 0, 0);
-            sceneRef.current!.add(bookMesh);
+            scene.add(bookMesh);
             booksRef.current.push(book);
-            
-            // Set the first book as current
+
             if (index === 0) {
                 setCurrentBook(book);
             }
 
-            // Load PDF pages if we have a PDF resource and haven't loaded it yet
             if (pdfResource && pdfResource !== loadedPdfRef.current) {
                 try {
-                    const parseResult = await pdfResource.getParsedPDF({
-                        imageFormat: 'png',
-                        scale: 2.0
-                    });
-
+                    const parseResult = await pdfResource.getParsedPDF({ imageFormat: 'png', scale: 2.0 });
                     const actualPageCount = Math.ceil(parseResult.metadata.numPages / 2);
                     book.resizePageArray(actualPageCount);
 
                     let pageIndex = 0;
                     for await (const [frontPage, backPage] of parseResult.getPairedPages()) {
-                        const physicalPage = Page.fromPdfPages(
-                            frontPage,
-                            backPage,
-                            Page.getPageParams(book.getParams())
-                        );
-
+                        const physicalPage = Page.fromPdfPages(frontPage, backPage, Page.getPageParams(book.getParams()));
                         book.addPage(physicalPage, pageIndex++);
                     }
 
@@ -156,12 +118,9 @@ export function BookDesignScene({ bookTextures, bookParams, pdfResource }: BookD
             }
         });
 
-        // Adjust camera if needed
         if (bookTextures.length > 0 && cameraRef.current) {
             cameraRef.current.position.z = Math.max(2, bookTextures.length * 0.5);
-            if (controlsRef.current) {
-                controlsRef.current.update();
-            }
+            controlsRef.current?.update();
         }
     }, [bookTextures, bookParams, pdfResource]);
 
@@ -170,7 +129,7 @@ export function BookDesignScene({ bookTextures, bookParams, pdfResource }: BookD
             <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
             {currentBook && (
                 <div className="book-controls-overlay">
-                    <BookStateControlsUI 
+                    <BookStateControlsUI
                         book={currentBook}
                         controllers={[]}
                     />
@@ -178,4 +137,4 @@ export function BookDesignScene({ bookTextures, bookParams, pdfResource }: BookD
             )}
         </div>
     );
-} 
+}

@@ -1,1 +1,2 @@
 - Don't commit plans to the repo
+- always run `pnpm type-check` after implementing a feature

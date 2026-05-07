@@ -1,7 +1,2 @@
-interface Config {
-    bookCollectorUrl: string;
-}
-
-export const config: Config = {
-    bookCollectorUrl: '/api'
-}; 
+export const githubOwner = 'J3ke7';
+export const githubRepo = 'e-book';

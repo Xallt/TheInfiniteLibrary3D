@@ -13,10 +13,12 @@ interface UniformControlsProps {
 }
 
 function UniformControls({ book, onSwitchToReading }: UniformControlsProps) {
-    const currentState = book.getCurrentState() as UniformlyOpenedState;
+    const [angle, setAngle] = useState(() => (book.getCurrentState() as UniformlyOpenedState).getAngle());
 
     const handleAngleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-        book.setState(new UniformlyOpenedState(parseFloat(event.target.value)));
+        const value = parseFloat(event.target.value);
+        setAngle(value);
+        book.setState(new UniformlyOpenedState(value));
     };
 
     return (
@@ -26,7 +28,7 @@ function UniformControls({ book, onSwitchToReading }: UniformControlsProps) {
                 min="0"
                 max={Math.PI / 2}
                 step="0.01"
-                value={currentState.getAngle()}
+                value={angle}
                 onChange={handleAngleChange}
                 className="angle-slider"
             />

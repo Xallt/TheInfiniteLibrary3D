@@ -1,5 +1,8 @@
 {
   "dependencies": {
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.6.1",
+    "@react-three/xr": "^6.6.29",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^4.0.379",
     "three": "^0.169.0"

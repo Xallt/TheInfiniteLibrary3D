@@ -1,15 +1,14 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { BookCollectorSource, fetchBooks } from '../api/BookCollectorAPI';
+import { defaultBookParams, defaultBookTexture, defaultBookshelfParams } from '../config/bookConfig';
 import { MainScene } from '../scenes/MainScene';
-import { defaultBookshelfParams, defaultBookParams, defaultBookTexture } from '../config/bookConfig';
-import { PdfPage, PdfParser } from '../utils/pdfParser';
+import { PDFResource, createPDFResource } from '../types/PDFResource';
+import { BookCollectorModal } from './BookCollectorModal';
 import { Book, TextureLoader } from './Bookshelf/Book';
 import { BookTexture } from './Bookshelf/BookTexture';
 import { Page } from './Bookshelf/Page';
 import { BookStateControlsUI } from './BookStateControlsUI';
-import { PDFResource, URLPDFResource, createPDFResource } from '../types/PDFResource';
 import { PDFSelectionModal } from './PDFSelectionModal';
-import { BookCollectorModal } from './BookCollectorModal';
-import { fetchBooks, BookCollectorSource } from '../api/BookCollectorAPI';
 
 class BookResourceMapping {
     book: Book;
@@ -29,12 +28,9 @@ export function BookshelfViewer() {
     const sceneRef = useRef<MainScene | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const bookResourceMappingsRef = useRef<{ [index: number]: BookResourceMapping }>({});
-    const [bookCount, setBookCount] = useState(0);
     const [isViewingBook, setIsViewingBook] = useState(false);
     const [currentViewingBookIndex, setCurrentViewingBookIndex] = useState(-1);
     const [showUrlModal, setShowUrlModal] = useState(false);
-    const [bookAngle, setBookAngle] = useState(Math.PI / 2);
-    const [bookResourceMappings, setBookResourceMappings] = useState<{ [index: number]: BookResourceMapping }>({});
     const [showBookCollectorModal, setShowBookCollectorModal] = useState(false);
 
     useEffect(() => {
@@ -85,9 +81,6 @@ export function BookshelfViewer() {
         }
 
         sceneRef.current.viewBook(bookIndex);
-        if (sceneRef.current.isInVR()) {
-            setBookAngle(Math.PI / 2);
-        }
 
         setIsViewingBook(true);
 
@@ -108,7 +101,6 @@ export function BookshelfViewer() {
 
                 if (sceneRef.current) {
                     sceneRef.current.addBook(book);
-                    setBookCount(sceneRef.current.getBookCount());
                 }
 
                 return new BookResourceMapping(book, resource, false, index);
@@ -128,7 +120,6 @@ export function BookshelfViewer() {
         }, { ...bookResourceMappingsRef.current } as { [index: number]: BookResourceMapping });
 
         bookResourceMappingsRef.current = newMappings;
-        setBookResourceMappings(newMappings);
     };
 
     const loadBookPages = async (bookResourceMapping: BookResourceMapping) => {
@@ -155,10 +146,6 @@ export function BookshelfViewer() {
                 ...bookResourceMappingsRef.current,
                 [bookResourceMapping.index]: { ...bookResourceMapping, loaded: true }
             };
-            setBookResourceMappings(prevMappings => ({
-                ...prevMappings,
-                [bookResourceMapping.index]: { ...bookResourceMapping, loaded: true }
-            }));
         } catch (error) {
             console.error('Failed to load book pages:', error);
         }
@@ -167,12 +154,11 @@ export function BookshelfViewer() {
     useEffect(() => {
         if (sceneRef.current) {
             const handleVRSessionStart = () => {
-                if (isViewingBook) setBookAngle(Math.PI / 2);
             };
 
             if (sceneRef.current.isInVR()) {
                 sceneRef.current.onVRSessionStart(handleVRSessionStart);
-                sceneRef.current.onVRSessionEnd(() => {});
+                sceneRef.current.onVRSessionEnd(() => { });
             }
 
             return () => {

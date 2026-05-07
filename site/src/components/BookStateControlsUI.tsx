@@ -67,7 +67,7 @@ function ReadingControls({ book, onSwitchToUniform }: ReadingControlsProps) {
 type BookStateMode = 'uniform' | 'reading';
 
 export function BookStateControlsUI({ book, controllers }: BookStateControlsUIProps) {
-    const animationFrameRef = useRef<number>();
+    const animationFrameRef = useRef<number | undefined>(undefined);
     const [bookStateMode, setBookStateMode] = useState<BookStateMode>('uniform');
 
     useEffect(() => {

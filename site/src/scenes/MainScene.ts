@@ -703,7 +703,12 @@ export class MainScene extends BaseScene {
         return mousePosition;
     }
 
+    private isEventOnCanvas(event: MouseEvent): boolean {
+        return event.target === this.renderer.domElement;
+    }
+
     private onMouseClick(event: MouseEvent): void {
+        if (!this.isEventOnCanvas(event)) return;
         const mousePosition = this.mousePositionFromEvent(event);
         const intersection = this.rayBookIntersection(mousePosition);
         if (intersection) {
@@ -715,6 +720,7 @@ export class MainScene extends BaseScene {
     }
 
     private onMouseMove(event: MouseEvent): void {
+        if (!this.isEventOnCanvas(event)) return;
         const mousePosition = this.mousePositionFromEvent(event);
         const intersection = this.rayBookIntersection(mousePosition);
         if (intersection) {

@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
+import { Canvas } from '@react-three/fiber';
+import { XR, createXRStore } from '@react-three/xr';
 import { BookCollectorSource, fetchBooks } from '../api/BookCollectorAPI';
 import { defaultBookParams, defaultBookTexture, defaultBookshelfParams } from '../config/bookConfig';
 import { MainScene } from '../scenes/MainScene';
@@ -9,76 +11,56 @@ import { BookTexture } from './Bookshelf/BookTexture';
 import { Page } from './Bookshelf/Page';
 import { BookStateControlsUI } from './BookStateControlsUI';
 import { PDFSelectionModal } from './PDFSelectionModal';
-import { useBaseScene } from '../hooks/useBaseScene';
+import { BookshelfSceneInner } from '../scenes/BookshelfSceneInner';
+
+const xrStore = createXRStore();
 
 class BookResourceMapping {
-    book: Book;
-    source: PDFResource;
-    loaded: boolean;
-    index: number;
-
-    constructor(book: Book, source: PDFResource, loaded: boolean = false, index: number) {
-        this.book = book;
-        this.source = source;
-        this.loaded = loaded;
-        this.index = index;
-    }
+    constructor(
+        public book: Book,
+        public source: PDFResource,
+        public loaded: boolean = false,
+        public index: number
+    ) {}
 }
 
 export function BookshelfViewer() {
-    const containerRef = useRef<HTMLDivElement>(null);
-    const sceneRef = useRef<MainScene | null>(null);
+    const mainScene = useMemo(() => new MainScene(defaultBookshelfParams), []);
     const bookResourceMappingsRef = useRef<{ [index: number]: BookResourceMapping }>({});
+    const [isVRSupported, setIsVRSupported] = useState(false);
     const [isViewingBook, setIsViewingBook] = useState(false);
     const [currentViewingBookIndex, setCurrentViewingBookIndex] = useState(-1);
     const [showUrlModal, setShowUrlModal] = useState(false);
     const [showBookCollectorModal, setShowBookCollectorModal] = useState(false);
 
-    const mainScene = useMemo(() => new MainScene(defaultBookshelfParams), []);
-    sceneRef.current = mainScene;
+    useEffect(() => {
+        if (!('xr' in navigator) || !navigator.xr) return;
+        navigator.xr.isSessionSupported('immersive-vr').then(supported => {
+            setIsVRSupported(supported);
+        }).catch(() => setIsVRSupported(false));
+    }, []);
 
-    useBaseScene(containerRef, mainScene.getCallbacks(), { showStats: true, checkVR: true }, (base) => {
-        mainScene.initialize(base.isVRSupported);
+    useEffect(() => {
         mainScene.setOnBookSelectedCallback((bookIndex) => {
             handleViewBook(bookIndex);
         });
-    });
-
-    useEffect(() => {
-        return () => {
-            mainScene.dispose();
-        };
     }, [mainScene]);
 
     const returnBook = () => {
-        if (!sceneRef.current) return;
-        sceneRef.current.returnBookToShelf();
+        mainScene.returnBookToShelf();
         setIsViewingBook(false);
         setCurrentViewingBookIndex(-1);
     };
 
     const handleViewBook = async (bookIndex: number) => {
-        if (!sceneRef.current) return;
-
-        if (isViewingBook) {
-            throw new Error("Book already in view");
-        }
-
+        if (isViewingBook) throw new Error('Book already in view');
         setCurrentViewingBookIndex(bookIndex);
-
         const currentBookResource = bookResourceMappingsRef.current[bookIndex];
-        if (!currentBookResource) {
-            throw new Error("Book not found");
-        }
-
-        sceneRef.current.viewBook(bookIndex);
-
+        if (!currentBookResource) throw new Error('Book not found');
+        mainScene.viewBook(bookIndex);
         setIsViewingBook(true);
-
         if (!currentBookResource.loaded) {
             await loadBookPages(currentBookResource);
-        } else {
-            console.log("Book already loaded");
         }
     };
 
@@ -89,92 +71,44 @@ export function BookshelfViewer() {
                     TextureLoader.getInstance().load(defaultBookTexture.path),
                     defaultBookTexture.coverPositions
                 ), 1, index);
-
-                if (sceneRef.current) {
-                    sceneRef.current.addBook(book);
-                }
-
+                mainScene.addBook(book);
                 return new BookResourceMapping(book, resource, false, index);
             } catch (error) {
                 console.error(`Failed to load PDF from ${resource.getDisplayName()}:`, error);
                 return null;
             }
         });
-
-        const results = (await Promise.all(bookPromises)).filter((result): result is BookResourceMapping => result !== null);
-        const resultsSorted = results.sort((a, b) => a.index - b.index);
-
-        const offset_index = Object.keys(bookResourceMappingsRef.current).length;
-        const newMappings = resultsSorted.reduce((acc, mapping) => {
-            acc[mapping.index + offset_index] = mapping;
+        const results = (await Promise.all(bookPromises)).filter((r): r is BookResourceMapping => r !== null);
+        const sorted = results.sort((a, b) => a.index - b.index);
+        const offset = Object.keys(bookResourceMappingsRef.current).length;
+        bookResourceMappingsRef.current = sorted.reduce((acc, m) => {
+            acc[m.index + offset] = m;
             return acc;
         }, { ...bookResourceMappingsRef.current } as { [index: number]: BookResourceMapping });
-
-        bookResourceMappingsRef.current = newMappings;
     };
 
-    const loadBookPages = async (bookResourceMapping: BookResourceMapping) => {
+    const loadBookPages = async (mapping: BookResourceMapping) => {
         try {
-            const parseResult = await bookResourceMapping.source.getParsedPDF({
-                imageFormat: 'png',
-                scale: 2.0
-            });
-
+            const parseResult = await mapping.source.getParsedPDF({ imageFormat: 'png', scale: 2.0 });
             const actualPageCount = Math.ceil(parseResult.metadata.numPages / 2);
-            bookResourceMapping.book.resizePageArray(actualPageCount);
-
+            mapping.book.resizePageArray(actualPageCount);
             let pageIndex = 0;
             for await (const [frontPage, backPage] of parseResult.getPairedPages()) {
-                const physicalPage = Page.fromPdfPages(
-                    frontPage,
-                    backPage,
-                    Page.getPageParams(bookResourceMapping.book.getParams())
-                );
-                bookResourceMapping.book.addPage(physicalPage, pageIndex++);
+                const physicalPage = Page.fromPdfPages(frontPage, backPage, Page.getPageParams(mapping.book.getParams()));
+                mapping.book.addPage(physicalPage, pageIndex++);
             }
-
             bookResourceMappingsRef.current = {
                 ...bookResourceMappingsRef.current,
-                [bookResourceMapping.index]: { ...bookResourceMapping, loaded: true }
+                [mapping.index]: { ...mapping, loaded: true }
             };
         } catch (error) {
             console.error('Failed to load book pages:', error);
         }
     };
 
-    useEffect(() => {
-        if (sceneRef.current) {
-            const handleVRSessionStart = () => {
-            };
-
-            if (sceneRef.current.isInVR()) {
-                sceneRef.current.onVRSessionStart(handleVRSessionStart);
-                sceneRef.current.onVRSessionEnd(() => { });
-            }
-
-            return () => {
-                if (sceneRef.current) sceneRef.current.removeVRSessionListeners();
-            };
-        }
-    }, [isViewingBook]);
-
-    const getCurrentBookInfo = (): { title: string; author: string; pageCount: number } | null => {
-        const resource = bookResourceMappingsRef.current[currentViewingBookIndex];
-        if (!resource || !resource.source.getMetadata()) return null;
-
-        const metadata = resource.source.getMetadata();
-        return {
-            title: metadata?.title || 'Untitled',
-            author: metadata?.author || 'Unknown Author',
-            pageCount: metadata?.numPages || 0
-        };
-    };
-
     const handleDownloadScene = async () => {
-        if (!sceneRef.current) return;
-
         try {
-            const blob = await sceneRef.current.exportSceneToGLB();
+            const blob = await mainScene.exportSceneToGLB();
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
             link.download = 'bookshelf-scene.glb';
@@ -198,11 +132,26 @@ export function BookshelfViewer() {
         }
     };
 
+    const getCurrentBookInfo = () => {
+        const resource = bookResourceMappingsRef.current[currentViewingBookIndex];
+        if (!resource || !resource.source.getMetadata()) return null;
+        const metadata = resource.source.getMetadata();
+        return {
+            title: metadata?.title || 'Untitled',
+            author: metadata?.author || 'Unknown Author',
+            pageCount: metadata?.numPages || 0,
+        };
+    };
+
     const bookInfo = getCurrentBookInfo();
 
     return (
         <div style={{ position: 'relative', width: '100vw', height: '100vh' }}>
-            <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
+            <Canvas gl={{ antialias: true, alpha: true }}>
+                <XR store={xrStore}>
+                    <BookshelfSceneInner mainScene={mainScene} isVRSupported={isVRSupported} />
+                </XR>
+            </Canvas>
 
             <div className="controls-panel panel">
                 <button className="panel-btn" onClick={handleDownloadScene}>Download Scene</button>
@@ -227,8 +176,8 @@ export function BookshelfViewer() {
 
             {isViewingBook && (
                 <BookStateControlsUI
-                    book={sceneRef.current?.getBook(currentViewingBookIndex)!}
-                    controllers={sceneRef.current?.getControllers() || []}
+                    book={mainScene.getBook(currentViewingBookIndex)!}
+                    controllers={mainScene.getControllers()}
                 />
             )}
 
@@ -238,7 +187,6 @@ export function BookshelfViewer() {
                 onPDFSourcesSubmitted={handlePDFSourcesSubmitted}
                 initialURLs={['https://arxiv.org/pdf/1706.03762']}
             />
-
             <BookCollectorModal
                 isOpen={showBookCollectorModal}
                 onClose={() => setShowBookCollectorModal(false)}

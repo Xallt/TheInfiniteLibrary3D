@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useThree, useFrame } from '@react-three/fiber';
+import { useThree } from '@react-three/fiber';
 import { Stats } from '@react-three/drei';
 import { MainScene } from '../scenes/MainScene';
 
@@ -14,15 +14,13 @@ export function BookshelfSceneInner({ mainScene, isVRSupported }: BookshelfScene
     useEffect(() => {
         mainScene.setupScene(gl, scene).then(() => {
             mainScene.initialize(isVRSupported);
+            gl.setAnimationLoop(() => mainScene.tick());
         });
         return () => {
+            gl.setAnimationLoop(null);
             mainScene.dispose();
         };
     }, []);
-
-    useFrame(() => {
-        mainScene.tick();
-    });
 
     return <Stats />;
 }

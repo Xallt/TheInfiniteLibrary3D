@@ -38,7 +38,7 @@ export function BookshelfViewer() {
     sceneRef.current = mainScene;
 
     useBaseScene(containerRef, mainScene.getCallbacks(), { showStats: true, checkVR: true }, (base) => {
-        mainScene.initialize(base);
+        mainScene.initialize(base.isVRSupported);
         mainScene.setOnBookSelectedCallback((bookIndex) => {
             handleViewBook(bookIndex);
         });

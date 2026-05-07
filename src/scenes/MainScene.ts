@@ -113,8 +113,8 @@ export class MainScene {
         };
     }
 
-    public initialize(base: BaseScene): void {
-        this.isVRSupportedValue = base.isVRSupported;
+    public initialize(isVRSupported: boolean): void {
+        this.isVRSupportedValue = isVRSupported;
 
         if (this.isVRSupportedValue) {
             this.rendererInternal.xr.addEventListener('sessionstart', () => {
@@ -144,7 +144,7 @@ export class MainScene {
         this.controls?.dispose();
     }
 
-    private async setupScene(renderer: THREE.WebGLRenderer, scene: THREE.Scene): Promise<void> {
+    public async setupScene(renderer: THREE.WebGLRenderer, scene: THREE.Scene): Promise<void> {
         this.rendererInternal = renderer;
         this.sceneInternal = scene;
         this.sceneElevation = 0.5;
@@ -319,7 +319,7 @@ export class MainScene {
         }
     }
 
-    private tick(): void {
+    public tick(): void {
         if (!this.rendererInternal || !this.sceneInternal || !this.camera) return;
 
         if (this.isVRSupported && this.renderer.xr.isPresenting) {

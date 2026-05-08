@@ -1,12 +1,30 @@
 import * as THREE from "three";
-import { createPageMesh, PageData } from "./Page";
+import {
+  createFrontPageGeometry,
+  createBackPageGeometry,
+  createPageMaterial,
+  PageParams,
+  PageTextures,
+} from "./Page";
 
-export function PageComponent(
-  { params, textures }: PageData,
-  rotation: THREE.Euler,
-  position: THREE.Vector3
-) {
-  let mesh = createPageMesh(params, textures);
+export interface PageComponentProps {
+  id: string;
+  params: PageParams;
+  textures: PageTextures;
+  position: THREE.Vector3;
+  rotation: THREE.Euler;
+}
 
-  return <primitive object={mesh} rotation={rotation} position={position} />;
+export function Page({ params, textures, position, rotation }: PageComponentProps) {
+  const frontGeom = createFrontPageGeometry(params);
+  const backGeom = createBackPageGeometry(params);
+  const frontMat = createPageMaterial(textures.front);
+  const backMat = createPageMaterial(textures.back);
+
+  return (
+    <group position={position} rotation={rotation}>
+      <mesh geometry={frontGeom} material={frontMat} />
+      <mesh geometry={backGeom} material={backMat} />
+    </group>
+  );
 }

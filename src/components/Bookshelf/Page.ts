@@ -14,68 +14,74 @@ export interface PageTextures {
 
 const PLANE_OFFSET = 0.0000;
 
-function buildPage(paramsArg: PageParams, textures: PageTextures) {
-    let params = paramsArg;
-    let mesh = createPageMesh(textures);
+export interface PageData {
+    params: PageParams;
+    textures: PageTextures;
+}
 
+export function createPageMesh(params: PageParams, textures: PageTextures): THREE.Group {
+    const group = new THREE.Group();
+    const frontGeometry = new THREE.PlaneGeometry(params.width, params.height);
+    frontGeometry.translate(params.width / 2, 0, 0);
 
-    function createPageMesh(textures: PageTextures): THREE.Group {
-        const group = new THREE.Group();
-        const frontGeometry = new THREE.PlaneGeometry(params.width, params.height);
-        frontGeometry.translate(params.width / 2, 0, 0);
+    const frontMaterial = textures.front
+        ? new THREE.MeshLambertMaterial({
+            map: createTextureFromSource(textures.front),
+            side: THREE.FrontSide
+        })
+        : new THREE.MeshLambertMaterial({
+            color: 0xffffff,
+            side: THREE.FrontSide
+        });
+    const frontPlane = new THREE.Mesh(frontGeometry, frontMaterial);
+    frontPlane.position.z = PLANE_OFFSET;
 
-        const frontMaterial = textures.front
-            ? new THREE.MeshLambertMaterial({
-                map: createTextureFromSource(textures.front),
-                side: THREE.FrontSide
-            })
-            : new THREE.MeshLambertMaterial({
-                color: 0xffffff,
-                side: THREE.FrontSide
-            });
-        const frontPlane = new THREE.Mesh(frontGeometry, frontMaterial);
-        frontPlane.position.z = PLANE_OFFSET;
+    const backGeometry = new THREE.PlaneGeometry(params.width, params.height);
+    backGeometry.rotateY(Math.PI);
+    backGeometry.translate(params.width / 2, 0, 0);
+    const backMaterial = textures.back
+        ? new THREE.MeshLambertMaterial({
+            map: createTextureFromSource(textures.back),
+            side: THREE.FrontSide
+        })
+        : new THREE.MeshLambertMaterial({
+            color: 0xffffff,
+            side: THREE.FrontSide
+        });
+    const backPlane = new THREE.Mesh(backGeometry, backMaterial);
+    backPlane.position.z = -PLANE_OFFSET;
 
-        const backGeometry = new THREE.PlaneGeometry(params.width, params.height);
-        backGeometry.rotateY(Math.PI);
-        backGeometry.translate(params.width / 2, 0, 0);
-        const backMaterial = textures.back
-            ? new THREE.MeshLambertMaterial({
-                map: createTextureFromSource(textures.back),
-                side: THREE.FrontSide
-            })
-            : new THREE.MeshLambertMaterial({
-                color: 0xffffff,
-                side: THREE.FrontSide
-            });
-        const backPlane = new THREE.Mesh(backGeometry, backMaterial);
-        backPlane.position.z = -PLANE_OFFSET;
+    group.add(frontPlane);
+    group.add(backPlane);
 
-        group.add(frontPlane);
-        group.add(backPlane);
-
-        return group;
+    return group;
+}
+function createTextureFromSource(source: string | ImageData): THREE.Texture {
+    if (source instanceof ImageData) {
+        const canvas = document.createElement('canvas');
+        canvas.width = source.width;
+        canvas.height = source.height;
+        const ctx = canvas.getContext('2d')!;
+        ctx.putImageData(source, 0, 0);
+        return new THREE.CanvasTexture(canvas);
     }
+    return TextureLoader.getInstance().load(source);
+}
 
-    function createTextureFromSource(source: string | ImageData): THREE.Texture {
-        if (source instanceof ImageData) {
-            const canvas = document.createElement('canvas');
-            canvas.width = source.width;
-            canvas.height = source.height;
-            const ctx = canvas.getContext('2d')!;
-            ctx.putImageData(source, 0, 0);
-            return new THREE.CanvasTexture(canvas);
-        }
-        return TextureLoader.getInstance().load(source);
-    }
+export interface PageProps {
+    params: PageParams;
+    textures: PageTextures;
+}
+
+export function buildPage(pageProps: PageProps) {
+    let mesh = createPageMesh(pageProps.params, pageProps.textures);
 
     return {
         mesh,
-        params,
+        pageProps,
     };
 
 }
-
 
 export type Page = ReturnType<typeof buildPage>;
 
@@ -84,7 +90,7 @@ export function fromTexturePaths(
     height: number,
     textures: PageTextures
 ): Page {
-    return buildPage({ width, height }, textures);
+    return buildPage({ params: { width, height }, textures });
 }
 
 export function fromImageData(
@@ -93,7 +99,7 @@ export function fromImageData(
     frontImageData: ImageData,
     backImageData: ImageData,
 ): Page {
-    return buildPage({ width, height }, { front: frontImageData, back: backImageData });
+    return buildPage({ params: { width, height }, textures: { front: frontImageData, back: backImageData } });
 }
 
 export function fromPdfPages(
@@ -115,7 +121,7 @@ export function fromPdfPages(
         back: backImageUrl
     };
 
-    const page = buildPage(params, textures);
+    const page = buildPage({ params, textures });
 
     setTimeout(() => {
         if (frontImageUrl) {
@@ -141,7 +147,7 @@ export function fromSinglePdfPage(
         back: imageUrl
     };
 
-    const page = buildPage(params, textures);
+    const page = buildPage({ params, textures });
 
     setTimeout(() => URL.revokeObjectURL(imageUrl), 1000);
 
@@ -149,7 +155,7 @@ export function fromSinglePdfPage(
 }
 
 export function createBlankPage(params: PageParams): Page {
-    return buildPage(params, { front: null, back: null });
+    return buildPage({ params, textures: { front: null, back: null } });
 }
 
 export function getPageParams(bookParams: BookMeshParams): PageParams {

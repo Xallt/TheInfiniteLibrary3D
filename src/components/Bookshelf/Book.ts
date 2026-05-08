@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { ProceduralMesh } from '../../utils/ProceduralMesh';
 import { BookTexture } from './BookTexture';
-import { Page } from './Page';
+import { buildPage, Page, PageProps } from './Page';
 
 interface QuadUVs {
     front: number[];
@@ -117,12 +117,13 @@ export function buildEmptyBook(
 export function buildBook(
     params: BookMeshParams,
     bookTexture: BookTexture,
-    pages: (Page | null)[],
+    pagesArg: (PageProps | null)[],
     initialState: BookOpeningState = buildUniformlyOpenedState(),
     id: number,
 ) {
     let originalPosition: THREE.Vector3 | undefined;
     let originalRotation: THREE.Euler | undefined;
+    let pages = pagesArg.map(page => page ? buildPage(page) : null);
 
     let coverMesh!: THREE.Mesh;
     let leftSideMesh!: THREE.Mesh;
@@ -344,10 +345,6 @@ export function buildBook(
         setCoverAngles(0);
     }
 
-    function copy(): Book {
-        return buildBook(params, bookTexture, pages, openingState, id);
-    }
-
     return {
         state: {
             id,
@@ -363,7 +360,6 @@ export function buildBook(
             setCoverAngles,
             storeOriginalTransform,
             restoreOriginalTransform,
-            copy
         }
     };
 }

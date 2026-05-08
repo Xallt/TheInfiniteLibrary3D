@@ -1,5 +1,5 @@
 import { Canvas } from '@react-three/fiber';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { BookCollectorSource, fetchBooks } from '../api/BookCollectorAPI';
 import { defaultBookParams, defaultBookTexture } from '../config/bookConfig';
 import { BookshelfSceneInner } from '../scenes/BookshelfSceneInner';
@@ -13,27 +13,24 @@ import { BookStateControlsUI } from './BookStateControlsUI';
 import { PDFSelectionModal } from './PDFSelectionModal';
 
 export function BookshelfViewer() {
-    const mainScene = useMemo(() => new MainScene(), []);
+    const mainSceneRef = useRef<MainScene>(null);
     const [books, setBooks] = useState<BookData[]>([]);
     const [viewingBookIndex, setViewingBookIndex] = useState<number | null>(null);
     const [showUrlModal, setShowUrlModal] = useState(false);
     const [showBookCollectorModal, setShowBookCollectorModal] = useState(false);
 
-    useEffect(() => {
-        mainScene.setOnBookSelectedCallback((bookIndex) => {
-            handleViewBook(bookIndex);
-        });
-    }, [mainScene]);
 
     function returnBook() {
-        mainScene.returnBookToShelf();
+        if (!mainSceneRef.current) return;
+        mainSceneRef.current.actions.returnBookToShelf();
         setViewingBookIndex(null);
     }
 
     async function handleViewBook(bookIndex: number) {
         if (viewingBookIndex !== null) throw new Error('Book already in view');
         setViewingBookIndex(bookIndex);
-        mainScene.viewBook(bookIndex);
+        if (!mainSceneRef.current) return;
+        mainSceneRef.current.actions.viewBook(bookIndex);
         setBooks(prev => prev.map((b, i) => i === bookIndex ? { ...b, loadPages: true } : b));
     }
 
@@ -78,10 +75,21 @@ export function BookshelfViewer() {
 
     const bookInfo = getCurrentBookInfo();
 
+    const currentBook = (() => {
+        if (viewingBookIndex === null || !mainSceneRef.current) return null;
+        try { return mainSceneRef.current.actions.getBook(viewingBookIndex); } catch { return null; }
+    })();
+
     return (
         <div style={{ position: 'relative', width: '100vw', height: '100vh' }}>
             <Canvas gl={{ antialias: true, alpha: true }} flat>
-                <BookshelfSceneInner mainScene={mainScene} books={books} />
+                <BookshelfSceneInner
+                    onMainSceneReady={(mainScene) => {
+                        mainSceneRef.current = mainScene;
+                        mainScene.actions.setOnBookSelectedCallback(handleViewBook);
+                    }}
+                    books={books}
+                />
             </Canvas>
 
             <div className="controls-panel panel">
@@ -104,9 +112,9 @@ export function BookshelfViewer() {
                 )}
             </div>
 
-            {viewingBookIndex !== null && (
+            {currentBook && (
                 <BookStateControlsUI
-                    book={mainScene.getBook(viewingBookIndex)}
+                    book={currentBook}
                 />
             )}
 

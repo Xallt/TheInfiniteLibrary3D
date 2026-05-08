@@ -3,39 +3,48 @@ import { useThree } from '@react-three/fiber';
 import { useEffect, useRef } from 'react';
 import { BookshelfMesh } from '../components/Bookshelf/BookshelfMesh';
 import { defaultBookshelfParams, defaultBookshelfTexturePath } from '../config/bookConfig';
-import { MainScene } from '../scenes/MainScene';
+import { defaultMainSceneConfig } from '../config/mainSceneConfig';
+import { buildMainScene, MainScene } from '../scenes/MainScene';
 import { BookData } from '../types/BookData';
 
 interface BookshelfSceneInnerProps {
-    mainScene: MainScene;
     books: BookData[];
+    onMainSceneReady: (mainScene: MainScene) => void;
 }
 
-export function BookshelfSceneInner({ mainScene, books }: BookshelfSceneInnerProps) {
+export function BookshelfSceneInner({ books, onMainSceneReady }: BookshelfSceneInnerProps) {
     const { scene, gl } = useThree();
     const readyRef = useRef(false);
     const rafRef = useRef<number>(0);
+    const mainSceneRef = useRef<MainScene | null>(null);
+
+    if (!mainSceneRef.current) {
+        mainSceneRef.current = buildMainScene(defaultMainSceneConfig, gl, scene);
+    }
+    const mainScene = mainSceneRef.current;
 
     useEffect(() => {
-        mainScene.setupScene(gl, scene).then(() => {
-            mainScene.initialize();
+        onMainSceneReady(mainScene);
+
+        mainScene.actions.setupScene().then(() => {
             readyRef.current = true;
-        }).catch(err => console.error('setupScene failed:', err));
+        });
 
         function tick() {
             rafRef.current = requestAnimationFrame(tick);
             if (!readyRef.current) return;
-            mainScene.updateLogic();
-            const camera = mainScene.getCamera();
-            if (camera) gl.render(scene, camera);
+            mainScene.actions.updateLogic();
+            gl.render(scene, mainScene.state.camera);
         }
         rafRef.current = requestAnimationFrame(tick);
 
         return () => {
             cancelAnimationFrame(rafRef.current);
             readyRef.current = false;
-            mainScene.dispose();
+            mainScene.actions.dispose();
         };
+    // mainScene is stable (created once via ref), gl/scene are stable r3f refs
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     return (
@@ -45,8 +54,8 @@ export function BookshelfSceneInner({ mainScene, books }: BookshelfSceneInnerPro
                 params={defaultBookshelfParams}
                 texturePath={defaultBookshelfTexturePath}
                 books={books}
-                onBooksChanged={books => mainScene.setBooks(books)}
-                onMeshReady={mesh => mainScene.setBookshelfMesh(mesh)}
+                onBooksChanged={books => mainScene.actions.setBooks(books)}
+                onMeshReady={() => { }}
             />
         </>
     );

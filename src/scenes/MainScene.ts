@@ -1,101 +1,69 @@
 import * as THREE from 'three';
 import { PMREMGenerator } from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
-import { TransformControls, TransformControlsGizmo } from 'three/examples/jsm/controls/TransformControls';
-import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter';
+import { TransformControls } from 'three/examples/jsm/controls/TransformControls';
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
 import { Book } from '../components/Bookshelf/Book';
 import { createControls } from '../components/Controls';
-import { defaultMainSceneConfig, MainSceneConfig } from '../config/mainSceneConfig';
+import { MainSceneConfig } from '../config/mainSceneConfig';
 
 interface BookIntersection extends THREE.Intersection<THREE.Object3D<THREE.Object3DEventMap>> {
     bookIndex: number;
 }
 
-export class MainScene {
-    private readonly sceneConfig: MainSceneConfig;
 
-    private sceneInternal!: THREE.Scene;
-    private rendererInternal!: THREE.WebGLRenderer;
+export function buildMainScene(sceneConfig: MainSceneConfig, renderer: THREE.WebGLRenderer, scene: THREE.Scene) {
+    const sceneElevation: number = 0.5;
+    let bookshelfMesh: THREE.Mesh | null = null;
+    let books: Book[] = [];
+    let selectedBookIndex: number = -1;
+    let hoveredBookIndex: number = -1;
+    let bookRestZ: number[] = [];
+    let bookHoverOffsets: number[] = [];
+    let isBookInViewMode: boolean = false;
+    let viewingBookIndex: number = -1;
 
-    private get scene(): THREE.Scene { return this.sceneInternal; }
-    private get renderer(): THREE.WebGLRenderer { return this.rendererInternal; }
+    let grabbedBook: Book | null = null;
+    let grabbingController: THREE.XRTargetRaySpace | null = null;
+    let grabMatrix: THREE.Matrix4 = new THREE.Matrix4();
 
-    private camera!: THREE.PerspectiveCamera;
-    private controls!: OrbitControls;
-    private bookshelfMesh: THREE.Mesh | null = null;
-    private sceneElevation!: number;
+    let gizmo: THREE.Object3D | null = null;
+    let transformControl: TransformControls | null = null;
+    let transformMode: 'translate' | 'rotate' = 'translate';
 
-    private books: Book[] = [];
-    private selectedBookIndex: number = -1;
-    private hoveredBookIndex: number = -1;
-    private bookRestZ: number[] = [];
-    private bookHoverOffsets: number[] = [];
-    private isBookInViewMode: boolean = false;
-    private viewingBookIndex: number = -1;
+    let mouseRaycaster = new THREE.Raycaster();
 
-    private grabbedBook: Book | null = null;
-    private grabbingController: THREE.XRTargetRaySpace | null = null;
-    private grabMatrix: THREE.Matrix4 = new THREE.Matrix4();
-    private inverseGrabMatrix: THREE.Matrix4 = new THREE.Matrix4();
+    let camera: THREE.PerspectiveCamera = initCamera();
+    let controls: OrbitControls = initControls(renderer);
 
-    private gizmo: THREE.Object3D | null = null;
-    private transformControl: TransformControls | null = null;
-    private transformMode: 'translate' | 'rotate' = 'translate';
+    let onBookSelectedCallback: ((bookIndex: number) => void) | null = null;
 
-    private readonly mouseRaycaster: THREE.Raycaster;
+    initLighting(scene, renderer);
+    initEnvironment(scene);
 
-    private onBookSelectedCallback?: (bookIndex: number) => void;
+    renderer.domElement.style.cursor = 'default';
+    addEventListeners();
 
-    private readonly boundOnWindowResize: () => void;
-    private readonly boundOnKeyDown: (e: KeyboardEvent) => void;
-    private readonly boundOnMouseMove: (e: MouseEvent) => void;
-    private readonly boundOnMouseClick: (e: MouseEvent) => void;
-
-    constructor(sceneConfig: MainSceneConfig = defaultMainSceneConfig) {
-        this.sceneConfig = sceneConfig;
-        this.mouseRaycaster = new THREE.Raycaster();
-
-        this.boundOnWindowResize = this.onWindowResize.bind(this);
-        this.boundOnKeyDown = this.onKeyDown.bind(this);
-        this.boundOnMouseMove = this.onMouseMove.bind(this);
-        this.boundOnMouseClick = this.onMouseClick.bind(this);
+    function dispose() {
+        window.removeEventListener('resize', onWindowResize);
+        window.removeEventListener('keydown', onKeyDown);
+        window.removeEventListener('mousemove', onMouseMove);
+        window.removeEventListener('click', onMouseClick);
+        controls?.dispose();
     }
 
-    public initialize(): void {
-        this.rendererInternal.domElement.style.cursor = 'default';
-        this.addEventListeners();
-    }
 
-    public dispose(): void {
-        window.removeEventListener('resize', this.boundOnWindowResize);
-        window.removeEventListener('keydown', this.boundOnKeyDown);
-        window.removeEventListener('mousemove', this.boundOnMouseMove);
-        window.removeEventListener('click', this.boundOnMouseClick);
-        this.controls?.dispose();
-    }
-
-    public async setupScene(renderer: THREE.WebGLRenderer, scene: THREE.Scene): Promise<void> {
-        this.rendererInternal = renderer;
-        this.sceneInternal = scene;
-        this.sceneElevation = 0.5;
-        this.camera = await this.initCamera();
-        await this.initLighting(scene, renderer);
-        this.controls = await this.initControls(renderer);
-        await this.initEnvironment(scene);
-    }
-
-    private async initCamera(): Promise<THREE.PerspectiveCamera> {
+    function initCamera(): THREE.PerspectiveCamera {
         const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 5000);
-        camera.position.set(0, this.sceneElevation, 1.7);
+        camera.position.set(0, sceneElevation, 1.7);
         return camera;
     }
 
-    private async initEnvironment(scene: THREE.Scene): Promise<THREE.Mesh> {
+    function initEnvironment(scene: THREE.Scene): THREE.Mesh {
         const textureLoader = new THREE.TextureLoader();
-        const floorTexture = textureLoader.load(this.sceneConfig.floorTexture.path);
+        const floorTexture = textureLoader.load(sceneConfig.floorTexture.path);
         floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
-        floorTexture.repeat.set(this.sceneConfig.floorTexture.repeat, this.sceneConfig.floorTexture.repeat);
+        floorTexture.repeat.set(sceneConfig.floorTexture.repeat, sceneConfig.floorTexture.repeat);
 
         const floor = new THREE.Mesh(
             new THREE.PlaneGeometry(100, 100),
@@ -107,24 +75,26 @@ export class MainScene {
         return floor;
     }
 
-    private async initLighting(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Promise<void> {
+    function initLighting(scene: THREE.Scene, renderer: THREE.WebGLRenderer): void {
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.0);
         scene.add(ambientLight);
 
         const spotLight = new THREE.SpotLight(0xffffff, 3, 100, Math.PI / 3, 0.5, 2);
-        spotLight.position.set(0, this.sceneElevation, 2);
-        spotLight.target.position.set(0, this.sceneElevation, 0);
+        spotLight.position.set(0, sceneElevation, 2);
+        spotLight.target.position.set(0, sceneElevation, 0);
         scene.add(spotLight);
         scene.add(spotLight.target);
 
         scene.background = new THREE.Color(0x000000);
+    }
 
-        if (this.sceneConfig.environmentMap) {
-            this.loadEnvironmentMap(scene, renderer, this.sceneConfig.environmentMap.path);
+    async function setupScene(): Promise<void> {
+        if (sceneConfig.environmentMap) {
+            await loadEnvironmentMap(scene, renderer, sceneConfig.environmentMap.path);
         }
     }
 
-    private async loadEnvironmentMap(scene: THREE.Scene, renderer: THREE.WebGLRenderer, path: string): Promise<void> {
+    async function loadEnvironmentMap(scene: THREE.Scene, renderer: THREE.WebGLRenderer, path: string): Promise<void> {
         const pmremGenerator = new PMREMGenerator(renderer);
         pmremGenerator.compileEquirectangularShader();
         try {
@@ -143,203 +113,172 @@ export class MainScene {
         }
     }
 
-    private async initControls(renderer: THREE.WebGLRenderer): Promise<OrbitControls> {
-        const controls = createControls(this.camera, renderer);
-        controls.target.set(0, this.sceneElevation, 0);
+    function initControls(renderer: THREE.WebGLRenderer): OrbitControls {
+        if (!camera) throw new Error("Camera not initialized");
+        const controls = createControls(camera, renderer);
+        controls.target.set(0, sceneElevation, 0);
         return controls;
     }
 
-    private onSqueezeStart(event: any): void {
-        if (!this.isBookInViewMode || this.viewingBookIndex === -1) return;
-
-        const controller = event.target;
-        const book = this.books[this.viewingBookIndex];
-        const bookMesh = book.getMesh();
-
-        const controllerPosition = new THREE.Vector3();
-        controller.getWorldPosition(controllerPosition);
-
-        if (controllerPosition.distanceTo(bookMesh.position) < 0.3) {
-            this.grabbedBook = book;
-            this.grabbingController = controller;
-            this.inverseGrabMatrix.copy(controller.matrixWorld).invert();
-            this.grabMatrix.copy(this.inverseGrabMatrix).multiply(bookMesh.matrixWorld);
-        }
+    function addEventListeners(): void {
+        window.addEventListener('resize', onWindowResize);
+        window.addEventListener('keydown', onKeyDown);
+        window.addEventListener('mousemove', onMouseMove);
+        window.addEventListener('click', onMouseClick);
     }
 
-    private onSqueezeEnd(event: any): void {
-        if (event.target === this.grabbingController) {
-            this.grabbedBook = null;
-            this.grabbingController = null;
-        }
+    function onWindowResize(): void {
+        if (!camera) return;
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
     }
 
-    private addEventListeners(): void {
-        window.addEventListener('resize', this.boundOnWindowResize);
-        window.addEventListener('keydown', this.boundOnKeyDown);
-        window.addEventListener('mousemove', this.boundOnMouseMove);
-        window.addEventListener('click', this.boundOnMouseClick);
-    }
-
-    private onWindowResize(): void {
-        this.camera.aspect = window.innerWidth / window.innerHeight;
-        this.camera.updateProjectionMatrix();
-    }
-
-    private onKeyDown(event: KeyboardEvent): void {
-        if (!this.isBookInViewMode || !this.transformControl) return;
+    function onKeyDown(event: KeyboardEvent): void {
+        if (!isBookInViewMode || !transformControl) return;
         switch (event.key.toLowerCase()) {
             case 't':
-                this.transformMode = 'translate';
-                this.transformControl.setMode('translate');
+                transformMode = 'translate';
+                transformControl.setMode('translate');
                 break;
             case 'r':
-                this.transformMode = 'rotate';
-                this.transformControl.setMode('rotate');
+                transformMode = 'rotate';
+                transformControl.setMode('rotate');
                 break;
         }
     }
 
-    public updateLogic(): void {
-        if (!this.rendererInternal || !this.sceneInternal || !this.camera) return;
+    function updateLogic(): void {
 
-        this.controls?.update();
+        controls?.update();
 
-        this.updateBookHover();
+        updateBookHover();
     }
 
-    public tick(): void {
-        if (!this.rendererInternal || !this.sceneInternal || !this.camera) return;
+    function tick(): void {
 
-        this.controls?.update();
+        controls?.update();
 
-        this.updateBookHover();
-        this.render();
+        updateBookHover();
+        render();
     }
 
-    private render(): void {
-        this.renderer.clear();
-        this.renderer.render(this.scene, this.camera);
+    function render(): void {
+        renderer.clear();
+        renderer.render(scene, camera);
     }
 
-    public getCamera(): THREE.PerspectiveCamera | null {
-        return this.camera ?? null;
+    function setBooks(booksArg: Book[]): void {
+        books = [...booksArg];
+        bookRestZ = books.map(b => b.getMesh().position.z);
+        bookHoverOffsets = books.map(() => 0);
+        hoveredBookIndex = -1;
+        selectedBookIndex = books.length > 0 ? 0 : -1;
     }
 
-    public setBookshelfMesh(mesh: THREE.Mesh): void {
-    }
+    const HOVER_PERK = 0.05;
+    const HOVER_LERP = 0.15;
 
-    public setBooks(books: Book[]): void {
-        this.books = [...books];
-        this.bookRestZ = books.map(b => b.getMesh().position.z);
-        this.bookHoverOffsets = books.map(() => 0);
-        this.hoveredBookIndex = -1;
-        this.selectedBookIndex = this.books.length > 0 ? 0 : -1;
-    }
-
-    private static readonly HOVER_PERK = 0.05;
-    private static readonly HOVER_LERP = 0.15;
-
-    private updateBookHover(): void {
-        if (this.isBookInViewMode) return;
-        for (let i = 0; i < this.books.length; i++) {
-            const target = i === this.hoveredBookIndex ? MainScene.HOVER_PERK : 0;
-            this.bookHoverOffsets[i] += (target - this.bookHoverOffsets[i]) * MainScene.HOVER_LERP;
-            this.books[i].getMesh().position.z = this.bookRestZ[i] + this.bookHoverOffsets[i];
+    function updateBookHover(): void {
+        if (isBookInViewMode) return;
+        for (let i = 0; i < books.length; i++) {
+            const target = i === hoveredBookIndex ? HOVER_PERK : 0;
+            bookHoverOffsets[i] += (target - bookHoverOffsets[i]) * HOVER_LERP;
+            books[i].getMesh().position.z = bookRestZ[i] + bookHoverOffsets[i];
         }
     }
 
-    public selectBook(index: number): void {
-        if (index >= 0 && index < this.books.length) {
-            this.selectedBookIndex = index;
-            this.hoveredBookIndex = index;
-            this.renderer.domElement.style.cursor = 'pointer';
+    function selectBook(index: number): void {
+        if (index >= 0 && index < books.length) {
+            selectedBookIndex = index;
+            hoveredBookIndex = index;
+            renderer.domElement.style.cursor = 'pointer';
         } else {
-            this.selectedBookIndex = -1;
-            this.hoveredBookIndex = -1;
-            this.renderer.domElement.style.cursor = 'default';
+            selectedBookIndex = -1;
+            hoveredBookIndex = -1;
+            renderer.domElement.style.cursor = 'default';
         }
     }
 
-    public viewBook(bookIndex: number): void {
-        const book = this.books[bookIndex];
+    function viewBook(bookIndex: number): void {
+        const book = books[bookIndex];
         const bookMesh = book.getMesh();
 
-        this.renderer.domElement.style.cursor = 'default';
-        this.hoveredBookIndex = -1;
-        if (this.bookHoverOffsets[bookIndex] !== undefined) {
-            this.bookHoverOffsets[bookIndex] = 0;
-            bookMesh.position.z = this.bookRestZ[bookIndex];
+        renderer.domElement.style.cursor = 'default';
+        hoveredBookIndex = -1;
+        if (bookHoverOffsets[bookIndex] !== undefined) {
+            bookHoverOffsets[bookIndex] = 0;
+            bookMesh.position.z = bookRestZ[bookIndex];
         }
 
         book.storeOriginalTransform();
-        this.bookshelfMesh?.remove(bookMesh);
+        bookshelfMesh?.remove(bookMesh);
 
-        this.transformControl = new TransformControls(this.camera, this.renderer.domElement);
-        this.transformControl.size = 0.5;
-        this.transformControl.setMode(this.transformMode);
-        this.transformControl.addEventListener('dragging-changed', (event) => {
-            this.controls.enabled = !event.value;
+        transformControl = new TransformControls(camera, renderer.domElement);
+        transformControl.size = 0.5;
+        transformControl.setMode(transformMode);
+        transformControl.addEventListener('dragging-changed', (event) => {
+            if (!controls) return;
+            controls.enabled = !event.value;
         });
 
-        this.gizmo = this.transformControl.getHelper();
-        this.scene.add(bookMesh);
-        if (this.gizmo) this.scene.add(this.gizmo);
+        gizmo = transformControl.getHelper();
+        scene.add(bookMesh);
+        if (gizmo) scene.add(gizmo);
 
-        bookMesh.position.set(0, this.sceneElevation, 0.5);
+        bookMesh.position.set(0, sceneElevation, 0.5);
         bookMesh.rotation.set(0, 0, 0);
-        this.transformControl.attach(bookMesh);
-        this.controls.target.copy(bookMesh.position);
+        transformControl.attach(bookMesh);
+        controls.target.copy(bookMesh.position);
 
         book.setCoverAngles(Math.PI / 2);
-        this.controls.update();
-        this.isBookInViewMode = true;
-        this.viewingBookIndex = this.selectedBookIndex;
+        controls.update();
+        isBookInViewMode = true;
+        viewingBookIndex = selectedBookIndex;
     }
 
-    public viewSelectedBook(): void {
-        if (this.selectedBookIndex === -1) throw new Error("No book selected");
-        if (this.isBookInViewMode) throw new Error("Book already in view");
-        this.viewBook(this.selectedBookIndex);
+    function viewSelectedBook(): void {
+        if (selectedBookIndex === -1) throw new Error("No book selected");
+        if (isBookInViewMode) throw new Error("Book already in view");
+        viewBook(selectedBookIndex);
     }
 
-    public returnBookToShelf(): void {
-        if (!this.isBookInViewMode || this.viewingBookIndex === -1) return;
+    function returnBookToShelf(): void {
+        if (!isBookInViewMode || viewingBookIndex === -1) return;
 
-        const book = this.books[this.viewingBookIndex];
+        const book = books[viewingBookIndex];
         const bookMesh = book.getMesh();
 
-        if (this.transformControl) {
-            if (this.gizmo) this.scene.remove(this.gizmo);
-            this.transformControl.detach();
-            this.transformControl = null;
+        if (transformControl) {
+            if (gizmo) scene.remove(gizmo);
+            transformControl.detach();
+            transformControl = null;
         }
 
-        this.scene.remove(bookMesh);
-        this.bookshelfMesh?.add(bookMesh);
+        scene.remove(bookMesh);
+        bookshelfMesh?.add(bookMesh);
         book.restoreOriginalTransform();
-        this.isBookInViewMode = false;
-        this.viewingBookIndex = -1;
+        isBookInViewMode = false;
+        viewingBookIndex = -1;
     }
 
-    public isViewingBook(): boolean {
-        return this.isBookInViewMode;
+    function isViewingBook(): boolean {
+        return isBookInViewMode;
     }
 
-    public getViewingBook(): Book | null {
-        if (this.isBookInViewMode && this.viewingBookIndex !== -1) {
-            return this.books[this.viewingBookIndex];
+    function getViewingBook(): Book | null {
+        if (isBookInViewMode && viewingBookIndex !== -1) {
+            return books[viewingBookIndex];
         }
         return null;
     }
 
-    private updateGrabbedBook(): void {
-        if (!this.grabbedBook || !this.grabbingController) return;
+    function updateGrabbedBook(): void {
+        if (!grabbedBook || !grabbingController) return;
 
-        const bookMesh = this.grabbedBook.getMesh();
+        const bookMesh = grabbedBook.getMesh();
         const newMatrix = new THREE.Matrix4()
-            .copy(this.grabbingController.matrixWorld)
-            .multiply(this.grabMatrix);
+            .copy(grabbingController.matrixWorld)
+            .multiply(grabMatrix);
 
         const position = new THREE.Vector3();
         const quaternion = new THREE.Quaternion();
@@ -351,34 +290,35 @@ export class MainScene {
         bookMesh.scale.copy(scale);
     }
 
-    public selectBookPage(pageIndex: number): void {
-        if (this.isBookInViewMode && this.viewingBookIndex !== -1) {
-            this.books[this.viewingBookIndex].selectPage(pageIndex);
+    function selectBookPage(pageIndex: number): void {
+        if (isBookInViewMode && viewingBookIndex !== -1) {
+            books[viewingBookIndex].selectPage(pageIndex);
         }
     }
 
-    public getBook(index: number): Book {
-        if (index < 0 || index >= this.books.length) throw new Error("Book index out of bounds");
-        return this.books[index];
+    function getBook(index: number): Book {
+        if (index < 0 || index >= books.length) throw new Error("Book index out of bounds");
+        return books[index];
     }
 
-    public getSelectedBook(): Book {
-        return this.getBook(this.selectedBookIndex);
+    function getSelectedBook(): Book {
+        return getBook(selectedBookIndex);
     }
 
-    public setOnBookSelectedCallback(callback: (bookIndex: number) => void): void {
-        this.onBookSelectedCallback = callback;
+    function setOnBookSelectedCallback(callback: (bookIndex: number) => void): void {
+        onBookSelectedCallback = callback;
     }
 
 
-    private rayBookIntersection(mousePosition: THREE.Vector2): BookIntersection | null {
-        if (this.isBookInViewMode) return null;
+    function rayBookIntersection(mousePosition: THREE.Vector2): BookIntersection | null {
+        if (!camera) return null;
+        if (isBookInViewMode) return null;
 
-        this.mouseRaycaster.setFromCamera(mousePosition, this.camera);
+        mouseRaycaster.setFromCamera(mousePosition, camera);
 
         const intersects: BookIntersection[] = [];
-        this.books.forEach((book, index) => {
-            const bookIntersects = this.mouseRaycaster.intersectObject(book.getMesh(), true);
+        books.forEach((book, index) => {
+            const bookIntersects = mouseRaycaster.intersectObject(book.getMesh(), true);
             if (bookIntersects.length > 0) {
                 const intersection = bookIntersects[0] as BookIntersection;
                 intersection.bookIndex = index;
@@ -390,53 +330,93 @@ export class MainScene {
         return intersects.length > 0 ? intersects[0] : null;
     }
 
-    private mousePositionFromEvent(event: MouseEvent): THREE.Vector2 {
-        const rect = this.renderer.domElement.getBoundingClientRect();
+    function mousePositionFromEvent(event: MouseEvent): THREE.Vector2 {
+        const rect = renderer.domElement.getBoundingClientRect();
         return new THREE.Vector2(
             ((event.clientX - rect.left) / rect.width) * 2 - 1,
             -((event.clientY - rect.top) / rect.height) * 2 + 1
         );
     }
 
-    private isEventOnCanvas(event: MouseEvent): boolean {
-        return event.target === this.renderer.domElement;
+    function isEventOnCanvas(event: MouseEvent): boolean {
+        return event.target === renderer.domElement;
     }
 
-    private onMouseClick(event: MouseEvent): void {
-        if (!this.isEventOnCanvas(event)) return;
-        const intersection = this.rayBookIntersection(this.mousePositionFromEvent(event));
+    function onMouseClick(event: MouseEvent): void {
+        if (!isEventOnCanvas(event)) return;
+        const intersection = rayBookIntersection(mousePositionFromEvent(event));
         if (intersection) {
-            this.selectBook(intersection.bookIndex);
-            this.onBookSelectedCallback?.(intersection.bookIndex);
+            selectBook(intersection.bookIndex);
+            onBookSelectedCallback?.(intersection.bookIndex);
         }
     }
 
-    private onMouseMove(event: MouseEvent): void {
-        if (!this.isEventOnCanvas(event)) return;
-        const intersection = this.rayBookIntersection(this.mousePositionFromEvent(event));
-        this.selectBook(intersection ? intersection.bookIndex : -1);
+    function onMouseMove(event: MouseEvent): void {
+        if (!isEventOnCanvas(event)) return;
+        const intersection = rayBookIntersection(mousePositionFromEvent(event));
+        selectBook(intersection ? intersection.bookIndex : -1);
     }
 
-    public async exportSceneToGLB(): Promise<Blob> {
-        const exporter = new GLTFExporter();
-        const exportScene = this.scene.clone();
+    return {
+        state: {
+            sceneConfig,
+            camera,
+            controls,
+            bookshelfMesh,
+            sceneElevation,
+            books,
+            selectedBookIndex,
+            hoveredBookIndex,
+            bookRestZ,
+            bookHoverOffsets,
+            isBookInViewMode,
+            viewingBookIndex,
+            grabbedBook,
+            grabbingController,
+            grabMatrix,
+            gizmo,
+            transformControl,
+            transformMode,
+            mouseRaycaster,
+            onBookSelectedCallback,
 
-        exportScene.traverse((object) => {
-            if (object instanceof TransformControlsGizmo) {
-                object.visible = false;
-            }
-        });
+        },
+        actions: {
+            setupScene,
+            dispose,
+            initCamera,
+            initEnvironment,
+            initLighting,
+            loadEnvironmentMap,
+            initControls,
+            addEventListeners,
+            onWindowResize,
+            onKeyDown,
+            updateLogic,
+            tick,
+            render,
+            setBooks,
+            updateBookHover,
+            selectBook,
+            viewBook,
+            viewSelectedBook,
+            returnBookToShelf,
+            isViewingBook,
+            getViewingBook,
+            updateGrabbedBook,
+            selectBookPage,
+            getBook,
+            getSelectedBook,
+            setOnBookSelectedCallback,
+            rayBookIntersection,
+            mousePositionFromEvent,
+            isEventOnCanvas,
+            onMouseClick,
+            onMouseMove,
 
-        return new Promise((resolve, reject) => {
-            exporter.parse(
-                exportScene,
-                (buffer) => resolve(new Blob([buffer as ArrayBuffer], { type: 'application/octet-stream' })),
-                (error) => {
-                    console.error('An error occurred while exporting:', error);
-                    reject(error);
-                },
-                { binary: true }
-            );
-        });
-    }
+        }
+    };
 }
+
+export type MainScene = ReturnType<typeof buildMainScene>;
+

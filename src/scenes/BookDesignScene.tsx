@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
-import { Canvas } from '@react-three/fiber';
 import { Stats } from '@react-three/drei';
+import { Canvas } from '@react-three/fiber';
+import { useState } from 'react';
 import { Book, BookMeshParams } from '../components/Bookshelf/Book';
 import { BookTexture } from '../components/Bookshelf/BookTexture';
-import { PDFResource } from '../types/PDFResource';
 import { BookStateControlsUI } from '../components/BookStateControlsUI';
+import { PDFResource } from '../types/PDFResource';
 import { BookDesignSceneInner } from './BookDesignSceneInner';
 
 interface BookDesignSceneProps {
@@ -29,7 +29,7 @@ export function BookDesignScene({ bookTextures, bookParams, pdfResource }: BookD
             </Canvas>
             {currentBook && (
                 <div className="book-controls-overlay">
-                    <BookStateControlsUI book={currentBook} controllers={[]} />
+                    <BookStateControlsUI book={currentBook} />
                 </div>
             )}
         </div>

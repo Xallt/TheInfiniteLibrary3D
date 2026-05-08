@@ -4,36 +4,12 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { TransformControls, TransformControlsGizmo } from 'three/examples/jsm/controls/TransformControls';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter';
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
-import { XRControllerModelFactory } from 'three/examples/jsm/webxr/XRControllerModelFactory.js';
 import { Book } from '../components/Bookshelf/Book';
 import { createControls } from '../components/Controls';
 import { defaultMainSceneConfig, MainSceneConfig } from '../config/mainSceneConfig';
 
 interface BookIntersection extends THREE.Intersection<THREE.Object3D<THREE.Object3DEventMap>> {
     bookIndex: number;
-}
-
-export class ControllerWrapper {
-    public controller: THREE.XRTargetRaySpace;
-    public gamepad: Gamepad | null = null;
-    public previousButtonStates: boolean[] = [];
-
-    constructor(controller: THREE.XRTargetRaySpace) {
-        this.controller = controller;
-    }
-
-    public updateButtonStates() {
-        if (this.gamepad) {
-            this.previousButtonStates = this.gamepad.buttons.map(button => button.pressed);
-        }
-    }
-
-    public isButtonNewlyPressed(index: number): boolean {
-        if (!this.gamepad || index >= this.gamepad.buttons.length) return false;
-        const isCurrentlyPressed = this.gamepad.buttons[index].pressed;
-        const wasPreviouslyPressed = this.previousButtonStates[index] || false;
-        return isCurrentlyPressed && !wasPreviouslyPressed;
-    }
 }
 
 export class MainScene {
@@ -58,10 +34,6 @@ export class MainScene {
     private isBookInViewMode: boolean = false;
     private viewingBookIndex: number = -1;
 
-    private controllerWrappers: ControllerWrapper[] = [];
-    private controllerGrips: THREE.XRGripSpace[] = [];
-    private controllerRayLine: THREE.Line | null = null;
-
     private grabbedBook: Book | null = null;
     private grabbingController: THREE.XRTargetRaySpace | null = null;
     private grabMatrix: THREE.Matrix4 = new THREE.Matrix4();
@@ -71,8 +43,6 @@ export class MainScene {
     private transformControl: TransformControls | null = null;
     private transformMode: 'translate' | 'rotate' = 'translate';
 
-    private readonly raycaster: THREE.Raycaster;
-    private readonly tempMatrix: THREE.Matrix4;
     private readonly mouseRaycaster: THREE.Raycaster;
 
     private onBookSelectedCallback?: (bookIndex: number) => void;
@@ -84,8 +54,6 @@ export class MainScene {
 
     constructor(sceneConfig: MainSceneConfig = defaultMainSceneConfig) {
         this.sceneConfig = sceneConfig;
-        this.raycaster = new THREE.Raycaster();
-        this.tempMatrix = new THREE.Matrix4();
         this.mouseRaycaster = new THREE.Raycaster();
 
         this.boundOnWindowResize = this.onWindowResize.bind(this);
@@ -179,41 +147,6 @@ export class MainScene {
         const controls = createControls(this.camera, renderer);
         controls.target.set(0, this.sceneElevation, 0);
         return controls;
-    }
-
-    private setupVRControllers(leftController: THREE.XRTargetRaySpace, rightController: THREE.XRTargetRaySpace): void {
-        const controllerModelFactory = new XRControllerModelFactory();
-        this.createControllerRay();
-
-        const controllers = [leftController, rightController];
-        for (let i = 0; i < 2; i++) {
-            const controller = controllers[i];
-            const controllerWrapper = new ControllerWrapper(controller);
-
-            if (i === 1 && this.controllerRayLine) {
-                controller.add(this.controllerRayLine);
-                controller.addEventListener('connected', (event) => {
-                    controllerWrapper.gamepad = event.data?.gamepad || null;
-                });
-                controller.addEventListener('select', () => {
-                    if (this.isBookInViewMode) {
-                        this.returnBookToShelf();
-                    } else if (this.selectedBookIndex !== -1) {
-                        this.viewSelectedBook();
-                    }
-                });
-            }
-
-            controller.addEventListener('squeezestart', this.onSqueezeStart.bind(this));
-            controller.addEventListener('squeezeend', this.onSqueezeEnd.bind(this));
-            this.scene.add(controller);
-            this.controllerWrappers.push(controllerWrapper);
-
-            const controllerGrip = this.renderer.xr.getControllerGrip(i);
-            controllerGrip.add(controllerModelFactory.createControllerModel(controllerGrip));
-            this.scene.add(controllerGrip);
-            this.controllerGrips.push(controllerGrip);
-        }
     }
 
     private onSqueezeStart(event: any): void {
@@ -433,25 +366,10 @@ export class MainScene {
         return this.getBook(this.selectedBookIndex);
     }
 
-    public getControllers(): ControllerWrapper[] {
-        return this.controllerWrappers;
-    }
-
     public setOnBookSelectedCallback(callback: (bookIndex: number) => void): void {
         this.onBookSelectedCallback = callback;
     }
 
-
-    private createControllerRay(): void {
-        const geometry = new THREE.BufferGeometry().setFromPoints([
-            new THREE.Vector3(0, 0, 0),
-            new THREE.Vector3(0, 0, -1),
-        ]);
-        const material = new THREE.LineBasicMaterial({ color: 0xff0000, transparent: true, opacity: 0.5 });
-        this.controllerRayLine = new THREE.Line(geometry, material);
-        this.controllerRayLine.scale.z = 5;
-        this.controllerRayLine.visible = true;
-    }
 
     private rayBookIntersection(mousePosition: THREE.Vector2): BookIntersection | null {
         if (this.isBookInViewMode) return null;
@@ -504,7 +422,7 @@ export class MainScene {
         const exportScene = this.scene.clone();
 
         exportScene.traverse((object) => {
-            if (object instanceof TransformControlsGizmo || object === this.controllerRayLine) {
+            if (object instanceof TransformControlsGizmo) {
                 object.visible = false;
             }
         });

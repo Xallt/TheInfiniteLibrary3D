@@ -125,7 +125,6 @@ export function BookshelfViewer() {
             {isViewingBook && (
                 <BookStateControlsUI
                     book={mainScene.getBook(currentViewingBookIndex)!}
-                    controllers={mainScene.getControllers()}
                 />
             )}
 

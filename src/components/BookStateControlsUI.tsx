@@ -1,10 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Book, BookOpeningState, PageSelectedState, UniformlyOpenedState } from '../components/Bookshelf/Book';
-import { ControllerWrapper } from '../scenes/MainScene';
+import { Book, PageSelectedState, UniformlyOpenedState } from '../components/Bookshelf/Book';
 
 interface BookStateControlsUIProps {
     book: Book;
-    controllers: ControllerWrapper[];
 }
 
 interface UniformControlsProps {
@@ -66,13 +64,12 @@ function ReadingControls({ book, onSwitchToUniform }: ReadingControlsProps) {
 
 type BookStateMode = 'uniform' | 'reading';
 
-export function BookStateControlsUI({ book, controllers }: BookStateControlsUIProps) {
+export function BookStateControlsUI({ book }: BookStateControlsUIProps) {
     const animationFrameRef = useRef<number | undefined>(undefined);
     const [bookStateMode, setBookStateMode] = useState<BookStateMode>('uniform');
 
     useEffect(() => {
         const animate = () => {
-            handleControllerInput();
             animationFrameRef.current = requestAnimationFrame(animate);
         };
         animate();
@@ -80,37 +77,8 @@ export function BookStateControlsUI({ book, controllers }: BookStateControlsUIPr
         return () => {
             if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
         };
-    }, [book, controllers]);
+    }, [book]);
 
-    const handleControllerInput = () => {
-        for (const controllerWrapper of controllers) {
-            if (controllerWrapper.gamepad) {
-                const currentState = book.getCurrentState();
-
-                if (controllerWrapper.isButtonNewlyPressed(4)) {
-                    if (currentState instanceof PageSelectedState) {
-                        book.setState(new UniformlyOpenedState(Math.PI / 2));
-                    } else {
-                        book.setState(new PageSelectedState(Math.PI / 2, 0));
-                    }
-                }
-
-                if (currentState instanceof PageSelectedState) {
-                    const currentPage = currentState.getSelectedPageIndex();
-                    if (controllerWrapper.isButtonNewlyPressed(2)) {
-                        const prev = Math.max(currentPage - 1, 0);
-                        if (prev !== currentPage) book.setState(new PageSelectedState(Math.PI / 2, prev));
-                    }
-                    if (controllerWrapper.isButtonNewlyPressed(3)) {
-                        const next = Math.min(currentPage + 1, book.getNumPages() - 1);
-                        if (next !== currentPage) book.setState(new PageSelectedState(Math.PI / 2, next));
-                    }
-                }
-
-                controllerWrapper.updateButtonStates();
-            }
-        }
-    };
 
     const onSwitchToUniform = () => {
         setBookStateMode('uniform');

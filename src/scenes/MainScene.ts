@@ -12,9 +12,9 @@ interface BookIntersection extends THREE.Intersection<THREE.Object3D<THREE.Objec
   bookIndex: number;
 }
 
-const SCENE_ELEVATION = 0.5;
-const HOVER_PERK = 0.05;
-const HOVER_LERP = 0.15;
+export const SCENE_ELEVATION = 0.5;
+export const HOVER_PERK = 0.05;
+export const HOVER_LERP = 0.15;
 
 export function buildCamera(): THREE.PerspectiveCamera {
   const cam = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 5000);

@@ -16,6 +16,8 @@ export const defaultBookParams: BookMeshParams = {
     coverWidth: 0.04,
 };
 
+export const defaultBookshelfTexturePath = "resources/wood.jpeg";
+
 export const defaultBookshelfParams: BookshelfParams = {
     cellHeight: 0.3,
     cellWidth: 0.45,

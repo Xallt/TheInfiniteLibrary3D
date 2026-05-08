@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { TextureLoader, Book } from './Book';
+import { TextureLoader } from './Book';
 import { ProceduralBookshelfCell } from './ProceduralBookshelfCell';
 
 export type BookshelfParams = {
@@ -39,7 +39,6 @@ export class Bookshelf {
     private texturePath: string;
     private bookshelfMesh: THREE.Mesh;
     private rows: Row[] = [];
-    private books: { book: Book, position: THREE.Vector3 }[] = [];
 
     constructor(params: BookshelfParams, texturePath: string) {
         this.params = params;
@@ -184,54 +183,6 @@ export class Bookshelf {
 
     public getMesh(): THREE.Mesh {
         return this.bookshelfMesh;
-    }
-
-    public addBook(book: Book): boolean {
-        const bookSize = book.getOuterSize();
-
-        if (bookSize.x > this.params.cellWidth ||
-            bookSize.y > this.params.cellHeight ||
-            bookSize.z > this.params.cellDepth) {
-            console.error("Book dimensions exceed cell size.");
-            return false;
-        }
-
-        for (const row of this.rows) {
-            for (const cell of row.cells) {
-                if (cell.availableX + bookSize.x <= this.params.cellWidth) {
-                    const bookMesh = book.getMesh();
-                    bookMesh.rotateY(Math.PI);
-
-                    const newBookPosition = new THREE.Vector3(
-                        cell.upperLeftFarCorner.x + cell.availableX + cell.leftSideThickness + bookSize.x / 2,
-                        cell.upperLeftFarCorner.y - cell.upSideThickness - cell.size.y + bookSize.y / 2,
-                        cell.upperLeftFarCorner.z - cell.backSideThickness - cell.size.z + bookSize.z
-                    );
-
-                    bookMesh.position.set(newBookPosition.x, newBookPosition.y, newBookPosition.z);
-                    this.bookshelfMesh.add(bookMesh);
-                    cell.availableX += bookSize.x;
-
-                    // Store book and its position
-                    this.books.push({ book, position: newBookPosition });
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    public getBookPosition(index: number): THREE.Vector3 | null {
-        if (index >= 0 && index < this.books.length) {
-            const localPosition = this.books[index].position.clone();
-            const absolutePosition = localPosition.applyMatrix4(this.bookshelfMesh.matrixWorld);
-            return absolutePosition;
-        }
-        return null;
-    }
-
-    public getBookCount(): number {
-        return this.books.length;
     }
 
     public computePositions(bookSizes: THREE.Vector3[]): (THREE.Vector3 | null)[] {

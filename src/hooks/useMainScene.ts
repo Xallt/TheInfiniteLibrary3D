@@ -1,7 +1,6 @@
 import { useRef, useCallback } from 'react';
 import { MainScene } from '../scenes/MainScene';
 import { BookshelfParams } from '../components/Bookshelf/Bookshelf';
-import { Book } from '../components/Bookshelf/Book';
 
 export function useMainScene(params: BookshelfParams) {
     const mainSceneRef = useRef<MainScene | null>(null);
@@ -9,10 +8,6 @@ export function useMainScene(params: BookshelfParams) {
     if (!mainSceneRef.current) {
         mainSceneRef.current = new MainScene(params);
     }
-
-    const addBook = useCallback((book: Book) => {
-        mainSceneRef.current?.addBook(book);
-    }, []);
 
     const viewBook = useCallback((index: number) => {
         mainSceneRef.current?.viewBook(index);
@@ -45,7 +40,6 @@ export function useMainScene(params: BookshelfParams) {
 
     return {
         mainSceneRef,
-        addBook,
         viewBook,
         returnBookToShelf,
         getBook,

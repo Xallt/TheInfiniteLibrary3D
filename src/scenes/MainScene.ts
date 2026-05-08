@@ -52,6 +52,7 @@ export class MainScene {
     private camera!: THREE.PerspectiveCamera;
     private controls!: OrbitControls;
     private bookshelf!: Bookshelf;
+    private bookshelfMesh: THREE.Mesh | null = null;
     private sceneElevation!: number;
 
     private books: Book[] = [];
@@ -143,7 +144,6 @@ public initialize(isVRSupported: boolean): void {
         await this.initLighting(scene, renderer);
         this.controls = await this.initControls(renderer);
         await this.initEnvironment(scene);
-        this.bookshelf = await this.initBookshelf(scene);
     }
 
     private async initCamera(): Promise<THREE.PerspectiveCamera> {
@@ -367,20 +367,12 @@ public initialize(isVRSupported: boolean): void {
         return this.camera ?? null;
     }
 
-    public addBook(book: Book): void {
-        const added = this.bookshelf.addBook(book);
-        if (added) {
-            this.books.push(book);
-            this.bookRestZ.push(book.getMesh().position.z);
-            this.bookHoverOffsets.push(0);
-        }
-        if (this.books.length >= 1) {
-            this.selectBook(0);
-        }
-    }
-
     public getBookshelf(): Bookshelf | null {
         return this.bookshelf ?? null;
+    }
+
+    public setBookshelfMesh(mesh: THREE.Mesh): void {
+        this.bookshelfMesh = mesh;
     }
 
     public setBooks(books: Book[]): void {
@@ -415,10 +407,6 @@ public initialize(isVRSupported: boolean): void {
         }
     }
 
-    public getBookCount(): number {
-        return this.books.length;
-    }
-
     public viewBook(bookIndex: number): void {
         const book = this.books[bookIndex];
         const bookMesh = book.getMesh();
@@ -431,7 +419,7 @@ public initialize(isVRSupported: boolean): void {
         }
 
         book.storeOriginalTransform();
-        this.bookshelf.getMesh().remove(bookMesh);
+        (this.bookshelfMesh ?? this.bookshelf.getMesh()).remove(bookMesh);
 
         if (this.isVRSupported) {
             bookMesh.position.set(0, this.sceneElevation, 0.5);
@@ -481,7 +469,7 @@ public initialize(isVRSupported: boolean): void {
         }
 
         this.scene.remove(bookMesh);
-        this.bookshelf.getMesh().add(bookMesh);
+        (this.bookshelfMesh ?? this.bookshelf.getMesh()).add(bookMesh);
         book.restoreOriginalTransform();
         this.isBookInViewMode = false;
         this.viewingBookIndex = -1;

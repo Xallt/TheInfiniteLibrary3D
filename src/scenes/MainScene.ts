@@ -1,4 +1,3 @@
-import { useThree } from '@react-three/fiber';
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { PMREMGenerator } from 'three';
@@ -7,7 +6,7 @@ import { TransformControls } from 'three/examples/jsm/controls/TransformControls
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
 import { Book } from '../components/Bookshelf/Book';
 import { createControls } from '../components/Controls';
-import { defaultMainSceneConfig, MainSceneConfig } from '../config/mainSceneConfig';
+import { MainSceneConfig } from '../config/mainSceneConfig';
 
 interface BookIntersection extends THREE.Intersection<THREE.Object3D<THREE.Object3DEventMap>> {
     bookIndex: number;
@@ -17,20 +16,27 @@ const SCENE_ELEVATION = 0.5;
 const HOVER_PERK = 0.05;
 const HOVER_LERP = 0.15;
 
-function buildCamera(): THREE.PerspectiveCamera {
+export function buildCamera(): THREE.PerspectiveCamera {
     const cam = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 5000);
     cam.position.set(0, SCENE_ELEVATION, 1.7);
     return cam;
 }
 
-function buildControls(camera: THREE.PerspectiveCamera, renderer: THREE.WebGLRenderer): OrbitControls {
+export function buildControls(camera: THREE.PerspectiveCamera, renderer: THREE.WebGLRenderer): OrbitControls {
     const ctrl = createControls(camera, renderer);
     ctrl.target.set(0, SCENE_ELEVATION, 0);
     return ctrl;
 }
 
-export function useMainScene(sceneConfig: MainSceneConfig = defaultMainSceneConfig) {
-    const { scene, gl: renderer } = useThree();
+interface MainSceneProps {
+    sceneConfig: MainSceneConfig;
+    renderer: THREE.WebGLRenderer;
+    scene: THREE.Scene;
+    camera: THREE.PerspectiveCamera;
+    controls: OrbitControls;
+}
+
+export function useMainScene({ sceneConfig, renderer, scene, camera, controls }: MainSceneProps) {
 
     // --- Mutable scene state via refs ---
     const bookshelfMeshRef = useRef<THREE.Mesh | null>(null);
@@ -47,14 +53,6 @@ export function useMainScene(sceneConfig: MainSceneConfig = defaultMainSceneConf
     const mouseRaycasterRef = useRef(new THREE.Raycaster());
     const onBookSelectedCallbackRef = useRef<((bookIndex: number) => void) | null>(null);
     const readyRef = useRef(false);
-
-    // Camera initialized once (lazy ref)
-    const cameraRef = useRef<THREE.PerspectiveCamera>(buildCamera());
-    const camera = cameraRef.current;
-
-    // Controls initialized once (lazy ref)
-    const controlsRef = useRef<OrbitControls>(buildControls(camera, renderer));
-    const controls = controlsRef.current;
 
     // --- Event handlers (access fresh state via refs) ---
 

@@ -88,33 +88,12 @@ export class TextureLoader {
     }
 }
 
-export type BookMeshParams = {
+export interface BookMeshParams {
     bookThickness: number;
     bookWidth: number;
     bookHeight: number;
     coverWidth: number;
-};
-
-export type BookState = {
-    id: number;
-    params: BookMeshParams;
-    mesh: THREE.Mesh;
-    pages: (Page | null)[];
-    openingState: BookOpeningState;
-};
-
-export type BookActions = {
-    setState(openingState: BookOpeningState): void;
-    addPage(page: Page, index: number): void;
-    resizePageArray(newSize: number): void;
-    selectPage(pageIndex: number, angle?: number): void;
-    setCoverAngles(angle: number): void;
-    storeOriginalTransform(): void;
-    restoreOriginalTransform(): void;
-    copy(): Book;
-};
-
-export type Book = { state: BookState; actions: BookActions };
+}
 
 export function getBookOuterSize(params: BookMeshParams): THREE.Vector3 {
     const { bookThickness, bookWidth, bookHeight, coverWidth } = params;
@@ -141,21 +120,15 @@ export function buildBook(
     pages: (Page | null)[],
     initialState: BookOpeningState = buildUniformlyOpenedState(),
     id: number,
-): Book {
+) {
     let originalPosition: THREE.Vector3 | undefined;
     let originalRotation: THREE.Euler | undefined;
 
     let coverMesh!: THREE.Mesh;
     let leftSideMesh!: THREE.Mesh;
     let rightSideMesh!: THREE.Mesh;
-
-    const state: BookState = {
-        id,
-        params,
-        mesh: null!,
-        pages: [...pages],
-        openingState: initialState,
-    };
+    let openingState = initialState;
+    let mesh = createBookMesh();
 
     function createBoxGeometry(boxSize: THREE.Vector3, uvs: QuadUVs): THREE.BufferGeometry {
         const corner = new THREE.Vector3(
@@ -233,10 +206,10 @@ export function buildBook(
     }
 
     function updateBookRotations(): void {
-        const { coverAngle, pageAngles } = state.openingState.getPageRotationArgs(state.pages.length);
+        const { coverAngle, pageAngles } = openingState.getPageRotationArgs(pages.length);
         leftSideMesh.rotation.y = coverAngle;
         rightSideMesh.rotation.y = -coverAngle;
-        state.pages.forEach((page, index) => {
+        pages.forEach((page, index) => {
             if (page) {
                 page.getMesh().rotation.y = pageAngles[index] - Math.PI / 2;
             }
@@ -293,14 +266,14 @@ export function buildBook(
         book.add(leftSideMesh);
         book.add(rightSideMesh);
 
-        state.pages.forEach((page, index) => {
+        pages.forEach((page, index) => {
             if (page) {
                 const pagePosition = new THREE.Vector3(
-                    -coverWidth / 2 + index * (coverWidth / state.pages.length) + (coverWidth / state.pages.length) / 2,
+                    -coverWidth / 2 + index * (coverWidth / pages.length) + (coverWidth / pages.length) / 2,
                     0,
                     bookThickness / 2
                 );
-                const { pageAngles } = state.openingState.getPageRotationArgs(state.pages.length);
+                const { pageAngles } = openingState.getPageRotationArgs(pages.length);
                 const pageRotation = new THREE.Euler(0, pageAngles[index], 0);
                 page.getMesh().position.set(pagePosition.x, pagePosition.y, pagePosition.z);
                 page.getMesh().rotation.set(pageRotation.x, pageRotation.y, pageRotation.z);
@@ -311,74 +284,88 @@ export function buildBook(
         return book;
     }
 
-    state.mesh = createBookMesh();
+    function setState(newState: BookOpeningState): void {
+        openingState = newState;
+        updateBookRotations();
+    }
 
-    const actions: BookActions = {
-        setState(newState: BookOpeningState): void {
-            state.openingState = newState;
-            updateBookRotations();
-        },
+    function addPage(page: Page, index: number): void {
+        if (index < 0 || index >= pages.length) {
+            throw new Error(`Page index ${index} is out of bounds (0-${pages.length - 1})`);
+        }
+        const { bookThickness, coverWidth } = params;
+        const pagePosition = new THREE.Vector3(
+            -coverWidth / 2 + index * (coverWidth / pages.length) + (coverWidth / pages.length) / 2,
+            0,
+            bookThickness / 2
+        );
+        const { pageAngles } = openingState.getPageRotationArgs(pages.length);
+        const pageRotation = new THREE.Euler(0, pageAngles[index] - Math.PI / 2, 0);
+        page.getMesh().position.set(pagePosition.x, pagePosition.y, pagePosition.z);
+        page.getMesh().rotation.set(pageRotation.x, pageRotation.y, pageRotation.z);
 
-        addPage(page: Page, index: number): void {
-            if (index < 0 || index >= state.pages.length) {
-                throw new Error(`Page index ${index} is out of bounds (0-${state.pages.length - 1})`);
+        if (pages[index]) {
+            mesh.remove(pages[index]!.getMesh());
+        }
+        pages[index] = page;
+        mesh.add(page.getMesh());
+    }
+
+    function resizePageArray(newSize: number): void {
+        for (let i = 0; i < pages.length; i++) {
+            if (pages[i]) {
+                mesh.remove(pages[i]!.getMesh());
             }
-            const { bookThickness, coverWidth } = params;
-            const pagePosition = new THREE.Vector3(
-                -coverWidth / 2 + index * (coverWidth / state.pages.length) + (coverWidth / state.pages.length) / 2,
-                0,
-                bookThickness / 2
-            );
-            const { pageAngles } = state.openingState.getPageRotationArgs(state.pages.length);
-            const pageRotation = new THREE.Euler(0, pageAngles[index] - Math.PI / 2, 0);
-            page.getMesh().position.set(pagePosition.x, pagePosition.y, pagePosition.z);
-            page.getMesh().rotation.set(pageRotation.x, pageRotation.y, pageRotation.z);
+        }
+        pages.splice(0, pages.length, ...new Array(newSize).fill(null));
+        updateBookRotations();
+    }
 
-            if (state.pages[index]) {
-                state.mesh.remove(state.pages[index]!.getMesh());
-            }
-            state.pages[index] = page;
-            state.mesh.add(page.getMesh());
-        },
+    function selectPage(pageIndex: number, angle: number = Math.PI / 2): void {
+        if (pageIndex < 0 || pageIndex > pages.length) {
+            throw new Error(`Page index ${pageIndex} is out of bounds (0-${pages.length - 1})`);
+        }
+        setState(buildPageSelectedState(angle, pageIndex));
+    }
 
-        resizePageArray(newSize: number): void {
-            const newPages = new Array(newSize).fill(null);
-            for (let i = 0; i < Math.min(state.pages.length, newSize); i++) {
-                if (state.pages[i]) {
-                    state.mesh.remove(state.pages[i]!.getMesh());
-                }
-            }
-            state.pages = newPages;
-            updateBookRotations();
-        },
+    function setCoverAngles(angle: number): void {
+        setState(buildUniformlyOpenedState(angle));
+    }
 
-        selectPage(pageIndex: number, angle: number = Math.PI / 2): void {
-            if (pageIndex < 0 || pageIndex > state.pages.length) {
-                throw new Error(`Page index ${pageIndex} is out of bounds (0-${state.pages.length - 1})`);
-            }
-            actions.setState(buildPageSelectedState(angle, pageIndex));
-        },
+    function storeOriginalTransform(): void {
+        originalPosition = mesh.position.clone();
+        originalRotation = mesh.rotation.clone();
+    }
 
-        setCoverAngles(angle: number): void {
-            actions.setState(buildUniformlyOpenedState(angle));
-        },
+    function restoreOriginalTransform(): void {
+        if (!originalPosition || !originalRotation) return;
+        mesh.position.copy(originalPosition);
+        mesh.rotation.copy(originalRotation);
+        setCoverAngles(0);
+    }
 
-        storeOriginalTransform(): void {
-            originalPosition = state.mesh.position.clone();
-            originalRotation = state.mesh.rotation.clone();
-        },
+    function copy(): Book {
+        return buildBook(params, bookTexture, pages, openingState, id);
+    }
 
-        restoreOriginalTransform(): void {
-            if (!originalPosition || !originalRotation) return;
-            state.mesh.position.copy(originalPosition);
-            state.mesh.rotation.copy(originalRotation);
-            actions.setCoverAngles(0);
-        },
-
-        copy(): Book {
-            return buildBook(params, bookTexture, state.pages, state.openingState, id);
-        },
+    return {
+        state: {
+            id,
+            params,
+            mesh,
+            pages,
+            openingState,
+        }, actions: {
+            setState,
+            addPage,
+            resizePageArray,
+            selectPage,
+            setCoverAngles,
+            storeOriginalTransform,
+            restoreOriginalTransform,
+            copy
+        }
     };
-
-    return { state, actions };
 }
+
+export type Book = ReturnType<typeof buildBook>;

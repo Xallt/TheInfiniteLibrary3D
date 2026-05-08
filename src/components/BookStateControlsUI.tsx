@@ -43,16 +43,22 @@ interface ReadingControlsProps {
 }
 
 function ReadingControls({ book, pageSelectedState, onSwitchToUniform }: ReadingControlsProps) {
-    const getPageNum = () => pageSelectedState.selectedPageIndex;
+    const [pageIndex, setPageIndex] = useState(pageSelectedState.selectedPageIndex);
 
     const handlePrevPage = () => {
-        const prev = Math.max(getPageNum() - 1, 0);
-        if (prev !== getPageNum()) book.actions.setState(buildPageSelectedState(Math.PI / 2, prev));
+        const prev = Math.max(pageIndex - 1, 0);
+        if (prev !== pageIndex) {
+            setPageIndex(prev);
+            book.actions.setState(buildPageSelectedState(Math.PI / 2, prev));
+        }
     };
 
     const handleNextPage = () => {
-        const next = Math.min(getPageNum() + 1, book.state.pages.length);
-        if (next !== getPageNum()) book.actions.setState(buildPageSelectedState(Math.PI / 2, next));
+        const next = Math.min(pageIndex + 1, book.state.pages.length);
+        if (next !== pageIndex) {
+            setPageIndex(next);
+            book.actions.setState(buildPageSelectedState(Math.PI / 2, next));
+        }
     };
 
     return (

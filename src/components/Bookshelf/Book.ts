@@ -273,14 +273,12 @@ export function buildBook(
   let originalPosition: THREE.Vector3 | undefined;
   let originalRotation: THREE.Euler | undefined;
   let pages: (Page | null)[] = new Array(numPages).fill(null);
-  let pageTransforms: Map<string, { rotation: THREE.Euler; position: THREE.Vector3 }> = new Map();
 
   function setPageTransform(pageId: string, rotation: THREE.Euler, position: THREE.Vector3): void {
     const page = pages.find((page) => page?.id === pageId);
     if (page) {
       page.mesh.rotation.set(rotation.x, rotation.y, rotation.z);
       page.mesh.position.set(position.x, position.y, position.z);
-      pageTransforms.set(pageId, { rotation, position });
     }
   }
 

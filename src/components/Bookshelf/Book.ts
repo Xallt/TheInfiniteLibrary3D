@@ -289,10 +289,20 @@ function buildPageController(
     const { rotation, transform } = transformUpdate(page.mesh.rotation, page.mesh.position);
     setPageTransform(rotation, transform);
   }
+
+  function addToMesh(mesh: THREE.Mesh): void {
+    mesh.add(page.mesh);
+  }
+
+  function removeFromMesh(mesh: THREE.Mesh): void {
+    mesh.remove(page.mesh);
+  }
+
   return {
-    page,
     updatePageTransform,
     setPageTransform,
+    addToMesh,
+    removeFromMesh,
   };
 }
 
@@ -360,17 +370,17 @@ export function useBook(
     const pageRotation = new THREE.Euler(0, pageAngles[index] - Math.PI / 2, 0);
 
     if (pageControllers.current[index]) {
-      mesh.remove(pageControllers.current[index]!.page.mesh);
+      pageControllers.current[index]!.removeFromMesh(mesh);
     }
     pageControllers.current[index] = buildPageController(pageProps, pageRotation, pagePosition);
-    mesh.add(pageControllers.current[index]!.page.mesh);
+    pageControllers.current[index]!.addToMesh(mesh);
   }
 
   function resizePageArray(newSize: number): void {
     const numPages = numPagesFn();
     for (let i = 0; i < numPages; i++) {
       if (pageControllers.current[i]) {
-        mesh.remove(pageControllers.current[i]!.page.mesh);
+        pageControllers.current[i]!.removeFromMesh(mesh);
       }
     }
     pageControllers.current.splice(0, numPages, ...new Array(newSize).fill(null));

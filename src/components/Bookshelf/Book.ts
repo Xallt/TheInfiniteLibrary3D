@@ -33,7 +33,8 @@ export function buildUniformlyOpenedState(angle: number = 0) {
   };
 }
 
-export function buildPageSelectedState(angle: number = Math.PI / 2, selectedPageIndex: number = 0) {
+export function buildPageSelectedState(selectedPageIndex: number = 0) {
+  const angle = Math.PI / 2;
   const eps = 0.1; // Small angle to separate pages
   function getPageRotationArgs(numPages: number): { coverAngle: number; pageAngles: number[] } {
     const pageAngles = Array(numPages)
@@ -279,42 +280,33 @@ export function createCoverGeometries(
 ): CoverGeometries {
   const { bookThickness, bookWidth, bookHeight, coverWidth } = params;
 
-  const spine = createBoxGeometry(
-    new THREE.Vector3(coverWidth, bookHeight, bookThickness),
-    {
-      front: bookTexture.getSpineUVs(),
-      back: bookTexture.getSpineUVs(),
-      left: bookTexture.getLeftLeftUVs(),
-      right: bookTexture.getRightRightUVs(),
-      top: bookTexture.getSpineTopSideUVs(),
-      bottom: bookTexture.getSpineBottomSideUVs(),
-    }
-  );
+  const spine = createBoxGeometry(new THREE.Vector3(coverWidth, bookHeight, bookThickness), {
+    front: bookTexture.getSpineUVs(),
+    back: bookTexture.getSpineUVs(),
+    left: bookTexture.getLeftLeftUVs(),
+    right: bookTexture.getRightRightUVs(),
+    top: bookTexture.getSpineTopSideUVs(),
+    bottom: bookTexture.getSpineBottomSideUVs(),
+  });
 
-  const rightSide = createBoxGeometry(
-    new THREE.Vector3(bookThickness, bookHeight, bookWidth),
-    {
-      front: bookTexture.getLeftLeftUVs(),
-      back: bookTexture.getRightRightUVs(),
-      left: bookTexture.getRightSideUVs(),
-      right: bookTexture.getRightSideUVs(),
-      top: bookTexture.getRightSideTopUVs(),
-      bottom: bookTexture.getRightSideBottomUVs(),
-    }
-  );
+  const rightSide = createBoxGeometry(new THREE.Vector3(bookThickness, bookHeight, bookWidth), {
+    front: bookTexture.getLeftLeftUVs(),
+    back: bookTexture.getRightRightUVs(),
+    left: bookTexture.getRightSideUVs(),
+    right: bookTexture.getRightSideUVs(),
+    top: bookTexture.getRightSideTopUVs(),
+    bottom: bookTexture.getRightSideBottomUVs(),
+  });
   rightSide.translate(-bookThickness / 2, 0, bookWidth / 2);
 
-  const leftSide = createBoxGeometry(
-    new THREE.Vector3(bookThickness, bookHeight, bookWidth),
-    {
-      front: bookTexture.getLeftLeftUVs(),
-      back: bookTexture.getRightRightUVs(),
-      left: bookTexture.getLeftSideUVs(),
-      right: bookTexture.getLeftSideUVs(),
-      top: bookTexture.getLeftSideTopUVs(),
-      bottom: bookTexture.getLeftSideBottomUVs(),
-    }
-  );
+  const leftSide = createBoxGeometry(new THREE.Vector3(bookThickness, bookHeight, bookWidth), {
+    front: bookTexture.getLeftLeftUVs(),
+    back: bookTexture.getRightRightUVs(),
+    left: bookTexture.getLeftSideUVs(),
+    right: bookTexture.getLeftSideUVs(),
+    top: bookTexture.getLeftSideTopUVs(),
+    bottom: bookTexture.getLeftSideBottomUVs(),
+  });
   leftSide.translate(bookThickness / 2, 0, bookWidth / 2);
 
   return { spine, leftSide, rightSide };

@@ -21,21 +21,14 @@ export function BookStateControlsViewerUI({ openingState, numPages, onChange }: 
         <div className="page-controls">
           <button
             className="panel-btn"
-            onClick={() =>
-              onChange(buildPageSelectedState(Math.PI / 2, Math.max(s.selectedPageIndex - 1, 0)))
-            }
+            onClick={() => onChange(buildPageSelectedState(Math.max(s.selectedPageIndex - 1, 0)))}
           >
             ←
           </button>
           <button
             className="panel-btn"
             onClick={() =>
-              onChange(
-                buildPageSelectedState(
-                  Math.PI / 2,
-                  Math.min(s.selectedPageIndex + 1, numPages)
-                )
-              )
+              onChange(buildPageSelectedState(Math.min(s.selectedPageIndex + 1, numPages)))
             }
           >
             →
@@ -65,10 +58,7 @@ export function BookStateControlsViewerUI({ openingState, numPages, onChange }: 
         }
         className="angle-slider"
       />
-      <button
-        className="panel-btn"
-        onClick={() => onChange(buildPageSelectedState(Math.PI / 2, 0))}
-      >
+      <button className="panel-btn" onClick={() => onChange(buildPageSelectedState(0))}>
         Read Book
       </button>
     </div>

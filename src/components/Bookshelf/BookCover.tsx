@@ -1,8 +1,5 @@
 import * as THREE from "three";
-import {
-  BookMeshParams,
-  createCoverGeometries,
-} from "./Book";
+import { BookMeshParams, createCoverGeometries } from "./Book";
 import { BookTexture } from "./BookTexture";
 
 export interface BookCoverProps {
@@ -16,6 +13,8 @@ export function BookCover({ params, texture, coverAngle }: BookCoverProps) {
   const material = new THREE.MeshLambertMaterial({ map: texture.getTexture() });
 
   const { coverWidth, bookThickness } = params;
+
+  console.log("coverAngle", coverAngle);
 
   return (
     <>

@@ -66,10 +66,7 @@ function UniformOpeningControls({ state, onOpeningStateChange }: UniformOpeningC
         }
         className="angle-slider"
       />
-      <button
-        className="panel-btn"
-        onClick={() => onOpeningStateChange(buildPageSelectedState(Math.PI / 2, 0))}
-      >
+      <button className="panel-btn" onClick={() => onOpeningStateChange(buildPageSelectedState(0))}>
         Read Book
       </button>
     </>
@@ -82,7 +79,11 @@ interface PageSelectedControlsProps {
   onOpeningStateChange: (s: BookOpeningState) => void;
 }
 
-function PageSelectedControls({ state, numPages, onOpeningStateChange }: PageSelectedControlsProps) {
+function PageSelectedControls({
+  state,
+  numPages,
+  onOpeningStateChange,
+}: PageSelectedControlsProps) {
   return (
     <>
       <span className="panel-text" style={{ opacity: 0.5 }}>
@@ -93,9 +94,7 @@ function PageSelectedControls({ state, numPages, onOpeningStateChange }: PageSel
           className="panel-btn"
           style={{ flex: 1 }}
           onClick={() =>
-            onOpeningStateChange(
-              buildPageSelectedState(Math.PI / 2, Math.max(state.selectedPageIndex - 1, 0))
-            )
+            onOpeningStateChange(buildPageSelectedState(Math.max(state.selectedPageIndex - 1, 0)))
           }
         >
           ←
@@ -105,10 +104,7 @@ function PageSelectedControls({ state, numPages, onOpeningStateChange }: PageSel
           style={{ flex: 1 }}
           onClick={() =>
             onOpeningStateChange(
-              buildPageSelectedState(
-                Math.PI / 2,
-                Math.min(state.selectedPageIndex + 1, numPages - 1)
-              )
+              buildPageSelectedState(Math.min(state.selectedPageIndex + 1, numPages))
             )
           }
         >

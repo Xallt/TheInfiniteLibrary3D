@@ -15,7 +15,7 @@ export interface BookProps {
   params: BookMeshParams;
   texture: BookTexture;
   pages: BookPageInput[];
-  openingState: BookOpeningState | null;
+  openingState: BookOpeningState;
   worldPosition: THREE.Vector3;
   worldRotation: THREE.Euler;
   hoverOffset?: number;

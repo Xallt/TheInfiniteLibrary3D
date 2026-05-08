@@ -1,7 +1,7 @@
 import { useRef } from "react";
 import * as THREE from "three";
 import { BookData } from "../../types/BookData";
-import { BookOpeningState, getBookOuterSize } from "./Book";
+import { BookOpeningState, buildUniformlyOpenedState, getBookOuterSize } from "./Book";
 import { Book, BookPageInput } from "./BookComponent";
 import { Bookshelf, BookshelfParams } from "./Bookshelf";
 
@@ -67,7 +67,7 @@ export function BookshelfMesh({
               slot.z + shelfWorldPos.z
             );
         const worldRotation = isViewing ? viewRotation : shelfRotation;
-        const openingState = isViewing ? viewingOpeningState : null;
+        const openingState = isViewing ? viewingOpeningState : buildUniformlyOpenedState(0);
         const pages = pagesByBook[b.id] ?? [];
 
         return (

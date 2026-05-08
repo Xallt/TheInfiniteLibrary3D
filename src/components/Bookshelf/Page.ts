@@ -158,3 +158,35 @@ export function getPageParams(bookParams: BookMeshParams): PageParams {
     height: bookHeight,
   };
 }
+
+export function buildPageController(
+  pageProps: PageProps,
+  initialRotation: THREE.Euler,
+  initialPosition: THREE.Vector3
+) {
+  const page = buildPage(pageProps);
+  setPageTransform(initialRotation, initialPosition);
+
+  function setPageTransform(rotation: THREE.Euler, position: THREE.Vector3): void {
+    page.mesh.rotation.set(rotation.x, rotation.y, rotation.z);
+    page.mesh.position.set(position.x, position.y, position.z);
+  }
+  function updatePageTransform(
+    transformUpdate: (
+      rotation: THREE.Euler,
+      transform: THREE.Vector3
+    ) => { rotation: THREE.Euler; transform: THREE.Vector3 }
+  ): void {
+    const { rotation, transform } = transformUpdate(page.mesh.rotation, page.mesh.position);
+    setPageTransform(rotation, transform);
+  }
+
+  return {
+    id: page.id,
+    page,
+    updatePageTransform,
+    setPageTransform,
+  };
+}
+
+export type PageController = ReturnType<typeof buildPageController>;

@@ -1,7 +1,8 @@
 import { useEffect } from "react";
 import * as THREE from "three";
 import { BookData } from "../../types/BookData";
-import { Book, buildUniformlyOpenedState, useBook, usePageControllerGroup } from "./Book";
+import { Book, buildUniformlyOpenedState, useBook } from "./Book";
+import { usePageControllerGroup } from "./PageControllerGroup";
 import { fromPdfPages, getPageParams } from "./Page";
 
 interface BookMeshProps {

@@ -1,18 +1,18 @@
 import { useRef, useState } from "react";
 import * as THREE from "three";
-import { buildPageController, PageController, PageProps } from "./Page";
+import { buildPage, Page, PageProps } from "./Page";
 
 export function usePageControllerGroup(numPages: number) {
-  const pageControllers = useRef<(PageController | null)[]>(new Array(numPages).fill(null));
-  const [pageEntries, setPageEntries] = useState<
-    Array<{ id: string; mesh: THREE.Group } | null>
-  >(new Array(numPages).fill(null));
+  const pages = useRef<(Page | null)[]>(new Array(numPages).fill(null));
+  const [pageEntries, setPageEntries] = useState<Array<{ id: string; mesh: THREE.Group } | null>>(
+    new Array(numPages).fill(null)
+  );
 
   function numPagesFn(): number {
-    return pageControllers.current.length;
+    return pages.current.length;
   }
   function setPageTransform(index: number, rotation: THREE.Euler, position: THREE.Vector3): void {
-    pageControllers.current[index]!.setPageTransform(rotation, position);
+    pages.current[index]!.setPageTransform(rotation, position);
   }
   function updatePageTransform(
     index: number,
@@ -21,27 +21,27 @@ export function usePageControllerGroup(numPages: number) {
       transform: THREE.Vector3
     ) => { rotation: THREE.Euler; transform: THREE.Vector3 }
   ): void {
-    pageControllers.current[index]!.updatePageTransform(transformUpdate);
+    pages.current[index]!.updatePageTransform(transformUpdate);
   }
   function exists(index: number): boolean {
-    return pageControllers.current[index] !== null;
+    return pages.current[index] !== null;
   }
-  function createPageController(
+  function createPage(
     pageProps: PageProps,
     index: number,
     initialRotation: THREE.Euler,
     initialPosition: THREE.Vector3
   ): void {
-    const controller = buildPageController(pageProps, initialRotation, initialPosition);
-    pageControllers.current[index] = controller;
-    setPageEntries(prev => {
+    const page = buildPage(pageProps, initialRotation, initialPosition);
+    pages.current[index] = page;
+    setPageEntries((prev) => {
       const next = [...prev];
-      next[index] = { id: controller.id, mesh: controller.page.mesh };
+      next[index] = { id: page.id, mesh: page.mesh };
       return next;
     });
   }
   function resize(newSize: number): void {
-    pageControllers.current = new Array(newSize).fill(null);
+    pages.current = new Array(newSize).fill(null);
     setPageEntries(new Array(newSize).fill(null));
   }
 
@@ -49,7 +49,7 @@ export function usePageControllerGroup(numPages: number) {
     numPages: numPagesFn,
     setPageTransform,
     updatePageTransform,
-    createPageController,
+    createPage: createPage,
     exists,
     resize,
     pageEntries,

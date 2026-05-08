@@ -73,18 +73,6 @@ export interface PageProps {
   textures: PageTextures;
 }
 
-export function buildPage(pageProps: PageProps) {
-  let mesh = createPageMesh(pageProps.params, pageProps.textures);
-
-  return {
-    id: crypto.randomUUID(),
-    mesh,
-    pageProps,
-  };
-}
-
-export type Page = ReturnType<typeof buildPage>;
-
 export function fromTexturePaths(width: number, height: number, textures: PageTextures): Page {
   return buildPage({ params: { width, height }, textures });
 }
@@ -159,17 +147,18 @@ export function getPageParams(bookParams: BookMeshParams): PageParams {
   };
 }
 
-export function buildPageController(
+export function buildPage(
   pageProps: PageProps,
-  initialRotation: THREE.Euler,
-  initialPosition: THREE.Vector3
+  initialRotation: THREE.Euler = new THREE.Euler(),
+  initialPosition: THREE.Vector3 = new THREE.Vector3()
 ) {
-  const page = buildPage(pageProps);
+  const id = crypto.randomUUID();
+  let mesh = createPageMesh(pageProps.params, pageProps.textures);
   setPageTransform(initialRotation, initialPosition);
 
   function setPageTransform(rotation: THREE.Euler, position: THREE.Vector3): void {
-    page.mesh.rotation.set(rotation.x, rotation.y, rotation.z);
-    page.mesh.position.set(position.x, position.y, position.z);
+    mesh.rotation.set(rotation.x, rotation.y, rotation.z);
+    mesh.position.set(position.x, position.y, position.z);
   }
   function updatePageTransform(
     transformUpdate: (
@@ -177,16 +166,16 @@ export function buildPageController(
       transform: THREE.Vector3
     ) => { rotation: THREE.Euler; transform: THREE.Vector3 }
   ): void {
-    const { rotation, transform } = transformUpdate(page.mesh.rotation, page.mesh.position);
+    const { rotation, transform } = transformUpdate(mesh.rotation, mesh.position);
     setPageTransform(rotation, transform);
   }
 
   return {
-    id: page.id,
-    page,
+    id,
+    mesh,
     updatePageTransform,
     setPageTransform,
   };
 }
 
-export type PageController = ReturnType<typeof buildPageController>;
+export type Page = ReturnType<typeof buildPage>;

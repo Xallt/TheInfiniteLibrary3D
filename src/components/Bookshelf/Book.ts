@@ -270,7 +270,6 @@ function createBookMesh(
   };
 }
 
-
 export function useBook(
   params: BookMeshParams,
   bookTexture: BookTexture,
@@ -328,7 +327,7 @@ export function useBook(
     const { pageAngles } = openingStateRef.current.getPageRotationArgs(numPages);
     const pageRotation = new THREE.Euler(0, pageAngles[index] - Math.PI / 2, 0);
 
-    pageControllerGroup.createPageController(pageProps, index, pageRotation, pagePosition);
+    pageControllerGroup.createPage(pageProps, index, pageRotation, pagePosition);
   }
 
   function resizePageArray(newSize: number): void {

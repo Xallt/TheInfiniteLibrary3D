@@ -5,6 +5,7 @@ This project demonstrates an interactive 3D book using Three.js and TypeScript.
 ## Setup and Running the Project
 
 1. Install the project dependencies:
+
    ```
    npm install
    ```

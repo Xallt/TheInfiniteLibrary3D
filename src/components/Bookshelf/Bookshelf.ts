@@ -1,214 +1,222 @@
-import * as THREE from 'three';
-import { TextureLoader } from './Book';
-import { ProceduralBookshelfCell } from './ProceduralBookshelfCell';
+import * as THREE from "three";
+import { TextureLoader } from "./Book";
+import { ProceduralBookshelfCell } from "./ProceduralBookshelfCell";
 
 export type BookshelfParams = {
-    cellHeight: number;
-    cellWidth: number;
-    cellDepth: number;
-    numColumns: number;
-    numRows: number;
-    sideWallThickness: number;
-    interFloorThickness: number;
-    mainSideWallThickness: number;
-    mainRoofBottomThickness: number;
-    backWallThickness: number;
+  cellHeight: number;
+  cellWidth: number;
+  cellDepth: number;
+  numColumns: number;
+  numRows: number;
+  sideWallThickness: number;
+  interFloorThickness: number;
+  mainSideWallThickness: number;
+  mainRoofBottomThickness: number;
+  backWallThickness: number;
 };
 
 type Cell = {
-    mesh: THREE.Mesh;
-    upperLeftFarCorner: THREE.Vector3;
-    outerSize: THREE.Vector3;
-    size: THREE.Vector3;
-    availableX: number;
-    leftSideThickness: number;
-    rightSideThickness: number;
-    backSideThickness: number;
-    upSideThickness: number;
-    downSideThickness: number;
+  mesh: THREE.Mesh;
+  upperLeftFarCorner: THREE.Vector3;
+  outerSize: THREE.Vector3;
+  size: THREE.Vector3;
+  availableX: number;
+  leftSideThickness: number;
+  rightSideThickness: number;
+  backSideThickness: number;
+  upSideThickness: number;
+  downSideThickness: number;
 };
 
 type Row = {
-    mesh: THREE.Mesh;
-    cells: Cell[];
-    outerSize: THREE.Vector3;
+  mesh: THREE.Mesh;
+  cells: Cell[];
+  outerSize: THREE.Vector3;
 };
 
 export class Bookshelf {
-    private params: BookshelfParams;
-    private texturePath: string;
-    private bookshelfMesh: THREE.Mesh;
-    private rows: Row[] = [];
+  private params: BookshelfParams;
+  private texturePath: string;
+  private bookshelfMesh: THREE.Mesh;
+  private rows: Row[] = [];
 
-    constructor(params: BookshelfParams, texturePath: string) {
-        this.params = params;
-        this.texturePath = texturePath;
-        this.bookshelfMesh = this.createBookshelfMesh();
+  constructor(params: BookshelfParams, texturePath: string) {
+    this.params = params;
+    this.texturePath = texturePath;
+    this.bookshelfMesh = this.createBookshelfMesh();
+  }
+
+  public getOuterSize(): THREE.Vector3 {
+    const rowHeights = this.rows.map((row) => row.outerSize.y);
+    const sumHeights = rowHeights.reduce((a, b) => a + b, 0);
+    return new THREE.Vector3(this.rows[0].outerSize.x, sumHeights, this.rows[0].outerSize.z);
+  }
+
+  private createBox(boxCenter: THREE.Vector3, boxSize: THREE.Vector3): THREE.Mesh {
+    const geometry = new THREE.BoxGeometry(boxSize.x, boxSize.y, boxSize.z);
+    const material = new THREE.MeshLambertMaterial({
+      map: TextureLoader.getInstance().load(this.texturePath),
+    });
+    const box = new THREE.Mesh(geometry, material);
+    box.position.set(boxCenter.x, boxCenter.y, boxCenter.z);
+    return box;
+  }
+
+  private createBoxWithCorner(
+    boxUpperLeftFarCorner: THREE.Vector3,
+    boxSize: THREE.Vector3
+  ): THREE.Mesh {
+    const box = this.createBox(
+      new THREE.Vector3(
+        boxUpperLeftFarCorner.x + boxSize.x / 2,
+        boxUpperLeftFarCorner.y - boxSize.y / 2,
+        boxUpperLeftFarCorner.z - boxSize.z / 2
+      ),
+      boxSize
+    );
+    return box;
+  }
+
+  private createCell(
+    cellUpperLeftFarCorner: THREE.Vector3,
+    cellSize: THREE.Vector3,
+    cellThicknessLeft: number,
+    cellThicknessRight: number,
+    cellThicknessBack: number,
+    cellThicknessUp: number,
+    cellThicknessDown: number
+  ): Cell {
+    const proceduralCell = new ProceduralBookshelfCell(
+      cellUpperLeftFarCorner,
+      cellSize,
+      cellThicknessLeft,
+      cellThicknessRight,
+      cellThicknessBack,
+      cellThicknessUp,
+      cellThicknessDown,
+      this.texturePath
+    );
+
+    const outerSize = new THREE.Vector3(
+      cellThicknessLeft + cellSize.x + cellThicknessRight,
+      cellThicknessDown + cellSize.y + cellThicknessUp,
+      cellThicknessBack + cellSize.z
+    );
+
+    return {
+      mesh: proceduralCell.getMesh(),
+      upperLeftFarCorner: cellUpperLeftFarCorner.clone(),
+      outerSize: outerSize,
+      size: cellSize.clone(),
+      availableX: 0,
+      leftSideThickness: cellThicknessLeft,
+      rightSideThickness: cellThicknessRight,
+      backSideThickness: cellThicknessBack,
+      upSideThickness: cellThicknessUp,
+      downSideThickness: cellThicknessDown,
+    };
+  }
+
+  private createRow(
+    rowUpperLeftFarCorner: THREE.Vector3,
+    upperThickness: number,
+    bottomThickness: number
+  ): Row {
+    const cells: Cell[] = [];
+    let curCorner = rowUpperLeftFarCorner.clone();
+    const cellSize = new THREE.Vector3(
+      this.params.cellWidth,
+      this.params.cellHeight,
+      this.params.cellDepth
+    );
+    for (let j = 0; j < this.params.numColumns; j++) {
+      let cellLeftThickness = this.params.sideWallThickness / 2;
+      if (j == 0) {
+        cellLeftThickness = this.params.mainSideWallThickness;
+      }
+      let cellRightThickness = this.params.sideWallThickness / 2;
+      if (j == this.params.numColumns - 1) {
+        cellRightThickness = this.params.mainSideWallThickness;
+      }
+      const cell = this.createCell(
+        curCorner,
+        cellSize,
+        cellLeftThickness,
+        cellRightThickness,
+        this.params.backWallThickness,
+        upperThickness,
+        bottomThickness
+      );
+      cells.push(cell);
+
+      curCorner.x += cellSize.x + cellLeftThickness + cellRightThickness;
     }
 
-    public getOuterSize(): THREE.Vector3 {
-        const rowHeights = this.rows.map(row => row.outerSize.y);
-        const sumHeights = rowHeights.reduce((a, b) => a + b, 0);
-        return new THREE.Vector3(this.rows[0].outerSize.x, sumHeights, this.rows[0].outerSize.z);
+    const row = new THREE.Mesh();
+    cells.forEach((cell) => row.add(cell.mesh));
+    return {
+      mesh: row,
+      cells: cells,
+      outerSize: new THREE.Vector3(
+        curCorner.x - rowUpperLeftFarCorner.x,
+        cells[0].outerSize.y,
+        cells[0].outerSize.z
+      ),
+    };
+  }
+
+  private createBookshelfMesh(): THREE.Mesh {
+    let curCorner = new THREE.Vector3(0, 0, 0);
+    for (let i = 0; i < this.params.numRows; i++) {
+      let curUpperThickness = this.params.interFloorThickness / 2;
+      if (i == 0) {
+        curUpperThickness = this.params.mainRoofBottomThickness;
+      }
+      let curBottomThickness = this.params.interFloorThickness / 2;
+      if (i == this.params.numRows - 1) {
+        curBottomThickness = this.params.mainRoofBottomThickness;
+      }
+      const row = this.createRow(curCorner, curUpperThickness, curBottomThickness);
+      this.rows.push(row);
+      curCorner.y -= this.params.cellHeight + curUpperThickness + curBottomThickness;
     }
 
-    private createBox(boxCenter: THREE.Vector3, boxSize: THREE.Vector3): THREE.Mesh {
-        const geometry = new THREE.BoxGeometry(boxSize.x, boxSize.y, boxSize.z);
-        const material = new THREE.MeshLambertMaterial({ map: TextureLoader.getInstance().load(this.texturePath) });
-        const box = new THREE.Mesh(geometry, material);
-        box.position.set(boxCenter.x, boxCenter.y, boxCenter.z);
-        return box;
-    }
+    const bookshelf = new THREE.Mesh();
+    this.rows.forEach((row) => bookshelf.add(row.mesh));
+    return bookshelf;
+  }
 
-    private createBoxWithCorner(boxUpperLeftFarCorner: THREE.Vector3, boxSize: THREE.Vector3): THREE.Mesh {
-        const box = this.createBox(
-            new THREE.Vector3(
-                boxUpperLeftFarCorner.x + boxSize.x / 2,
-                boxUpperLeftFarCorner.y - boxSize.y / 2,
-                boxUpperLeftFarCorner.z - boxSize.z / 2
-            ),
-            boxSize
-        );
-        return box;
-    }
+  public getMesh(): THREE.Mesh {
+    return this.bookshelfMesh;
+  }
 
-    private createCell(
-        cellUpperLeftFarCorner: THREE.Vector3,
-        cellSize: THREE.Vector3,
-        cellThicknessLeft: number,
-        cellThicknessRight: number,
-        cellThicknessBack: number,
-        cellThicknessUp: number,
-        cellThicknessDown: number,
-    ): Cell {
-        const proceduralCell = new ProceduralBookshelfCell(
-            cellUpperLeftFarCorner,
-            cellSize,
-            cellThicknessLeft,
-            cellThicknessRight,
-            cellThicknessBack,
-            cellThicknessUp,
-            cellThicknessDown,
-            this.texturePath
-        );
+  public computePositions(bookSizes: THREE.Vector3[]): (THREE.Vector3 | null)[] {
+    const availableX: number[][] = this.rows.map((row) => row.cells.map(() => 0));
+    const results: (THREE.Vector3 | null)[] = [];
 
-        const outerSize = new THREE.Vector3(
-            cellThicknessLeft + cellSize.x + cellThicknessRight,
-            cellThicknessDown + cellSize.y + cellThicknessUp,
-            cellThicknessBack + cellSize.z
-        );
-
-        return {
-            mesh: proceduralCell.getMesh(),
-            upperLeftFarCorner: cellUpperLeftFarCorner.clone(),
-            outerSize: outerSize,
-            size: cellSize.clone(),
-            availableX: 0,
-            leftSideThickness: cellThicknessLeft,
-            rightSideThickness: cellThicknessRight,
-            backSideThickness: cellThicknessBack,
-            upSideThickness: cellThicknessUp,
-            downSideThickness: cellThicknessDown
-        };
-    }
-
-    private createRow(
-        rowUpperLeftFarCorner: THREE.Vector3,
-        upperThickness: number,
-        bottomThickness: number
-    ): Row {
-        const cells: Cell[] = [];
-        let curCorner = rowUpperLeftFarCorner.clone();
-        const cellSize = new THREE.Vector3(this.params.cellWidth, this.params.cellHeight, this.params.cellDepth);
-        for (let j = 0; j < this.params.numColumns; j++) {
-            let cellLeftThickness = this.params.sideWallThickness / 2;
-            if (j == 0) {
-                cellLeftThickness = this.params.mainSideWallThickness;
-            }
-            let cellRightThickness = this.params.sideWallThickness / 2;
-            if (j == this.params.numColumns - 1) {
-                cellRightThickness = this.params.mainSideWallThickness;
-            }
-            const cell = this.createCell(
-                curCorner,
-                cellSize,
-                cellLeftThickness,
-                cellRightThickness,
-                this.params.backWallThickness,
-                upperThickness,
-                bottomThickness
+    for (const bookSize of bookSizes) {
+      let placed = false;
+      outer: for (let ri = 0; ri < this.rows.length; ri++) {
+        for (let ci = 0; ci < this.rows[ri].cells.length; ci++) {
+          const cell = this.rows[ri].cells[ci];
+          if (availableX[ri][ci] + bookSize.x <= this.params.cellWidth) {
+            const pos = new THREE.Vector3(
+              cell.upperLeftFarCorner.x +
+                availableX[ri][ci] +
+                cell.leftSideThickness +
+                bookSize.x / 2,
+              cell.upperLeftFarCorner.y - cell.upSideThickness - cell.size.y + bookSize.y / 2,
+              cell.upperLeftFarCorner.z - cell.backSideThickness - cell.size.z + bookSize.z
             );
-            cells.push(cell);
-
-            curCorner.x += cellSize.x + cellLeftThickness + cellRightThickness;
+            availableX[ri][ci] += bookSize.x;
+            results.push(pos);
+            placed = true;
+            break outer;
+          }
         }
-
-        const row = new THREE.Mesh();
-        cells.forEach(cell => row.add(cell.mesh));
-        return {
-            mesh: row,
-            cells: cells,
-            outerSize: new THREE.Vector3(
-                curCorner.x - rowUpperLeftFarCorner.x,
-                cells[0].outerSize.y,
-                cells[0].outerSize.z
-            )
-        };
+      }
+      if (!placed) results.push(null);
     }
-
-    private createBookshelfMesh(): THREE.Mesh {
-        let curCorner = new THREE.Vector3(0, 0, 0);
-        for (let i = 0; i < this.params.numRows; i++) {
-            let curUpperThickness = this.params.interFloorThickness / 2;
-            if (i == 0) {
-                curUpperThickness = this.params.mainRoofBottomThickness;
-            }
-            let curBottomThickness = this.params.interFloorThickness / 2;
-            if (i == this.params.numRows - 1) {
-                curBottomThickness = this.params.mainRoofBottomThickness;
-            }
-            const row = this.createRow(
-                curCorner,
-                curUpperThickness,
-                curBottomThickness
-            );
-            this.rows.push(row);
-            curCorner.y -= this.params.cellHeight + curUpperThickness + curBottomThickness;
-        }
-
-        const bookshelf = new THREE.Mesh();
-        this.rows.forEach(row => bookshelf.add(row.mesh));
-        return bookshelf;
-    }
-
-    public getMesh(): THREE.Mesh {
-        return this.bookshelfMesh;
-    }
-
-    public computePositions(bookSizes: THREE.Vector3[]): (THREE.Vector3 | null)[] {
-        const availableX: number[][] = this.rows.map(row => row.cells.map(() => 0));
-        const results: (THREE.Vector3 | null)[] = [];
-
-        for (const bookSize of bookSizes) {
-            let placed = false;
-            outer: for (let ri = 0; ri < this.rows.length; ri++) {
-                for (let ci = 0; ci < this.rows[ri].cells.length; ci++) {
-                    const cell = this.rows[ri].cells[ci];
-                    if (availableX[ri][ci] + bookSize.x <= this.params.cellWidth) {
-                        const pos = new THREE.Vector3(
-                            cell.upperLeftFarCorner.x + availableX[ri][ci] + cell.leftSideThickness + bookSize.x / 2,
-                            cell.upperLeftFarCorner.y - cell.upSideThickness - cell.size.y + bookSize.y / 2,
-                            cell.upperLeftFarCorner.z - cell.backSideThickness - cell.size.z + bookSize.z
-                        );
-                        availableX[ri][ci] += bookSize.x;
-                        results.push(pos);
-                        placed = true;
-                        break outer;
-                    }
-                }
-            }
-            if (!placed) results.push(null);
-        }
-        return results;
-    }
+    return results;
+  }
 }

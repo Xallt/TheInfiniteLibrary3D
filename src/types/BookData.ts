@@ -1,6 +1,6 @@
-import { BookMeshParams } from '../components/Bookshelf/Book';
-import { BookTexture } from '../components/Bookshelf/BookTexture';
-import { PDFResource } from './PDFResource';
+import { BookMeshParams } from "../components/Bookshelf/Book";
+import { BookTexture } from "../components/Bookshelf/BookTexture";
+import { PDFResource } from "./PDFResource";
 
 export type BookData = {
   id: string;

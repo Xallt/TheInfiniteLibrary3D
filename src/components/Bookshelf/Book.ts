@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { ProceduralMesh } from "../../utils/ProceduralMesh";
 import { BookTexture } from "./BookTexture";
-import { buildPage, PageProps } from "./Page";
+import { buildPage, Page, PageProps } from "./Page";
 
 interface QuadUVs {
   front: number[];
@@ -104,26 +104,16 @@ export function getBookOuterSize(params: BookMeshParams): THREE.Vector3 {
   return new THREE.Vector3(coverWidth + bookThickness * 2, bookHeight, bookWidth + bookThickness);
 }
 
-export function buildEmptyBook(
-  params: BookMeshParams,
-  bookTexture: BookTexture,
-  numPages: number,
-  id: number,
-  initialState: BookOpeningState = buildUniformlyOpenedState()
-): Book {
-  return buildBook(params, bookTexture, new Array(numPages).fill(null), initialState, id);
-}
-
 export function buildBook(
   params: BookMeshParams,
   bookTexture: BookTexture,
-  pagesArg: (PageProps | null)[],
+  numPages: number,
   initialState: BookOpeningState = buildUniformlyOpenedState(),
   id: number
 ) {
   let originalPosition: THREE.Vector3 | undefined;
   let originalRotation: THREE.Euler | undefined;
-  let pages = pagesArg.map((page) => (page ? buildPage(page) : null));
+  let pages: (Page | null)[] = new Array(numPages).fill(null);
   let pageTransforms: Map<string, { rotation: THREE.Euler; position: THREE.Vector3 }> = new Map();
 
   function setPageTransform(pageId: string, rotation: THREE.Euler, position: THREE.Vector3): void {

@@ -17,6 +17,18 @@ const SCENE_ELEVATION = 0.5;
 const HOVER_PERK = 0.05;
 const HOVER_LERP = 0.15;
 
+function buildCamera(): THREE.PerspectiveCamera {
+    const cam = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 5000);
+    cam.position.set(0, SCENE_ELEVATION, 1.7);
+    return cam;
+}
+
+function buildControls(camera: THREE.PerspectiveCamera, renderer: THREE.WebGLRenderer): OrbitControls {
+    const ctrl = createControls(camera, renderer);
+    ctrl.target.set(0, SCENE_ELEVATION, 0);
+    return ctrl;
+}
+
 export function useMainScene(sceneConfig: MainSceneConfig = defaultMainSceneConfig) {
     const { scene, gl: renderer } = useThree();
 
@@ -37,21 +49,11 @@ export function useMainScene(sceneConfig: MainSceneConfig = defaultMainSceneConf
     const readyRef = useRef(false);
 
     // Camera initialized once (lazy ref)
-    const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
-    if (!cameraRef.current) {
-        const cam = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 5000);
-        cam.position.set(0, SCENE_ELEVATION, 1.7);
-        cameraRef.current = cam;
-    }
+    const cameraRef = useRef<THREE.PerspectiveCamera>(buildCamera());
     const camera = cameraRef.current;
 
     // Controls initialized once (lazy ref)
-    const controlsRef = useRef<OrbitControls | null>(null);
-    if (!controlsRef.current) {
-        const ctrl = createControls(camera, renderer);
-        ctrl.target.set(0, SCENE_ELEVATION, 0);
-        controlsRef.current = ctrl;
-    }
+    const controlsRef = useRef<OrbitControls>(buildControls(camera, renderer));
     const controls = controlsRef.current;
 
     // --- Event handlers (access fresh state via refs) ---

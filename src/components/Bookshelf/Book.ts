@@ -275,11 +275,12 @@ function buildPageController(
   initialPosition: THREE.Vector3
 ) {
   const page = buildPage(pageProps);
+  setPageTransform(initialRotation, initialPosition);
+
   function setPageTransform(rotation: THREE.Euler, position: THREE.Vector3): void {
     page.mesh.rotation.set(rotation.x, rotation.y, rotation.z);
     page.mesh.position.set(position.x, position.y, position.z);
   }
-  setPageTransform(initialRotation, initialPosition);
   function updatePageTransform(
     transformUpdate: (
       rotation: THREE.Euler,
@@ -299,6 +300,7 @@ function buildPageController(
   }
 
   return {
+    id: page.id,
     updatePageTransform,
     setPageTransform,
     addToMesh,
@@ -307,6 +309,62 @@ function buildPageController(
 }
 
 type PageController = ReturnType<typeof buildPageController>;
+
+function usePageControllerGroup(numPages: number, mesh: THREE.Mesh) {
+  const pageControllers = useRef<(PageController | null)[]>(new Array(numPages).fill(null));
+  function numPagesFn(): number {
+    return pageControllers.current.length;
+  }
+  function setPageTransform(index: number, rotation: THREE.Euler, position: THREE.Vector3): void {
+    pageControllers.current[index]!.setPageTransform(rotation, position);
+  }
+  function updatePageTransform(
+    index: number,
+    transformUpdate: (
+      rotation: THREE.Euler,
+      transform: THREE.Vector3
+    ) => { rotation: THREE.Euler; transform: THREE.Vector3 }
+  ): void {
+    pageControllers.current[index]!.updatePageTransform(transformUpdate);
+  }
+  function exists(index: number): boolean {
+    return pageControllers.current[index] !== null;
+  }
+  function addToMesh(index: number): void {
+    pageControllers.current[index]!.addToMesh(mesh);
+  }
+  function removeFromMesh(index: number): void {
+    pageControllers.current[index]!.removeFromMesh(mesh);
+  }
+  function createPageController(
+    pageProps: PageProps,
+    index: number,
+    initialRotation: THREE.Euler,
+    initialPosition: THREE.Vector3
+  ): void {
+    pageControllers.current[index] = buildPageController(pageProps, initialRotation, initialPosition);
+  }
+  function resize(newSize: number): void {
+    const currentLength = pageControllers.current.length;
+    for (let i = 0; i < currentLength; i++) {
+      if (exists(i)) {
+        removeFromMesh(i);
+      }
+    }
+    pageControllers.current = new Array(newSize).fill(null);
+  }
+
+  return {
+    numPages: numPagesFn,
+    setPageTransform,
+    updatePageTransform,
+    createPageController,
+    exists,
+    addToMesh,
+    removeFromMesh,
+    resize,
+  };
+}
 
 export function useBook(
   params: BookMeshParams,
@@ -319,7 +377,6 @@ export function useBook(
 ) {
   const originalPosition = useRef<THREE.Vector3 | null>(null);
   const originalRotation = useRef<THREE.Euler | null>(null);
-  const pageControllers = useRef<(PageController | null)[]>(new Array(numPagesIn).fill(null));
   const meshDataRef = useRef<ReturnType<typeof createBookMesh> | null>(null);
   const openingStateRef = useRef<BookOpeningState>(initialState);
 
@@ -329,25 +386,24 @@ export function useBook(
 
   const { coverMesh: _coverMesh, leftSideMesh, rightSideMesh, mesh } = meshDataRef.current;
 
-  function numPagesFn(): number {
-    return pageControllers.current.length;
-  }
+  const pageControllerGroup = usePageControllerGroup(numPagesIn, mesh);
 
   function updateBookRotations(): void {
-    const numPages = numPagesFn();
+    const numPages = pageControllerGroup.numPages();
     const { coverAngle, pageAngles } = openingStateRef.current.getPageRotationArgs(numPages);
     leftSideMesh.rotation.y = coverAngle;
     rightSideMesh.rotation.y = -coverAngle;
-    pageControllers.current.forEach((pageController, index) => {
-      if (pageController) {
-        pageController.updatePageTransform((rotation, transform) => {
-          return {
-            rotation: new THREE.Euler(rotation.x, pageAngles[index] - Math.PI / 2, rotation.z),
-            transform: transform,
-          };
-        });
+    for (let i = 0; i < numPages; i++) {
+      if (!pageControllerGroup.exists(i)) {
+        continue;
       }
-    });
+      pageControllerGroup.updatePageTransform(i, (rotation, transform) => {
+        return {
+          rotation: new THREE.Euler(rotation.x, pageAngles[i] - Math.PI / 2, rotation.z),
+          transform: transform,
+        };
+      });
+    }
   }
 
   function setState(newState: BookOpeningState): void {
@@ -356,7 +412,7 @@ export function useBook(
   }
 
   function addPage(pageProps: PageProps, index: number): void {
-    const numPages = numPagesFn();
+    const numPages = pageControllerGroup.numPages();
     if (index < 0 || index >= numPages) {
       throw new Error(`Page index ${index} is out of bounds (0-${numPages - 1})`);
     }
@@ -369,26 +425,26 @@ export function useBook(
     const { pageAngles } = openingStateRef.current.getPageRotationArgs(numPages);
     const pageRotation = new THREE.Euler(0, pageAngles[index] - Math.PI / 2, 0);
 
-    if (pageControllers.current[index]) {
-      pageControllers.current[index]!.removeFromMesh(mesh);
+    if (pageControllerGroup.exists(index)) {
+      pageControllerGroup.removeFromMesh(index);
     }
-    pageControllers.current[index] = buildPageController(pageProps, pageRotation, pagePosition);
-    pageControllers.current[index]!.addToMesh(mesh);
+    pageControllerGroup.createPageController(pageProps, index, pageRotation, pagePosition);
+    pageControllerGroup.addToMesh(index);
   }
 
   function resizePageArray(newSize: number): void {
-    const numPages = numPagesFn();
+    const numPages = pageControllerGroup.numPages();
     for (let i = 0; i < numPages; i++) {
-      if (pageControllers.current[i]) {
-        pageControllers.current[i]!.removeFromMesh(mesh);
+      if (pageControllerGroup.exists(i)) {
+        pageControllerGroup.removeFromMesh(i);
       }
     }
-    pageControllers.current.splice(0, numPages, ...new Array(newSize).fill(null));
+    pageControllerGroup.resize(newSize);
     updateBookRotations();
   }
 
   function selectPage(pageIndex: number, angle: number = Math.PI / 2): void {
-    const numPages = numPagesFn();
+    const numPages = pageControllerGroup.numPages();
     if (pageIndex < 0 || pageIndex > numPages) {
       throw new Error(`Page index ${pageIndex} is out of bounds (0-${numPages - 1})`);
     }
@@ -421,7 +477,7 @@ export function useBook(
       },
     },
     actions: {
-      numPages: numPagesFn,
+      numPages: pageControllerGroup.numPages,
       setState,
       addPage,
       resizePageArray,

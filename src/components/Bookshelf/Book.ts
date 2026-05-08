@@ -105,7 +105,7 @@ export function getBookOuterSize(params: BookMeshParams): THREE.Vector3 {
   const { bookThickness, bookWidth, bookHeight, coverWidth } = params;
   return new THREE.Vector3(coverWidth + bookThickness * 2, bookHeight, bookWidth + bookThickness);
 }
-function createBoxGeometry(boxSize: THREE.Vector3, uvs: QuadUVs): THREE.BufferGeometry {
+export function createBoxGeometry(boxSize: THREE.Vector3, uvs: QuadUVs): THREE.BufferGeometry {
   const corner = new THREE.Vector3(-boxSize.x / 2, boxSize.y / 2, boxSize.z / 2);
   const { points, indices } = ProceduralMesh.get3DRectPoints(corner, boxSize);
 
@@ -268,6 +268,59 @@ function createBookMesh(
     rightSideMesh,
     mesh: book,
   };
+}
+
+export interface CoverGeometries {
+  spine: THREE.BufferGeometry;
+  leftSide: THREE.BufferGeometry;
+  rightSide: THREE.BufferGeometry;
+}
+
+export function createCoverGeometries(
+  params: BookMeshParams,
+  bookTexture: BookTexture
+): CoverGeometries {
+  const { bookThickness, bookWidth, bookHeight, coverWidth } = params;
+
+  const spine = createBoxGeometry(
+    new THREE.Vector3(coverWidth, bookHeight, bookThickness),
+    {
+      front: bookTexture.getSpineUVs(),
+      back: bookTexture.getSpineUVs(),
+      left: bookTexture.getLeftLeftUVs(),
+      right: bookTexture.getRightRightUVs(),
+      top: bookTexture.getSpineTopSideUVs(),
+      bottom: bookTexture.getSpineBottomSideUVs(),
+    }
+  );
+
+  const rightSide = createBoxGeometry(
+    new THREE.Vector3(bookThickness, bookHeight, bookWidth),
+    {
+      front: bookTexture.getLeftLeftUVs(),
+      back: bookTexture.getRightRightUVs(),
+      left: bookTexture.getRightSideUVs(),
+      right: bookTexture.getRightSideUVs(),
+      top: bookTexture.getRightSideTopUVs(),
+      bottom: bookTexture.getRightSideBottomUVs(),
+    }
+  );
+  rightSide.translate(-bookThickness / 2, 0, bookWidth / 2);
+
+  const leftSide = createBoxGeometry(
+    new THREE.Vector3(bookThickness, bookHeight, bookWidth),
+    {
+      front: bookTexture.getLeftLeftUVs(),
+      back: bookTexture.getRightRightUVs(),
+      left: bookTexture.getLeftSideUVs(),
+      right: bookTexture.getLeftSideUVs(),
+      top: bookTexture.getLeftSideTopUVs(),
+      bottom: bookTexture.getLeftSideBottomUVs(),
+    }
+  );
+  leftSide.translate(bookThickness / 2, 0, bookWidth / 2);
+
+  return { spine, leftSide, rightSide };
 }
 
 export function useBook(

@@ -1,5 +1,5 @@
 import { Stats } from "@react-three/drei";
-import { useThree } from "@react-three/fiber";
+import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
@@ -8,7 +8,8 @@ import { BookOpeningState } from "../components/Bookshelf/Book";
 import { BookPageInput } from "../components/Bookshelf/BookComponent";
 import { defaultBookshelfParams, defaultBookshelfTexturePath } from "../config/bookConfig";
 import { defaultMainSceneConfig } from "../config/mainSceneConfig";
-import { buildCamera, buildControls, useMainScene, SCENE_ELEVATION } from "./MainScene";
+import { buildCamera, buildControls, SCENE_ELEVATION } from "./MainScene";
+import { SceneSetup } from "./SceneSetup";
 import { BookData } from "../types/BookData";
 
 interface BookshelfSceneInnerProps {
@@ -27,21 +28,16 @@ const SHELF_ROTATION = new THREE.Euler(0, Math.PI, 0);
 const HOVER_PERK = 0.05;
 
 export function BookshelfSceneInner(props: BookshelfSceneInnerProps) {
-  const { scene, gl: renderer, set } = useThree();
+  const { gl: renderer, set } = useThree();
   const cameraRef = useRef<THREE.PerspectiveCamera>(buildCamera());
   const controlsRef = useRef<OrbitControls>(buildControls(cameraRef.current, renderer));
 
-  // Tell R3F to use our custom camera so its pointer-event raycaster stays in sync
   useEffect(() => {
     set({ camera: cameraRef.current });
   }, [set]);
 
-  useMainScene({
-    sceneConfig: defaultMainSceneConfig,
-    renderer,
-    scene,
-    camera: cameraRef.current,
-    controls: controlsRef.current,
+  useFrame(() => {
+    controlsRef.current.update();
   });
 
   useEffect(() => {
@@ -55,6 +51,8 @@ export function BookshelfSceneInner(props: BookshelfSceneInnerProps) {
   return (
     <>
       <Stats />
+      <SceneSetup config={defaultMainSceneConfig} />
+      <primitive object={controlsRef.current} />
       <BookshelfMesh
         params={defaultBookshelfParams}
         texturePath={defaultBookshelfTexturePath}

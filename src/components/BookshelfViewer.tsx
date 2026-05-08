@@ -15,8 +15,7 @@ import { PDFSelectionModal } from './PDFSelectionModal';
 export function BookshelfViewer() {
     const mainScene = useMemo(() => new MainScene(), []);
     const [books, setBooks] = useState<BookData[]>([]);
-    const [isViewingBook, setIsViewingBook] = useState(false);
-    const [currentViewingBookIndex, setCurrentViewingBookIndex] = useState(-1);
+    const [viewingBookIndex, setViewingBookIndex] = useState<number | null>(null);
     const [showUrlModal, setShowUrlModal] = useState(false);
     const [showBookCollectorModal, setShowBookCollectorModal] = useState(false);
 
@@ -26,21 +25,19 @@ export function BookshelfViewer() {
         });
     }, [mainScene]);
 
-    const returnBook = () => {
+    function returnBook() {
         mainScene.returnBookToShelf();
-        setIsViewingBook(false);
-        setCurrentViewingBookIndex(-1);
-    };
+        setViewingBookIndex(null);
+    }
 
-    const handleViewBook = async (bookIndex: number) => {
-        if (isViewingBook) throw new Error('Book already in view');
-        setCurrentViewingBookIndex(bookIndex);
+    async function handleViewBook(bookIndex: number) {
+        if (viewingBookIndex !== null) throw new Error('Book already in view');
+        setViewingBookIndex(bookIndex);
         mainScene.viewBook(bookIndex);
-        setIsViewingBook(true);
         setBooks(prev => prev.map((b, i) => i === bookIndex ? { ...b, loadPages: true } : b));
-    };
+    }
 
-    const handlePDFSourcesSubmitted = async (sources: PDFResource[]) => {
+    async function handlePDFSourcesSubmitted(sources: PDFResource[]) {
         const offset = books.length;
         const newBooks: BookData[] = sources.map((resource, i) => ({
             id: `book-${Date.now()}-${offset + i}`,
@@ -53,24 +50,9 @@ export function BookshelfViewer() {
             loadPages: false,
         }));
         setBooks(prev => [...prev, ...newBooks]);
-    };
+    }
 
-    const handleDownloadScene = async () => {
-        try {
-            const blob = await mainScene.exportSceneToGLB();
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = 'bookshelf-scene.glb';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(link.href);
-        } catch (error) {
-            console.error('Failed to export scene:', error);
-        }
-    };
-
-    const handleBookCollectorSource = async (source: BookCollectorSource) => {
+    async function handleBookCollectorSource(source: BookCollectorSource) {
         setShowBookCollectorModal(false);
         try {
             const bookSources = await fetchBooks(source);
@@ -79,10 +61,11 @@ export function BookshelfViewer() {
         } catch (error) {
             console.error('Failed to fetch books from collector:', error);
         }
-    };
+    }
 
-    const getCurrentBookInfo = () => {
-        const book = books[currentViewingBookIndex];
+    function getCurrentBookInfo() {
+        if (viewingBookIndex === null) return null;
+        const book = books[viewingBookIndex];
         if (!book) return null;
         const metadata = book.pdfResource.getMetadata();
         if (!metadata) return null;
@@ -91,7 +74,7 @@ export function BookshelfViewer() {
             author: metadata.author || 'Unknown Author',
             pageCount: metadata.numPages || 0,
         };
-    };
+    }
 
     const bookInfo = getCurrentBookInfo();
 
@@ -102,10 +85,9 @@ export function BookshelfViewer() {
             </Canvas>
 
             <div className="controls-panel panel">
-                <button className="panel-btn" onClick={handleDownloadScene}>Download Scene</button>
                 <button className="panel-btn" onClick={() => setShowUrlModal(true)}>Add Books</button>
                 <button className="panel-btn" onClick={() => setShowBookCollectorModal(true)}>Load from Collector</button>
-                {isViewingBook && (
+                {viewingBookIndex !== null && (
                     <>
                         <hr className="panel-divider" />
                         <button className="panel-btn" onClick={returnBook}>Return Book</button>
@@ -122,9 +104,9 @@ export function BookshelfViewer() {
                 )}
             </div>
 
-            {isViewingBook && (
+            {viewingBookIndex !== null && (
                 <BookStateControlsUI
-                    book={mainScene.getBook(currentViewingBookIndex)!}
+                    book={mainScene.getBook(viewingBookIndex)}
                 />
             )}
 

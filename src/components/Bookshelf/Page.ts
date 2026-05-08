@@ -68,6 +68,31 @@ function createTextureFromSource(source: string | ImageData): THREE.Texture {
   return TextureLoader.getInstance().load(source);
 }
 
+export function createFrontPageGeometry(params: PageParams): THREE.BufferGeometry {
+  const g = new THREE.PlaneGeometry(params.width, params.height);
+  g.translate(params.width / 2, 0, 0);
+  return g;
+}
+
+export function createBackPageGeometry(params: PageParams): THREE.BufferGeometry {
+  const g = new THREE.PlaneGeometry(params.width, params.height);
+  g.rotateY(Math.PI);
+  g.translate(params.width / 2, 0, 0);
+  return g;
+}
+
+export function createPageMaterial(
+  source: string | ImageData | null
+): THREE.MeshLambertMaterial {
+  if (!source) {
+    return new THREE.MeshLambertMaterial({ color: 0xffffff, side: THREE.FrontSide });
+  }
+  return new THREE.MeshLambertMaterial({
+    map: createTextureFromSource(source),
+    side: THREE.FrontSide,
+  });
+}
+
 export interface PageProps {
   params: PageParams;
   textures: PageTextures;

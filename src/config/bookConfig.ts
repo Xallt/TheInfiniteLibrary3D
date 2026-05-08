@@ -2,7 +2,7 @@ import { BookMeshParams } from "../components/Bookshelf/Book";
 import { BookshelfParams } from "../components/Bookshelf/Bookshelf";
 
 export const defaultBookTexture = {
-  path: "resources/BookCovers0135_5_350.jpg",
+  path: `${import.meta.env.BASE_URL}resources/BookCovers0135_5_350.jpg`,
   coverPositions: {
     leftCoverPosition: 0.413,
     rightCoverPosition: 0.582,
@@ -16,7 +16,7 @@ export const defaultBookParams: BookMeshParams = {
   coverWidth: 0.04,
 };
 
-export const defaultBookshelfTexturePath = "resources/wood.jpeg";
+export const defaultBookshelfTexturePath = `${import.meta.env.BASE_URL}resources/wood.jpeg`;
 
 export const defaultBookshelfParams: BookshelfParams = {
   cellHeight: 0.3,

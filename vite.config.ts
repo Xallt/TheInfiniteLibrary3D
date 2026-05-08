@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import { resolve } from "path";
 
 export default defineConfig({
+  base: process.env.BASE_PATH ? `${process.env.BASE_PATH}/` : "/",
   plugins: [
     react({
       babel: {

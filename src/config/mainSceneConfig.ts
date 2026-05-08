@@ -10,12 +10,12 @@ export interface MainSceneConfig {
 
 export const defaultMainSceneConfig: MainSceneConfig = {
   floorTexture: {
-    path: "resources/Floor/wood parquet 12_baseColor.jpeg",
+    path: `${import.meta.env.BASE_URL}resources/Floor/wood parquet 12_baseColor.jpeg`,
     repeat: 100,
   },
   environmentMap: undefined,
   // TODO: Fix parallel env map loading
   // environmentMap: {
-  //     path: "resources/HDR_hazy_nebulae.hdr"
+  //     path: `${import.meta.env.BASE_URL}resources/HDR_hazy_nebulae.hdr`
   // }
 };

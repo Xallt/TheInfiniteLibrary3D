@@ -172,6 +172,21 @@ export function BookSandboxControls({
       )}
 
       <hr className="panel-divider" />
+      <span className="panel-label">Book state</span>
+      {/* Opening state section */}
+      {!isPageSelected ? (
+        <UniformOpeningControls
+          state={openingState as UniformlyOpenedState}
+          onOpeningStateChange={onOpeningStateChange}
+        />
+      ) : (
+        <PageSelectedControls
+          state={openingState as PageSelectedState}
+          numPages={numPages}
+          onOpeningStateChange={onOpeningStateChange}
+        />
+      )}
+      <hr className="panel-divider" />
 
       {/* Mesh params section */}
       <span className="panel-label">Mesh params</span>
@@ -210,20 +225,6 @@ export function BookSandboxControls({
 
       <hr className="panel-divider" />
 
-      {/* Opening state section */}
-      <span className="panel-label">Opening</span>
-      {!isPageSelected ? (
-        <UniformOpeningControls
-          state={openingState as UniformlyOpenedState}
-          onOpeningStateChange={onOpeningStateChange}
-        />
-      ) : (
-        <PageSelectedControls
-          state={openingState as PageSelectedState}
-          numPages={numPages}
-          onOpeningStateChange={onOpeningStateChange}
-        />
-      )}
     </div>
   );
 }

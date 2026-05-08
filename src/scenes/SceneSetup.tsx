@@ -41,7 +41,6 @@ export function SceneSetup({ config }: { config: MainSceneConfig }) {
       pmrem.compileEquirectangularShader();
       try {
         const hdr = await new RGBELoader()
-          .setPath("resources/")
           .loadAsync(config.environmentMap.path);
         if (cancelled) return;
         const envMap = pmrem.fromEquirectangular(hdr).texture;

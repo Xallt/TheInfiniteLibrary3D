@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import * as THREE from "three";
 import { buildPage, Page, PageProps } from "./Page";
 
-export function usePageControllerGroup(numPages: number) {
+export function usePageGroup(numPages: number) {
   const pages = useRef<(Page | null)[]>(new Array(numPages).fill(null));
   const [pageEntries, setPageEntries] = useState<Array<{ id: string; mesh: THREE.Group } | null>>(
     new Array(numPages).fill(null)
@@ -56,4 +56,4 @@ export function usePageControllerGroup(numPages: number) {
   };
 }
 
-export type PageControllerGroup = ReturnType<typeof usePageControllerGroup>;
+export type PageGroup = ReturnType<typeof usePageGroup>;

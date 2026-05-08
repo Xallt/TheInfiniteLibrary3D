@@ -3,7 +3,7 @@ import * as THREE from "three";
 import { ProceduralMesh } from "../../utils/ProceduralMesh";
 import { BookTexture } from "./BookTexture";
 import { PageProps } from "./Page";
-import { PageControllerGroup } from "./PageControllerGroup";
+import { PageGroup } from "./PageGroup";
 
 interface QuadUVs {
   front: number[];
@@ -273,7 +273,7 @@ function createBookMesh(
 export function useBook(
   params: BookMeshParams,
   bookTexture: BookTexture,
-  pageControllerGroup: PageControllerGroup,
+  pageGroup: PageGroup,
   initialState: BookOpeningState = buildUniformlyOpenedState(),
   id: number,
   translation: THREE.Vector3,
@@ -291,15 +291,15 @@ export function useBook(
   const { coverMesh: _coverMesh, leftSideMesh, rightSideMesh, mesh } = meshDataRef.current;
 
   function updateBookRotations(): void {
-    const numPages = pageControllerGroup.numPages();
+    const numPages = pageGroup.numPages();
     const { coverAngle, pageAngles } = openingStateRef.current.getPageRotationArgs(numPages);
     leftSideMesh.rotation.y = coverAngle;
     rightSideMesh.rotation.y = -coverAngle;
     for (let i = 0; i < numPages; i++) {
-      if (!pageControllerGroup.exists(i)) {
+      if (!pageGroup.exists(i)) {
         continue;
       }
-      pageControllerGroup.updatePageTransform(i, (rotation, transform) => {
+      pageGroup.updatePageTransform(i, (rotation, transform) => {
         return {
           rotation: new THREE.Euler(rotation.x, pageAngles[i] - Math.PI / 2, rotation.z),
           transform: transform,
@@ -314,7 +314,7 @@ export function useBook(
   }
 
   function addPage(pageProps: PageProps, index: number): void {
-    const numPages = pageControllerGroup.numPages();
+    const numPages = pageGroup.numPages();
     if (index < 0 || index >= numPages) {
       throw new Error(`Page index ${index} is out of bounds (0-${numPages - 1})`);
     }
@@ -327,16 +327,16 @@ export function useBook(
     const { pageAngles } = openingStateRef.current.getPageRotationArgs(numPages);
     const pageRotation = new THREE.Euler(0, pageAngles[index] - Math.PI / 2, 0);
 
-    pageControllerGroup.createPage(pageProps, index, pageRotation, pagePosition);
+    pageGroup.createPage(pageProps, index, pageRotation, pagePosition);
   }
 
   function resizePageArray(newSize: number): void {
-    pageControllerGroup.resize(newSize);
+    pageGroup.resize(newSize);
     updateBookRotations();
   }
 
   function selectPage(pageIndex: number, angle: number = Math.PI / 2): void {
-    const numPages = pageControllerGroup.numPages();
+    const numPages = pageGroup.numPages();
     if (pageIndex < 0 || pageIndex > numPages) {
       throw new Error(`Page index ${pageIndex} is out of bounds (0-${numPages - 1})`);
     }
@@ -369,7 +369,7 @@ export function useBook(
       },
     },
     actions: {
-      numPages: pageControllerGroup.numPages,
+      numPages: pageGroup.numPages,
       setState,
       addPage,
       resizePageArray,

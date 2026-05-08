@@ -107,7 +107,7 @@ export function fromPdfPages(
     frontPdfPage: PdfPage,
     backPdfPage: PdfPage | null,
     params: PageParams
-): Page {
+): PageProps {
     const frontBlob = new Blob([frontPdfPage.imageData], { type: 'image/png' });
     const backBlob = backPdfPage
         ? new Blob([backPdfPage.imageData], { type: 'image/png' })
@@ -122,7 +122,7 @@ export function fromPdfPages(
         back: backImageUrl
     };
 
-    const page = buildPage({ params, textures });
+    const pageProps: PageProps = { params, textures };
 
     setTimeout(() => {
         if (frontImageUrl) {
@@ -133,13 +133,13 @@ export function fromPdfPages(
         }
     }, 1000);
 
-    return page;
+    return pageProps;
 }
 
 export function fromSinglePdfPage(
     pdfPage: PdfPage,
     params: PageParams
-): Page {
+): PageProps {
     const blob = new Blob([pdfPage.imageData], { type: 'image/png' });
     const imageUrl = URL.createObjectURL(blob);
 
@@ -148,15 +148,15 @@ export function fromSinglePdfPage(
         back: imageUrl
     };
 
-    const page = buildPage({ params, textures });
+    const pageProps: PageProps = { params, textures };
 
     setTimeout(() => URL.revokeObjectURL(imageUrl), 1000);
 
-    return page;
+    return pageProps;
 }
 
-export function createBlankPage(params: PageParams): Page {
-    return buildPage({ params, textures: { front: null, back: null } });
+export function createBlankPage(params: PageParams): PageProps {
+    return { params, textures: { front: null, back: null } };
 }
 
 export function getPageParams(bookParams: BookMeshParams): PageParams {

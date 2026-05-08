@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { ProceduralMesh } from '../../utils/ProceduralMesh';
 import { BookTexture } from './BookTexture';
-import { buildPage, Page, PageProps } from './Page';
+import { buildPage, PageProps } from './Page';
 
 interface QuadUVs {
     front: number[];
@@ -124,12 +124,14 @@ export function buildBook(
     let originalPosition: THREE.Vector3 | undefined;
     let originalRotation: THREE.Euler | undefined;
     let pages = pagesArg.map(page => page ? buildPage(page) : null);
+    let pageTransforms: Map<string, { rotation: THREE.Euler, position: THREE.Vector3 }> = new Map();
 
     function setPageTransform(pageId: string, rotation: THREE.Euler, position: THREE.Vector3): void {
         const page = pages.find(page => page?.id === pageId);
         if (page) {
             page.mesh.rotation.set(rotation.x, rotation.y, rotation.z);
             page.mesh.position.set(position.x, position.y, position.z);
+            pageTransforms.set(pageId, { rotation, position });
         }
     }
 
@@ -137,8 +139,7 @@ export function buildBook(
         const page = pages.find(page => page?.id === pageId);
         if (page) {
             const { rotation, transform } = transformUpdate(page.mesh.rotation, page.mesh.position);
-            page.mesh.rotation.set(rotation.x, rotation.y, rotation.z);
-            page.mesh.position.set(transform.x, transform.y, transform.z);
+            setPageTransform(pageId, rotation, transform);
         }
     }
 
@@ -318,10 +319,11 @@ export function buildBook(
         updateBookRotations();
     }
 
-    function addPage(page: Page, index: number): void {
+    function addPage(pageProps: PageProps, index: number): void {
         if (index < 0 || index >= pages.length) {
             throw new Error(`Page index ${index} is out of bounds (0-${pages.length - 1})`);
         }
+        const page = buildPage(pageProps);
         const { bookThickness, coverWidth } = params;
         const pagePosition = new THREE.Vector3(
             -coverWidth / 2 + index * (coverWidth / pages.length) + (coverWidth / pages.length) / 2,
@@ -329,14 +331,13 @@ export function buildBook(
             bookThickness / 2
         );
         const { pageAngles } = openingState.getPageRotationArgs(pages.length);
+        pages[index] = page;
         const pageRotation = new THREE.Euler(0, pageAngles[index] - Math.PI / 2, 0);
-        page.mesh.position.set(pagePosition.x, pagePosition.y, pagePosition.z);
-        page.mesh.rotation.set(pageRotation.x, pageRotation.y, pageRotation.z);
+        setPageTransform(page.id, pageRotation, pagePosition);
 
         if (pages[index]) {
             mesh.remove(pages[index]!.mesh);
         }
-        pages[index] = page;
         mesh.add(page.mesh);
     }
 
@@ -379,6 +380,7 @@ export function buildBook(
             params,
             mesh,
             pages,
+            pageTransforms,
             openingState,
         }, actions: {
             setState,

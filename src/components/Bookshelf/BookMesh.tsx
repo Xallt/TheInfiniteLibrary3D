@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import * as THREE from "three";
 import { BookData } from "../../types/BookData";
-import { Book, buildUniformlyOpenedState, useBook } from "./Book";
+import { Book, buildUniformlyOpenedState, useBook, usePageControllerGroup } from "./Book";
 import { fromPdfPages, getPageParams } from "./Page";
 
 interface BookMeshProps {
@@ -13,10 +13,12 @@ interface BookMeshProps {
 
 export function BookMesh({ data, position, onReady, onUnmount }: BookMeshProps) {
   const rotation = new THREE.Euler(0, Math.PI, 0);
+  const numPagesInitial = 1;
+  const pageControllerGroup = usePageControllerGroup(numPagesInitial);
   const book = useBook(
     data.params,
     data.texture,
-    1,
+    pageControllerGroup,
     buildUniformlyOpenedState(),
     0,
     position,

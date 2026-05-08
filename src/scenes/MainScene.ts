@@ -41,7 +41,6 @@ interface MainSceneProps {
 
 export function useMainScene({ sceneConfig, renderer, scene, camera, controls }: MainSceneProps) {
   // --- Mutable scene state via refs ---
-  const bookshelfMeshRef = useRef<THREE.Mesh | null>(null);
   const viewedBookOriginalParentRef = useRef<THREE.Object3D | null>(null);
   const booksRef = useRef<Book[]>([]);
   const selectedBookIndexRef = useRef(-1);
@@ -61,20 +60,6 @@ export function useMainScene({ sceneConfig, renderer, scene, camera, controls }:
   function onWindowResize() {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
-  }
-
-  function onKeyDown(event: KeyboardEvent) {
-    if (!isBookInViewModeRef.current || !transformControlRef.current) return;
-    switch (event.key.toLowerCase()) {
-      case "t":
-        transformModeRef.current = "translate";
-        transformControlRef.current.setMode("translate");
-        break;
-      case "r":
-        transformModeRef.current = "rotate";
-        transformControlRef.current.setMode("rotate");
-        break;
-    }
   }
 
   function updateBookHover() {
@@ -158,7 +143,6 @@ export function useMainScene({ sceneConfig, renderer, scene, camera, controls }:
 
     renderer.domElement.style.cursor = "default";
     window.addEventListener("resize", onWindowResize);
-    window.addEventListener("keydown", onKeyDown);
     window.addEventListener("mousemove", onMouseMove);
     window.addEventListener("click", onMouseClick);
 
@@ -192,7 +176,6 @@ export function useMainScene({ sceneConfig, renderer, scene, camera, controls }:
     return () => {
       cancelled = true;
       window.removeEventListener("resize", onWindowResize);
-      window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("mousemove", onMouseMove);
       window.removeEventListener("click", onMouseClick);
       controls.dispose();

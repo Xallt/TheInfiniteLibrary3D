@@ -1,32 +1,23 @@
-import { useEffect, useRef, useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { XR, createXRStore } from '@react-three/xr';
 import { BookCollectorSource, fetchBooks } from '../api/BookCollectorAPI';
 import { defaultBookParams, defaultBookTexture, defaultBookshelfParams } from '../config/bookConfig';
 import { MainScene } from '../scenes/MainScene';
 import { PDFResource, createPDFResource } from '../types/PDFResource';
+import { BookData } from '../types/BookData';
 import { BookCollectorModal } from './BookCollectorModal';
-import { Book, TextureLoader } from './Bookshelf/Book';
+import { TextureLoader } from './Bookshelf/Book';
 import { BookTexture } from './Bookshelf/BookTexture';
-import { Page } from './Bookshelf/Page';
 import { BookStateControlsUI } from './BookStateControlsUI';
 import { PDFSelectionModal } from './PDFSelectionModal';
 import { BookshelfSceneInner } from '../scenes/BookshelfSceneInner';
 
 const xrStore = createXRStore();
 
-class BookResourceMapping {
-    constructor(
-        public book: Book,
-        public source: PDFResource,
-        public loaded: boolean = false,
-        public index: number
-    ) {}
-}
-
 export function BookshelfViewer() {
     const mainScene = useMemo(() => new MainScene(defaultBookshelfParams), []);
-    const bookResourceMappingsRef = useRef<{ [index: number]: BookResourceMapping }>({});
+    const [books, setBooks] = useState<BookData[]>([]);
     const [isVRSupported, setIsVRSupported] = useState(false);
     const [isViewingBook, setIsViewingBook] = useState(false);
     const [currentViewingBookIndex, setCurrentViewingBookIndex] = useState(-1);
@@ -55,55 +46,24 @@ export function BookshelfViewer() {
     const handleViewBook = async (bookIndex: number) => {
         if (isViewingBook) throw new Error('Book already in view');
         setCurrentViewingBookIndex(bookIndex);
-        const currentBookResource = bookResourceMappingsRef.current[bookIndex];
-        if (!currentBookResource) throw new Error('Book not found');
         mainScene.viewBook(bookIndex);
         setIsViewingBook(true);
-        if (!currentBookResource.loaded) {
-            await loadBookPages(currentBookResource);
-        }
+        setBooks(prev => prev.map((b, i) => i === bookIndex ? { ...b, loadPages: true } : b));
     };
 
     const handlePDFSourcesSubmitted = async (sources: PDFResource[]) => {
-        const bookPromises = sources.map(async (resource, index) => {
-            try {
-                const book = Book.empty(defaultBookParams, new BookTexture(
-                    TextureLoader.getInstance().load(defaultBookTexture.path),
-                    defaultBookTexture.coverPositions
-                ), 1, index);
-                mainScene.addBook(book);
-                return new BookResourceMapping(book, resource, false, index);
-            } catch (error) {
-                console.error(`Failed to load PDF from ${resource.getDisplayName()}:`, error);
-                return null;
-            }
-        });
-        const results = (await Promise.all(bookPromises)).filter((r): r is BookResourceMapping => r !== null);
-        const sorted = results.sort((a, b) => a.index - b.index);
-        const offset = Object.keys(bookResourceMappingsRef.current).length;
-        bookResourceMappingsRef.current = sorted.reduce((acc, m) => {
-            acc[m.index + offset] = m;
-            return acc;
-        }, { ...bookResourceMappingsRef.current } as { [index: number]: BookResourceMapping });
-    };
-
-    const loadBookPages = async (mapping: BookResourceMapping) => {
-        try {
-            const parseResult = await mapping.source.getParsedPDF({ imageFormat: 'png', scale: 2.0 });
-            const actualPageCount = Math.ceil(parseResult.metadata.numPages / 2);
-            mapping.book.resizePageArray(actualPageCount);
-            let pageIndex = 0;
-            for await (const [frontPage, backPage] of parseResult.getPairedPages()) {
-                const physicalPage = Page.fromPdfPages(frontPage, backPage, Page.getPageParams(mapping.book.getParams()));
-                mapping.book.addPage(physicalPage, pageIndex++);
-            }
-            bookResourceMappingsRef.current = {
-                ...bookResourceMappingsRef.current,
-                [mapping.index]: { ...mapping, loaded: true }
-            };
-        } catch (error) {
-            console.error('Failed to load book pages:', error);
-        }
+        const offset = books.length;
+        const newBooks: BookData[] = sources.map((resource, i) => ({
+            id: `book-${Date.now()}-${offset + i}`,
+            pdfResource: resource,
+            texture: new BookTexture(
+                TextureLoader.getInstance().load(defaultBookTexture.path),
+                defaultBookTexture.coverPositions
+            ),
+            params: defaultBookParams,
+            loadPages: false,
+        }));
+        setBooks(prev => [...prev, ...newBooks]);
     };
 
     const handleDownloadScene = async () => {
@@ -133,13 +93,14 @@ export function BookshelfViewer() {
     };
 
     const getCurrentBookInfo = () => {
-        const resource = bookResourceMappingsRef.current[currentViewingBookIndex];
-        if (!resource || !resource.source.getMetadata()) return null;
-        const metadata = resource.source.getMetadata();
+        const book = books[currentViewingBookIndex];
+        if (!book) return null;
+        const metadata = book.pdfResource.getMetadata();
+        if (!metadata) return null;
         return {
-            title: metadata?.title || 'Untitled',
-            author: metadata?.author || 'Unknown Author',
-            pageCount: metadata?.numPages || 0,
+            title: metadata.title || 'Untitled',
+            author: metadata.author || 'Unknown Author',
+            pageCount: metadata.numPages || 0,
         };
     };
 
@@ -150,10 +111,10 @@ export function BookshelfViewer() {
             <Canvas gl={{ antialias: true, alpha: true }} flat>
                 {isVRSupported ? (
                     <XR store={xrStore}>
-                        <BookshelfSceneInner mainScene={mainScene} isVRSupported={isVRSupported} />
+                        <BookshelfSceneInner mainScene={mainScene} isVRSupported={isVRSupported} books={books} />
                     </XR>
                 ) : (
-                    <BookshelfSceneInner mainScene={mainScene} isVRSupported={isVRSupported} />
+                    <BookshelfSceneInner mainScene={mainScene} isVRSupported={isVRSupported} books={books} />
                 )}
             </Canvas>
 

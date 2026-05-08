@@ -377,7 +377,11 @@ export class Book {
     }
 
     public getOuterSize(): THREE.Vector3 {
-        const { bookThickness, bookWidth, bookHeight, coverWidth } = this.params;
+        return Book.getOuterSizeForParams(this.params);
+    }
+
+    public static getOuterSizeForParams(params: BookMeshParams): THREE.Vector3 {
+        const { bookThickness, bookWidth, bookHeight, coverWidth } = params;
         return new THREE.Vector3(
             coverWidth + bookThickness * 2,
             bookHeight,

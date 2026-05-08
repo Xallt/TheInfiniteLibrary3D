@@ -379,6 +379,18 @@ public initialize(isVRSupported: boolean): void {
         }
     }
 
+    public getBookshelf(): Bookshelf | null {
+        return this.bookshelf ?? null;
+    }
+
+    public setBooks(books: Book[]): void {
+        this.books = [...books];
+        this.bookRestZ = books.map(b => b.getMesh().position.z);
+        this.bookHoverOffsets = books.map(() => 0);
+        this.hoveredBookIndex = -1;
+        this.selectedBookIndex = this.books.length > 0 ? 0 : -1;
+    }
+
     private static readonly HOVER_PERK = 0.05;
     private static readonly HOVER_LERP = 0.15;
 

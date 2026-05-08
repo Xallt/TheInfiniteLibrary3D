@@ -233,4 +233,31 @@ export class Bookshelf {
     public getBookCount(): number {
         return this.books.length;
     }
+
+    public computePositions(bookSizes: THREE.Vector3[]): (THREE.Vector3 | null)[] {
+        const availableX: number[][] = this.rows.map(row => row.cells.map(() => 0));
+        const results: (THREE.Vector3 | null)[] = [];
+
+        for (const bookSize of bookSizes) {
+            let placed = false;
+            outer: for (let ri = 0; ri < this.rows.length; ri++) {
+                for (let ci = 0; ci < this.rows[ri].cells.length; ci++) {
+                    const cell = this.rows[ri].cells[ci];
+                    if (availableX[ri][ci] + bookSize.x <= this.params.cellWidth) {
+                        const pos = new THREE.Vector3(
+                            cell.upperLeftFarCorner.x + availableX[ri][ci] + cell.leftSideThickness + bookSize.x / 2,
+                            cell.upperLeftFarCorner.y - cell.upSideThickness - cell.size.y + bookSize.y / 2,
+                            cell.upperLeftFarCorner.z - cell.backSideThickness - cell.size.z + bookSize.z
+                        );
+                        availableX[ri][ci] += bookSize.x;
+                        results.push(pos);
+                        placed = true;
+                        break outer;
+                    }
+                }
+            }
+            if (!placed) results.push(null);
+        }
+        return results;
+    }
 }

@@ -1,35 +1,24 @@
-import { useEffect, useMemo, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { XR, createXRStore } from '@react-three/xr';
+import { useEffect, useMemo, useState } from 'react';
 import { BookCollectorSource, fetchBooks } from '../api/BookCollectorAPI';
 import { defaultBookParams, defaultBookTexture } from '../config/bookConfig';
+import { BookshelfSceneInner } from '../scenes/BookshelfSceneInner';
 import { MainScene } from '../scenes/MainScene';
-import { PDFResource, createPDFResource } from '../types/PDFResource';
 import { BookData } from '../types/BookData';
+import { PDFResource, createPDFResource } from '../types/PDFResource';
 import { BookCollectorModal } from './BookCollectorModal';
 import { TextureLoader } from './Bookshelf/Book';
 import { BookTexture } from './Bookshelf/BookTexture';
 import { BookStateControlsUI } from './BookStateControlsUI';
 import { PDFSelectionModal } from './PDFSelectionModal';
-import { BookshelfSceneInner } from '../scenes/BookshelfSceneInner';
-
-const xrStore = createXRStore();
 
 export function BookshelfViewer() {
     const mainScene = useMemo(() => new MainScene(), []);
     const [books, setBooks] = useState<BookData[]>([]);
-    const [isVRSupported, setIsVRSupported] = useState(false);
     const [isViewingBook, setIsViewingBook] = useState(false);
     const [currentViewingBookIndex, setCurrentViewingBookIndex] = useState(-1);
     const [showUrlModal, setShowUrlModal] = useState(false);
     const [showBookCollectorModal, setShowBookCollectorModal] = useState(false);
-
-    useEffect(() => {
-        if (!('xr' in navigator) || !navigator.xr) return;
-        navigator.xr.isSessionSupported('immersive-vr').then(supported => {
-            setIsVRSupported(supported);
-        }).catch(() => setIsVRSupported(false));
-    }, []);
 
     useEffect(() => {
         mainScene.setOnBookSelectedCallback((bookIndex) => {
@@ -109,13 +98,7 @@ export function BookshelfViewer() {
     return (
         <div style={{ position: 'relative', width: '100vw', height: '100vh' }}>
             <Canvas gl={{ antialias: true, alpha: true }} flat>
-                {isVRSupported ? (
-                    <XR store={xrStore}>
-                        <BookshelfSceneInner mainScene={mainScene} isVRSupported={isVRSupported} books={books} />
-                    </XR>
-                ) : (
-                    <BookshelfSceneInner mainScene={mainScene} isVRSupported={isVRSupported} books={books} />
-                )}
+                <BookshelfSceneInner mainScene={mainScene} books={books} />
             </Canvas>
 
             <div className="controls-panel panel">

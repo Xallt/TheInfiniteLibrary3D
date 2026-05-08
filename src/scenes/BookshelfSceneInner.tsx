@@ -1,26 +1,24 @@
-import { useEffect, useRef } from 'react';
-import { useThree } from '@react-three/fiber';
 import { Stats } from '@react-three/drei';
-import { MainScene } from '../scenes/MainScene';
-import { BookData } from '../types/BookData';
-import { Book } from '../components/Bookshelf/Book';
+import { useThree } from '@react-three/fiber';
+import { useEffect, useRef } from 'react';
 import { BookshelfMesh } from '../components/Bookshelf/BookshelfMesh';
 import { defaultBookshelfParams, defaultBookshelfTexturePath } from '../config/bookConfig';
+import { MainScene } from '../scenes/MainScene';
+import { BookData } from '../types/BookData';
 
 interface BookshelfSceneInnerProps {
     mainScene: MainScene;
-    isVRSupported: boolean;
     books: BookData[];
 }
 
-export function BookshelfSceneInner({ mainScene, isVRSupported, books }: BookshelfSceneInnerProps) {
+export function BookshelfSceneInner({ mainScene, books }: BookshelfSceneInnerProps) {
     const { scene, gl } = useThree();
     const readyRef = useRef(false);
     const rafRef = useRef<number>(0);
 
     useEffect(() => {
         mainScene.setupScene(gl, scene).then(() => {
-            mainScene.initialize(isVRSupported);
+            mainScene.initialize();
             readyRef.current = true;
         }).catch(err => console.error('setupScene failed:', err));
 

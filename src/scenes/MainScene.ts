@@ -1,12 +1,12 @@
 import * as THREE from 'three';
-import { Book, PageSelectedState } from '../components/Bookshelf/Book';
-import { createControls } from '../components/Controls';
+import { PMREMGenerator } from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
-import { XRControllerModelFactory } from 'three/examples/jsm/webxr/XRControllerModelFactory.js';
 import { TransformControls, TransformControlsGizmo } from 'three/examples/jsm/controls/TransformControls';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter';
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
-import { PMREMGenerator } from 'three';
+import { XRControllerModelFactory } from 'three/examples/jsm/webxr/XRControllerModelFactory.js';
+import { Book } from '../components/Bookshelf/Book';
+import { createControls } from '../components/Controls';
 import { defaultMainSceneConfig, MainSceneConfig } from '../config/mainSceneConfig';
 
 interface BookIntersection extends THREE.Intersection<THREE.Object3D<THREE.Object3DEventMap>> {
@@ -41,11 +41,9 @@ export class MainScene {
 
     private sceneInternal!: THREE.Scene;
     private rendererInternal!: THREE.WebGLRenderer;
-    private isVRSupportedValue: boolean = false;
 
     private get scene(): THREE.Scene { return this.sceneInternal; }
     private get renderer(): THREE.WebGLRenderer { return this.rendererInternal; }
-    private get isVRSupported(): boolean { return this.isVRSupportedValue; }
 
     private camera!: THREE.PerspectiveCamera;
     private controls!: OrbitControls;
@@ -78,8 +76,6 @@ export class MainScene {
     private readonly mouseRaycaster: THREE.Raycaster;
 
     private onBookSelectedCallback?: (bookIndex: number) => void;
-    private onVRSessionStartHandler?: () => void;
-    private onVRSessionEndHandler?: () => void;
 
     private readonly boundOnWindowResize: () => void;
     private readonly boundOnKeyDown: (e: KeyboardEvent) => void;
@@ -98,24 +94,7 @@ export class MainScene {
         this.boundOnMouseClick = this.onMouseClick.bind(this);
     }
 
-public initialize(isVRSupported: boolean): void {
-        this.isVRSupportedValue = isVRSupported;
-
-        if (this.isVRSupportedValue) {
-            this.rendererInternal.xr.addEventListener('sessionstart', () => {
-                const xrManager = this.rendererInternal.xr;
-                const baseReferenceSpace = xrManager.getReferenceSpace();
-                if (baseReferenceSpace) {
-                    const quaternion = new THREE.Quaternion();
-                    const transform = new XRRigidTransform(
-                        { x: -this.camera.position.x, y: -this.camera.position.y + 1, z: -this.camera.position.z },
-                        { x: quaternion.x, y: quaternion.y, z: quaternion.z, w: quaternion.w }
-                    );
-                    xrManager.setReferenceSpace(baseReferenceSpace.getOffsetReferenceSpace(transform));
-                }
-            });
-        }
-
+    public initialize(): void {
         this.rendererInternal.domElement.style.cursor = 'default';
         this.addEventListeners();
     }
@@ -125,7 +104,6 @@ public initialize(isVRSupported: boolean): void {
         window.removeEventListener('keydown', this.boundOnKeyDown);
         window.removeEventListener('mousemove', this.boundOnMouseMove);
         window.removeEventListener('click', this.boundOnMouseClick);
-        this.removeVRSessionListeners();
         this.controls?.dispose();
     }
 
@@ -292,23 +270,7 @@ public initialize(isVRSupported: boolean): void {
     public updateLogic(): void {
         if (!this.rendererInternal || !this.sceneInternal || !this.camera) return;
 
-        if (this.isVRSupported && this.renderer.xr.isPresenting) {
-            const rightController = this.controllerWrappers[1]?.controller;
-            if (rightController) {
-                this.handleControllerRayIntersection(rightController);
-            }
-            this.updateGrabbedBook();
-
-            if (this.isBookInViewMode && this.viewingBookIndex !== -1) {
-                const book = this.books[this.viewingBookIndex];
-                const currentState = book.getCurrentState();
-                if (currentState instanceof PageSelectedState) {
-                    book.selectPage(currentState.getSelectedPageIndex());
-                }
-            }
-        } else {
-            this.controls?.update();
-        }
+        this.controls?.update();
 
         this.updateBookHover();
     }
@@ -316,23 +278,7 @@ public initialize(isVRSupported: boolean): void {
     public tick(): void {
         if (!this.rendererInternal || !this.sceneInternal || !this.camera) return;
 
-        if (this.isVRSupported && this.renderer.xr.isPresenting) {
-            const rightController = this.controllerWrappers[1]?.controller;
-            if (rightController) {
-                this.handleControllerRayIntersection(rightController);
-            }
-            this.updateGrabbedBook();
-
-            if (this.isBookInViewMode && this.viewingBookIndex !== -1) {
-                const book = this.books[this.viewingBookIndex];
-                const currentState = book.getCurrentState();
-                if (currentState instanceof PageSelectedState) {
-                    book.selectPage(currentState.getSelectedPageIndex());
-                }
-            }
-        } else {
-            this.controls?.update();
-        }
+        this.controls?.update();
 
         this.updateBookHover();
         this.render();
@@ -348,7 +294,6 @@ public initialize(isVRSupported: boolean): void {
     }
 
     public setBookshelfMesh(mesh: THREE.Mesh): void {
-        this.bookshelfMesh = mesh;
     }
 
     public setBooks(books: Book[]): void {
@@ -397,28 +342,21 @@ public initialize(isVRSupported: boolean): void {
         book.storeOriginalTransform();
         this.bookshelfMesh?.remove(bookMesh);
 
-        if (this.isVRSupported) {
-            bookMesh.position.set(0, this.sceneElevation, 0.5);
-            bookMesh.rotation.set(0, 0, 0);
-            this.scene.add(bookMesh);
-            this.controls.target.copy(bookMesh.position);
-        } else {
-            this.transformControl = new TransformControls(this.camera, this.renderer.domElement);
-            this.transformControl.size = 0.5;
-            this.transformControl.setMode(this.transformMode);
-            this.transformControl.addEventListener('dragging-changed', (event) => {
-                this.controls.enabled = !event.value;
-            });
+        this.transformControl = new TransformControls(this.camera, this.renderer.domElement);
+        this.transformControl.size = 0.5;
+        this.transformControl.setMode(this.transformMode);
+        this.transformControl.addEventListener('dragging-changed', (event) => {
+            this.controls.enabled = !event.value;
+        });
 
-            this.gizmo = this.transformControl.getHelper();
-            this.scene.add(bookMesh);
-            if (this.gizmo) this.scene.add(this.gizmo);
+        this.gizmo = this.transformControl.getHelper();
+        this.scene.add(bookMesh);
+        if (this.gizmo) this.scene.add(this.gizmo);
 
-            bookMesh.position.set(0, this.sceneElevation, 0.5);
-            bookMesh.rotation.set(0, 0, 0);
-            this.transformControl.attach(bookMesh);
-            this.controls.target.copy(bookMesh.position);
-        }
+        bookMesh.position.set(0, this.sceneElevation, 0.5);
+        bookMesh.rotation.set(0, 0, 0);
+        this.transformControl.attach(bookMesh);
+        this.controls.target.copy(bookMesh.position);
 
         book.setCoverAngles(Math.PI / 2);
         this.controls.update();
@@ -480,28 +418,6 @@ public initialize(isVRSupported: boolean): void {
         bookMesh.scale.copy(scale);
     }
 
-    public onVRSessionStart(callback: () => void): void {
-        this.onVRSessionStartHandler = callback;
-        this.renderer.xr.addEventListener('sessionstart', this.onVRSessionStartHandler);
-    }
-
-    public onVRSessionEnd(callback: () => void): void {
-        this.onVRSessionEndHandler = callback;
-        this.renderer.xr.addEventListener('sessionend', this.onVRSessionEndHandler);
-    }
-
-    public removeVRSessionListeners(): void {
-        if (this.onVRSessionStartHandler) {
-            this.renderer.xr.removeEventListener('sessionstart', this.onVRSessionStartHandler);
-        }
-        if (this.onVRSessionEndHandler) {
-            this.renderer.xr.removeEventListener('sessionend', this.onVRSessionEndHandler);
-        }
-    }
-
-    public isVREnabled(): boolean { return this.isVRSupportedValue; }
-    public isInVR(): boolean { return this.isVRSupportedValue && this.rendererInternal?.xr.isPresenting; }
-
     public selectBookPage(pageIndex: number): void {
         if (this.isBookInViewMode && this.viewingBookIndex !== -1) {
             this.books[this.viewingBookIndex].selectPage(pageIndex);
@@ -525,38 +441,6 @@ public initialize(isVRSupported: boolean): void {
         this.onBookSelectedCallback = callback;
     }
 
-    private handleControllerRayIntersection(controller: THREE.XRTargetRaySpace): void {
-        this.tempMatrix.identity().extractRotation(controller.matrixWorld);
-
-        const rayOrigin = new THREE.Vector3();
-        controller.getWorldPosition(rayOrigin);
-        const rayDirection = new THREE.Vector3(0, 0, -1).applyMatrix4(this.tempMatrix);
-        this.raycaster.set(rayOrigin, rayDirection);
-
-        if (this.controllerRayLine) {
-            this.controllerRayLine.visible = !this.isBookInViewMode;
-        }
-
-        if (this.isBookInViewMode) return;
-
-        const intersects: BookIntersection[] = [];
-        this.books.forEach((book, index) => {
-            const bookIntersects = this.raycaster.intersectObject(book.getMesh(), true);
-            if (bookIntersects.length > 0) {
-                const intersection = bookIntersects[0] as BookIntersection;
-                intersection.bookIndex = index;
-                intersects.push(intersection);
-            }
-        });
-
-        intersects.sort((a, b) => a.distance - b.distance);
-        if (intersects.length > 0) {
-            const bookIndex = intersects[0].bookIndex;
-            if (bookIndex !== undefined && bookIndex !== this.selectedBookIndex) {
-                this.selectBook(bookIndex);
-            }
-        }
-    }
 
     private createControllerRay(): void {
         const geometry = new THREE.BufferGeometry().setFromPoints([
@@ -570,7 +454,7 @@ public initialize(isVRSupported: boolean): void {
     }
 
     private rayBookIntersection(mousePosition: THREE.Vector2): BookIntersection | null {
-        if (this.isInVR() || this.isBookInViewMode) return null;
+        if (this.isBookInViewMode) return null;
 
         this.mouseRaycaster.setFromCamera(mousePosition, this.camera);
 

@@ -11,7 +11,7 @@ export interface PdfParseOptions {
 }
 
 export interface PdfPage {
-    imageData: Uint8Array;
+    imageData: Uint8Array<ArrayBuffer>;
     pageNumber: number;
 }
 

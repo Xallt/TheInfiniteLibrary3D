@@ -263,6 +263,7 @@ function createBookMesh(
     mesh: book,
   };
 }
+
 export function buildBook(
   params: BookMeshParams,
   bookTexture: BookTexture,
@@ -381,7 +382,6 @@ export function buildBook(
       params,
       mesh,
       pages,
-      pageTransforms,
       openingState,
     },
     actions: {

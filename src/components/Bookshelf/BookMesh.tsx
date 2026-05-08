@@ -12,11 +12,18 @@ interface BookMeshProps {
 }
 
 export function BookMesh({ data, position, onReady, onUnmount }: BookMeshProps) {
-  const book = useBook(data.params, data.texture, 1, buildUniformlyOpenedState(), 0);
+  const rotation = new THREE.Euler(0, Math.PI, 0);
+  const book = useBook(
+    data.params,
+    data.texture,
+    1,
+    buildUniformlyOpenedState(),
+    0,
+    position,
+    rotation
+  );
 
   useEffect(() => {
-    book.state.mesh.position.copy(position);
-    book.state.mesh.rotateY(Math.PI);
     onReady(book);
     return () => onUnmount();
   }, []);

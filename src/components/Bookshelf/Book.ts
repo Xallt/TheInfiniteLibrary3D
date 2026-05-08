@@ -198,7 +198,9 @@ function createBox(
 
 function createBookMesh(
   params: BookMeshParams,
-  bookTexture: BookTexture
+  bookTexture: BookTexture,
+  translation: THREE.Vector3,
+  rotation: THREE.Euler
 ): {
   coverMesh: THREE.Mesh;
   leftSideMesh: THREE.Mesh;
@@ -253,6 +255,8 @@ function createBookMesh(
   leftSideMesh.geometry.translate(bookThickness / 2, 0, bookWidth / 2);
 
   const book = new THREE.Mesh();
+  book.position.copy(translation);
+  book.rotation.copy(rotation);
   book.add(coverMesh);
   book.add(leftSideMesh);
   book.add(rightSideMesh);
@@ -299,7 +303,9 @@ export function useBook(
   bookTexture: BookTexture,
   numPagesIn: number,
   initialState: BookOpeningState = buildUniformlyOpenedState(),
-  id: number
+  id: number,
+  translation: THREE.Vector3,
+  rotation: THREE.Euler
 ) {
   const originalPosition = useRef<THREE.Vector3 | null>(null);
   const originalRotation = useRef<THREE.Euler | null>(null);
@@ -308,7 +314,7 @@ export function useBook(
   const openingStateRef = useRef<BookOpeningState>(initialState);
 
   if (!meshDataRef.current) {
-    meshDataRef.current = createBookMesh(params, bookTexture);
+    meshDataRef.current = createBookMesh(params, bookTexture, translation, rotation);
   }
 
   const { coverMesh: _coverMesh, leftSideMesh, rightSideMesh, mesh } = meshDataRef.current;

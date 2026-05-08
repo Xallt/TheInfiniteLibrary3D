@@ -17,7 +17,7 @@ function UniformControls({ book, uniformlyOpenedState, onSwitchToReading }: Unif
     const handleAngleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const value = parseFloat(event.target.value);
         setAngle(value);
-        book.setState(buildUniformlyOpenedState(value));
+        book.actions.setState(buildUniformlyOpenedState(value));
     };
 
     return (
@@ -47,12 +47,12 @@ function ReadingControls({ book, pageSelectedState, onSwitchToUniform }: Reading
 
     const handlePrevPage = () => {
         const prev = Math.max(getPageNum() - 1, 0);
-        if (prev !== getPageNum()) book.setState(buildPageSelectedState(Math.PI / 2, prev));
+        if (prev !== getPageNum()) book.actions.setState(buildPageSelectedState(Math.PI / 2, prev));
     };
 
     const handleNextPage = () => {
-        const next = Math.min(getPageNum() + 1, book.getNumPages());
-        if (next !== getPageNum()) book.setState(buildPageSelectedState(Math.PI / 2, next));
+        const next = Math.min(getPageNum() + 1, book.state.pages.length);
+        if (next !== getPageNum()) book.actions.setState(buildPageSelectedState(Math.PI / 2, next));
     };
 
     return (
@@ -82,12 +82,12 @@ export function BookStateControlsUI({ book }: BookStateControlsUIProps) {
 
     const onSwitchToUniform = () => {
         setBookOpeningState(buildUniformlyOpenedState(Math.PI / 2));
-        book.setState(buildUniformlyOpenedState(Math.PI / 2));
+        book.actions.setState(buildUniformlyOpenedState(Math.PI / 2));
     };
 
     const onSwitchToReading = () => {
         setBookOpeningState(buildPageSelectedState(Math.PI / 2, 0));
-        book.setState(buildPageSelectedState(Math.PI / 2, 0));
+        book.actions.setState(buildPageSelectedState(Math.PI / 2, 0));
     };
 
     return (

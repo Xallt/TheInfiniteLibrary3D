@@ -83,7 +83,7 @@ export function useMainScene({ sceneConfig, renderer, scene, camera, controls }:
         for (let i = 0; i < books.length; i++) {
             const target = i === hoveredBookIndexRef.current ? HOVER_PERK : 0;
             offsets[i] += (target - offsets[i]) * HOVER_LERP;
-            books[i].getMesh().position.z = restZ[i] + offsets[i];
+            books[i].state.mesh.position.z = restZ[i] + offsets[i];
         }
     }
 
@@ -104,7 +104,7 @@ export function useMainScene({ sceneConfig, renderer, scene, camera, controls }:
         mouseRaycasterRef.current.setFromCamera(mousePosition, camera);
         const intersects: BookIntersection[] = [];
         booksRef.current.forEach((book, index) => {
-            const hits = mouseRaycasterRef.current.intersectObject(book.getMesh(), true);
+            const hits = mouseRaycasterRef.current.intersectObject(book.state.mesh, true);
             if (hits.length > 0) {
                 const hit = hits[0] as BookIntersection;
                 hit.bookIndex = index;
@@ -219,7 +219,7 @@ export function useMainScene({ sceneConfig, renderer, scene, camera, controls }:
 
     function setBooks(newBooks: Book[]) {
         booksRef.current = [...newBooks];
-        bookRestZRef.current = newBooks.map(b => b.getMesh().position.z);
+        bookRestZRef.current = newBooks.map(b => b.state.mesh.position.z);
         bookHoverOffsetsRef.current = newBooks.map(() => 0);
         hoveredBookIndexRef.current = -1;
         selectedBookIndexRef.current = newBooks.length > 0 ? 0 : -1;
@@ -239,7 +239,7 @@ export function useMainScene({ sceneConfig, renderer, scene, camera, controls }:
 
     function viewBook(bookIndex: number) {
         const book = booksRef.current[bookIndex];
-        const bookMesh = book.getMesh();
+        const bookMesh = book.state.mesh;
 
         renderer.domElement.style.cursor = 'default';
         hoveredBookIndexRef.current = -1;
@@ -248,7 +248,7 @@ export function useMainScene({ sceneConfig, renderer, scene, camera, controls }:
             bookMesh.position.z = bookRestZRef.current[bookIndex];
         }
 
-        book.storeOriginalTransform();
+        book.actions.storeOriginalTransform();
         bookshelfMeshRef.current?.remove(bookMesh);
 
         const transformControl = new TransformControls(camera, renderer.domElement);
@@ -268,7 +268,7 @@ export function useMainScene({ sceneConfig, renderer, scene, camera, controls }:
         bookMesh.rotation.set(0, 0, 0);
         transformControl.attach(bookMesh);
         controls.target.copy(bookMesh.position);
-        book.setCoverAngles(Math.PI / 2);
+        book.actions.setCoverAngles(Math.PI / 2);
         controls.update();
 
         isBookInViewModeRef.current = true;
@@ -284,7 +284,7 @@ export function useMainScene({ sceneConfig, renderer, scene, camera, controls }:
     function returnBookToShelf() {
         if (!isBookInViewModeRef.current || viewingBookIndexRef.current === -1) return;
         const book = booksRef.current[viewingBookIndexRef.current];
-        const bookMesh = book.getMesh();
+        const bookMesh = book.state.mesh;
 
         if (transformControlRef.current) {
             if (gizmoRef.current) scene.remove(gizmoRef.current);
@@ -294,7 +294,7 @@ export function useMainScene({ sceneConfig, renderer, scene, camera, controls }:
 
         scene.remove(bookMesh);
         bookshelfMeshRef.current?.add(bookMesh);
-        book.restoreOriginalTransform();
+        book.actions.restoreOriginalTransform();
         isBookInViewModeRef.current = false;
         viewingBookIndexRef.current = -1;
     }
@@ -312,7 +312,7 @@ export function useMainScene({ sceneConfig, renderer, scene, camera, controls }:
 
     function selectBookPage(pageIndex: number) {
         if (isBookInViewModeRef.current && viewingBookIndexRef.current !== -1) {
-            booksRef.current[viewingBookIndexRef.current].selectPage(pageIndex);
+            booksRef.current[viewingBookIndexRef.current].actions.selectPage(pageIndex);
         }
     }
 

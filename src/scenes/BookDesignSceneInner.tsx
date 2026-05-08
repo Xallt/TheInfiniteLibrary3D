@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { useThree } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
-import { Book, BookMeshParams } from '../components/Bookshelf/Book';
+import { Book, BookMeshParams, buildEmptyBook } from '../components/Bookshelf/Book';
 import { BookTexture } from '../components/Bookshelf/BookTexture';
 import { PDFResource } from '../types/PDFResource';
 import { Page } from '../components/Bookshelf/Page';
@@ -26,13 +26,13 @@ export function BookDesignSceneInner({
 
     useEffect(() => {
         booksRef.current.forEach(book => {
-            scene.remove(book.getMesh());
+            scene.remove(book.state.mesh);
         });
         booksRef.current = [];
 
         bookTextures.forEach(async (texture, index) => {
-            const book = Book.empty(bookParams, texture, 1, index);
-            const bookMesh = book.getMesh();
+            const book = buildEmptyBook(bookParams, texture, 1, index);
+            const bookMesh = book.state.mesh;
             bookMesh.position.set(
                 index * 0.5 - (bookTextures.length - 1) * 0.25,
                 0,
@@ -52,16 +52,16 @@ export function BookDesignSceneInner({
                         scale: 2.0,
                     });
                     const actualPageCount = Math.ceil(parseResult.metadata.numPages / 2);
-                    book.resizePageArray(actualPageCount);
+                    book.actions.resizePageArray(actualPageCount);
 
                     let pageIndex = 0;
                     for await (const [frontPage, backPage] of parseResult.getPairedPages()) {
                         const physicalPage = Page.fromPdfPages(
                             frontPage,
                             backPage,
-                            Page.getPageParams(book.getParams())
+                            Page.getPageParams(book.state.params)
                         );
-                        book.addPage(physicalPage, pageIndex++);
+                        book.actions.addPage(physicalPage, pageIndex++);
                     }
                     loadedPdfRef.current = pdfResource;
                 } catch (error) {

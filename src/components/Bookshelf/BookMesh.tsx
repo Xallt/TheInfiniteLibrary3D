@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
-import { Book } from './Book';
+import { Book, buildEmptyBook } from './Book';
 import { Page } from './Page';
 import { BookData } from '../../types/BookData';
 
@@ -15,9 +15,9 @@ export function BookMesh({ data, position, onReady, onUnmount }: BookMeshProps) 
     const bookRef = useRef<Book | null>(null);
 
     if (!bookRef.current) {
-        bookRef.current = Book.empty(data.params, data.texture, 1, 0);
-        bookRef.current.getMesh().position.copy(position);
-        bookRef.current.getMesh().rotateY(Math.PI);
+        bookRef.current = buildEmptyBook(data.params, data.texture, 1, 0);
+        bookRef.current.state.mesh.position.copy(position);
+        bookRef.current.state.mesh.rotateY(Math.PI);
     }
 
     useEffect(() => {
@@ -35,12 +35,12 @@ export function BookMesh({ data, position, onReady, onUnmount }: BookMeshProps) 
                 const parseResult = await data.pdfResource.getParsedPDF({ imageFormat: 'png', scale: 2.0 });
                 if (cancelled) return;
                 const actualPageCount = Math.ceil(parseResult.metadata.numPages / 2);
-                book.resizePageArray(actualPageCount);
+                book.actions.resizePageArray(actualPageCount);
                 let pageIndex = 0;
                 for await (const [frontPage, backPage] of parseResult.getPairedPages()) {
                     if (cancelled) return;
-                    const physicalPage = Page.fromPdfPages(frontPage, backPage, Page.getPageParams(book.getParams()));
-                    book.addPage(physicalPage, pageIndex++);
+                    const physicalPage = Page.fromPdfPages(frontPage, backPage, Page.getPageParams(book.state.params));
+                    book.actions.addPage(physicalPage, pageIndex++);
                 }
             } catch (error) {
                 console.error('Failed to load book pages:', error);
@@ -50,5 +50,5 @@ export function BookMesh({ data, position, onReady, onUnmount }: BookMeshProps) 
         return () => { cancelled = true; };
     }, [data.loadPages]);
 
-    return <primitive object={bookRef.current.getMesh()} />;
+    return <primitive object={bookRef.current.state.mesh} />;
 }

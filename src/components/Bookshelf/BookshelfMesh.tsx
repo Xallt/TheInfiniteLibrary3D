@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { Bookshelf, BookshelfParams } from './Bookshelf';
 import { BookMesh } from './BookMesh';
 import { BookData } from '../../types/BookData';
-import { Book } from './Book';
+import { Book, getBookOuterSize } from './Book';
 
 interface BookshelfMeshProps {
     params: BookshelfParams;
@@ -39,7 +39,7 @@ export function BookshelfMesh({
     }, []);
 
     const positions = bookshelf.computePositions(
-        books.map(b => Book.getOuterSizeForParams(b.params))
+        books.map(b => getBookOuterSize(b.params))
     );
 
     const syncBooks = () => {

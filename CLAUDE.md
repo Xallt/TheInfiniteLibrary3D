@@ -1,5 +1,4 @@
 - Don't commit plans to the repo
 - always run `pnpm type-check` after implementing a feature
 - consult with the user on any unclear code design decisions before implementation
-- use browser tools to check the implemented feature
 - no need for useMemo or useCallback because we're using React Compiler

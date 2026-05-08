@@ -47,7 +47,6 @@ export function useMainScene({ sceneConfig, renderer, scene, camera, controls }:
     const bookHoverOffsetsRef = useRef<number[]>([]);
     const isBookInViewModeRef = useRef(false);
     const viewingBookIndexRef = useRef(-1);
-    const gizmoRef = useRef<THREE.Object3D | null>(null);
     const transformControlRef = useRef<TransformControls | null>(null);
     const transformModeRef = useRef<'translate' | 'rotate'>('translate');
     const mouseRaycasterRef = useRef(new THREE.Raycaster());
@@ -258,11 +257,8 @@ export function useMainScene({ sceneConfig, renderer, scene, camera, controls }:
             controls.enabled = !event.value;
         });
 
-        const gizmo = transformControl.getHelper();
         scene.add(bookMesh);
-        if (gizmo) scene.add(gizmo);
         transformControlRef.current = transformControl;
-        gizmoRef.current = gizmo;
 
         bookMesh.position.set(0, SCENE_ELEVATION, 0.5);
         bookMesh.rotation.set(0, 0, 0);
@@ -287,7 +283,6 @@ export function useMainScene({ sceneConfig, renderer, scene, camera, controls }:
         const bookMesh = book.state.mesh;
 
         if (transformControlRef.current) {
-            if (gizmoRef.current) scene.remove(gizmoRef.current);
             transformControlRef.current.detach();
             transformControlRef.current = null;
         }

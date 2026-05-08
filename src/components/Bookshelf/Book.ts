@@ -125,11 +125,25 @@ export function buildBook(
     let originalRotation: THREE.Euler | undefined;
     let pages = pagesArg.map(page => page ? buildPage(page) : null);
 
-    let coverMesh!: THREE.Mesh;
-    let leftSideMesh!: THREE.Mesh;
-    let rightSideMesh!: THREE.Mesh;
+    function setPageTransform(pageId: string, rotation: THREE.Euler, position: THREE.Vector3): void {
+        const page = pages.find(page => page?.id === pageId);
+        if (page) {
+            page.mesh.rotation.set(rotation.x, rotation.y, rotation.z);
+            page.mesh.position.set(position.x, position.y, position.z);
+        }
+    }
+
+    function updatePageTransform(pageId: string, transformUpdate: (rotation: THREE.Euler, transform: THREE.Vector3) => { rotation: THREE.Euler, transform: THREE.Vector3 }): void {
+        const page = pages.find(page => page?.id === pageId);
+        if (page) {
+            const { rotation, transform } = transformUpdate(page.mesh.rotation, page.mesh.position);
+            page.mesh.rotation.set(rotation.x, rotation.y, rotation.z);
+            page.mesh.position.set(transform.x, transform.y, transform.z);
+        }
+    }
+
     let openingState = initialState;
-    let mesh = createBookMesh();
+    let { coverMesh, leftSideMesh, rightSideMesh, mesh } = createBookMesh();
 
     function createBoxGeometry(boxSize: THREE.Vector3, uvs: QuadUVs): THREE.BufferGeometry {
         const corner = new THREE.Vector3(
@@ -212,15 +226,25 @@ export function buildBook(
         rightSideMesh.rotation.y = -coverAngle;
         pages.forEach((page, index) => {
             if (page) {
-                page.mesh.rotation.y = pageAngles[index] - Math.PI / 2;
+                updatePageTransform(page.id, (rotation, transform) => {
+                    return {
+                        rotation: new THREE.Euler(rotation.x, pageAngles[index] - Math.PI / 2, rotation.z),
+                        transform: transform
+                    };
+                });
             }
         });
     }
 
-    function createBookMesh(): THREE.Mesh {
+    function createBookMesh(): {
+        coverMesh: THREE.Mesh;
+        leftSideMesh: THREE.Mesh;
+        rightSideMesh: THREE.Mesh;
+        mesh: THREE.Mesh;
+    } {
         const { bookThickness, bookWidth, bookHeight, coverWidth } = params;
 
-        coverMesh = createBox(
+        const coverMesh = createBox(
             new THREE.Vector3(0, 0, 0),
             new THREE.Vector3(coverWidth, bookHeight, bookThickness),
             createBoxGeometry(new THREE.Vector3(coverWidth, bookHeight, bookThickness), {
@@ -233,7 +257,7 @@ export function buildBook(
             })
         );
 
-        rightSideMesh = createBox(
+        const rightSideMesh = createBox(
             new THREE.Vector3(-coverWidth / 2, 0, bookThickness / 2),
             new THREE.Vector3(bookThickness, bookHeight, bookWidth),
             createBoxGeometry(new THREE.Vector3(bookThickness, bookHeight, bookWidth), {
@@ -246,7 +270,7 @@ export function buildBook(
             })
         );
 
-        leftSideMesh = createBox(
+        const leftSideMesh = createBox(
             new THREE.Vector3(coverWidth / 2, 0, bookThickness / 2),
             new THREE.Vector3(bookThickness, bookHeight, bookWidth),
             createBoxGeometry(new THREE.Vector3(bookThickness, bookHeight, bookWidth), {
@@ -276,13 +300,17 @@ export function buildBook(
                 );
                 const { pageAngles } = openingState.getPageRotationArgs(pages.length);
                 const pageRotation = new THREE.Euler(0, pageAngles[index], 0);
-                page.mesh.position.set(pagePosition.x, pagePosition.y, pagePosition.z);
-                page.mesh.rotation.set(pageRotation.x, pageRotation.y, pageRotation.z);
+                setPageTransform(page.id, pageRotation, pagePosition);
                 book.add(page.mesh);
             }
         });
 
-        return book;
+        return {
+            coverMesh,
+            leftSideMesh,
+            rightSideMesh,
+            mesh: book
+        };
     }
 
     function setState(newState: BookOpeningState): void {

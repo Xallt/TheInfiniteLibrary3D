@@ -77,6 +77,7 @@ export function buildPage(pageProps: PageProps) {
     let mesh = createPageMesh(pageProps.params, pageProps.textures);
 
     return {
+        id: crypto.randomUUID(),
         mesh,
         pageProps,
     };

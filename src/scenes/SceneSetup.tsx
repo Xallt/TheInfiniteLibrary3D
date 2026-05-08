@@ -11,7 +11,7 @@ export function SceneSetup({ config }: { config: MainSceneConfig }) {
   const { scene, gl: renderer } = useThree();
 
   useEffect(() => {
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.0);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
     scene.add(ambientLight);
 
     const spotLight = new THREE.SpotLight(0xffffff, 3, 100, Math.PI / 3, 0.5, 2);
@@ -20,6 +20,7 @@ export function SceneSetup({ config }: { config: MainSceneConfig }) {
     scene.add(spotLight);
     scene.add(spotLight.target);
     scene.background = new THREE.Color(0x000000);
+    scene.fog = new THREE.FogExp2(0x000000, 0.18);
 
     const textureLoader = new THREE.TextureLoader();
     const floorTexture = textureLoader.load(config.floorTexture.path);
@@ -60,6 +61,7 @@ export function SceneSetup({ config }: { config: MainSceneConfig }) {
       cancelled = true;
       scene.remove(floor, ambientLight, spotLight, spotLight.target);
       floor.geometry.dispose();
+      scene.fog = null;
     };
   }, [scene, renderer, config]);
 

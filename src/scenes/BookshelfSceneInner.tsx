@@ -30,21 +30,33 @@ const HOVER_PERK = 0.05;
 export function BookshelfSceneInner(props: BookshelfSceneInnerProps) {
   const { gl: renderer, set } = useThree();
   const cameraRef = useRef<THREE.PerspectiveCamera>(buildCamera());
-  const controlsRef = useRef<OrbitControls>(buildControls(cameraRef.current, renderer));
+  const controlsRef = useRef<OrbitControls | null>(null);
+  if (!controlsRef.current) {
+    controlsRef.current = buildControls(cameraRef.current);
+  }
 
   useEffect(() => {
     set({ camera: cameraRef.current });
   }, [set]);
 
+  useEffect(() => {
+    const controls = controlsRef.current!;
+    controls.domElement = renderer.domElement;
+    controls.connect();
+    return () => controls.disconnect();
+  }, [renderer.domElement]);
+
   useFrame(() => {
-    controlsRef.current.update();
+    controlsRef.current?.update();
   });
 
   useEffect(() => {
+    const controls = controlsRef.current;
+    if (!controls) return;
     if (props.viewingBookIndex !== null) {
-      controlsRef.current.target.copy(VIEW_CENTER);
+      controls.target.copy(VIEW_CENTER);
     } else {
-      controlsRef.current.target.set(0, SCENE_ELEVATION, 0);
+      controls.target.set(0, SCENE_ELEVATION, 0);
     }
   }, [props.viewingBookIndex]);
 

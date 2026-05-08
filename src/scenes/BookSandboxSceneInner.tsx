@@ -28,20 +28,26 @@ function buildSandboxCamera(): THREE.PerspectiveCamera {
 export function BookSandboxSceneInner({ params, texture, pages, openingState }: BookSandboxSceneInnerProps) {
   const { gl: renderer, set } = useThree();
   const cameraRef = useRef<THREE.PerspectiveCamera>(buildSandboxCamera());
-  const controlsRef = useRef<OrbitControls>(
-    (() => {
-      const ctrl = createControls(cameraRef.current, renderer);
-      ctrl.target.set(0, 0, 0);
-      return ctrl;
-    })()
-  );
+  const controlsRef = useRef<OrbitControls | null>(null);
+  if (!controlsRef.current) {
+    const ctrl = createControls(cameraRef.current);
+    ctrl.target.set(0, 0, 0);
+    controlsRef.current = ctrl;
+  }
 
   useEffect(() => {
     set({ camera: cameraRef.current });
   }, [set]);
 
+  useEffect(() => {
+    const controls = controlsRef.current!;
+    controls.domElement = renderer.domElement;
+    controls.connect();
+    return () => controls.disconnect();
+  }, [renderer.domElement]);
+
   useFrame(() => {
-    controlsRef.current.update();
+    controlsRef.current?.update();
   });
 
   return (

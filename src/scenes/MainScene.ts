@@ -12,11 +12,8 @@ export function buildCamera(): THREE.PerspectiveCamera {
   return cam;
 }
 
-export function buildControls(
-  camera: THREE.PerspectiveCamera,
-  renderer: THREE.WebGLRenderer
-): OrbitControls {
-  const ctrl = createControls(camera, renderer);
+export function buildControls(camera: THREE.PerspectiveCamera): OrbitControls {
+  const ctrl = createControls(camera);
   ctrl.target.set(0, SCENE_ELEVATION, 0);
   return ctrl;
 }

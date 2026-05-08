@@ -80,7 +80,7 @@ export function BookshelfMesh({
             openingState={openingState}
             worldPosition={worldPosition}
             worldRotation={worldRotation}
-            hoverOffset={isSelected ? hoverPerk : 0}
+            hoverOffset={isSelected ? -hoverPerk : 0}
             onPointerOver={() => viewingBookIndex === null && onBookHover(i)}
             onPointerOut={() => onBookHover(null)}
             onClick={() => viewingBookIndex === null && onBookClick(i)}

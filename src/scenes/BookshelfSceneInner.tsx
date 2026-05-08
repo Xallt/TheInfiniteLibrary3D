@@ -27,9 +27,14 @@ const SHELF_ROTATION = new THREE.Euler(0, Math.PI, 0);
 const HOVER_PERK = 0.05;
 
 export function BookshelfSceneInner(props: BookshelfSceneInnerProps) {
-  const { scene, gl: renderer } = useThree();
+  const { scene, gl: renderer, set } = useThree();
   const cameraRef = useRef<THREE.PerspectiveCamera>(buildCamera());
   const controlsRef = useRef<OrbitControls>(buildControls(cameraRef.current, renderer));
+
+  // Tell R3F to use our custom camera so its pointer-event raycaster stays in sync
+  useEffect(() => {
+    set({ camera: cameraRef.current });
+  }, [set]);
 
   useMainScene({
     sceneConfig: defaultMainSceneConfig,

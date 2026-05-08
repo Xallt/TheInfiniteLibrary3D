@@ -42,6 +42,7 @@ interface MainSceneProps {
 export function useMainScene({ sceneConfig, renderer, scene, camera, controls }: MainSceneProps) {
   // --- Mutable scene state via refs ---
   const bookshelfMeshRef = useRef<THREE.Mesh | null>(null);
+  const viewedBookOriginalParentRef = useRef<THREE.Object3D | null>(null);
   const booksRef = useRef<Book[]>([]);
   const selectedBookIndexRef = useRef(-1);
   const hoveredBookIndexRef = useRef(-1);
@@ -252,7 +253,7 @@ export function useMainScene({ sceneConfig, renderer, scene, camera, controls }:
     }
 
     book.actions.storeOriginalTransform();
-    bookshelfMeshRef.current?.remove(bookMesh);
+    viewedBookOriginalParentRef.current = bookMesh.parent;
 
     const transformControl = new TransformControls(camera, renderer.domElement);
     transformControl.size = 0.5;
@@ -292,7 +293,10 @@ export function useMainScene({ sceneConfig, renderer, scene, camera, controls }:
     }
 
     scene.remove(bookMesh);
-    bookshelfMeshRef.current?.add(bookMesh);
+    if (viewedBookOriginalParentRef.current) {
+      viewedBookOriginalParentRef.current.add(bookMesh);
+      viewedBookOriginalParentRef.current = null;
+    }
     book.actions.restoreOriginalTransform();
     isBookInViewModeRef.current = false;
     viewingBookIndexRef.current = -1;

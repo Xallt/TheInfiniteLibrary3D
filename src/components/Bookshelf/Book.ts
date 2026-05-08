@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import * as THREE from "three";
 import { ProceduralMesh } from "../../utils/ProceduralMesh";
 import { BookTexture } from "./BookTexture";
@@ -293,30 +294,35 @@ function buildPageController(
 
 type PageController = ReturnType<typeof buildPageController>;
 
-export function buildBook(
+export function useBook(
   params: BookMeshParams,
   bookTexture: BookTexture,
   numPagesIn: number,
   initialState: BookOpeningState = buildUniformlyOpenedState(),
   id: number
 ) {
-  let originalPosition: THREE.Vector3 | undefined;
-  let originalRotation: THREE.Euler | undefined;
-  let pageControllers: (PageController | null)[] = new Array(numPagesIn).fill(null);
+  const originalPosition = useRef<THREE.Vector3 | null>(null);
+  const originalRotation = useRef<THREE.Euler | null>(null);
+  const pageControllers = useRef<(PageController | null)[]>(new Array(numPagesIn).fill(null));
+  const meshDataRef = useRef<ReturnType<typeof createBookMesh> | null>(null);
+  const openingStateRef = useRef<BookOpeningState>(initialState);
 
-  function numPagesFn(): number {
-    return pageControllers.length;
+  if (!meshDataRef.current) {
+    meshDataRef.current = createBookMesh(params, bookTexture);
   }
 
-  let openingState = initialState;
-  let { coverMesh, leftSideMesh, rightSideMesh, mesh } = createBookMesh(params, bookTexture);
+  const { coverMesh: _coverMesh, leftSideMesh, rightSideMesh, mesh } = meshDataRef.current;
+
+  function numPagesFn(): number {
+    return pageControllers.current.length;
+  }
 
   function updateBookRotations(): void {
     const numPages = numPagesFn();
-    const { coverAngle, pageAngles } = openingState.getPageRotationArgs(numPages);
+    const { coverAngle, pageAngles } = openingStateRef.current.getPageRotationArgs(numPages);
     leftSideMesh.rotation.y = coverAngle;
     rightSideMesh.rotation.y = -coverAngle;
-    pageControllers.forEach((pageController, index) => {
+    pageControllers.current.forEach((pageController, index) => {
       if (pageController) {
         pageController.updatePageTransform((rotation, transform) => {
           return {
@@ -329,7 +335,7 @@ export function buildBook(
   }
 
   function setState(newState: BookOpeningState): void {
-    openingState = newState;
+    openingStateRef.current = newState;
     updateBookRotations();
   }
 
@@ -344,24 +350,24 @@ export function buildBook(
       0,
       bookThickness / 2
     );
-    const { pageAngles } = openingState.getPageRotationArgs(numPages);
+    const { pageAngles } = openingStateRef.current.getPageRotationArgs(numPages);
     const pageRotation = new THREE.Euler(0, pageAngles[index] - Math.PI / 2, 0);
 
-    if (pageControllers[index]) {
-      mesh.remove(pageControllers[index]!.page.mesh);
+    if (pageControllers.current[index]) {
+      mesh.remove(pageControllers.current[index]!.page.mesh);
     }
-    pageControllers[index] = buildPageController(pageProps, pageRotation, pagePosition);
-    mesh.add(pageControllers[index]!.page.mesh);
+    pageControllers.current[index] = buildPageController(pageProps, pageRotation, pagePosition);
+    mesh.add(pageControllers.current[index]!.page.mesh);
   }
 
   function resizePageArray(newSize: number): void {
     const numPages = numPagesFn();
     for (let i = 0; i < numPages; i++) {
-      if (pageControllers[i]) {
-        mesh.remove(pageControllers[i]!.page.mesh);
+      if (pageControllers.current[i]) {
+        mesh.remove(pageControllers.current[i]!.page.mesh);
       }
     }
-    pageControllers.splice(0, numPages, ...new Array(newSize).fill(null));
+    pageControllers.current.splice(0, numPages, ...new Array(newSize).fill(null));
     updateBookRotations();
   }
 
@@ -378,14 +384,14 @@ export function buildBook(
   }
 
   function storeOriginalTransform(): void {
-    originalPosition = mesh.position.clone();
-    originalRotation = mesh.rotation.clone();
+    originalPosition.current = mesh.position.clone();
+    originalRotation.current = mesh.rotation.clone();
   }
 
   function restoreOriginalTransform(): void {
-    if (!originalPosition || !originalRotation) return;
-    mesh.position.copy(originalPosition);
-    mesh.rotation.copy(originalRotation);
+    if (!originalPosition.current || !originalRotation.current) return;
+    mesh.position.copy(originalPosition.current);
+    mesh.rotation.copy(originalRotation.current);
     setCoverAngles(0);
   }
 
@@ -394,7 +400,9 @@ export function buildBook(
       id,
       params,
       mesh,
-      openingState,
+      get openingState() {
+        return openingStateRef.current;
+      },
     },
     actions: {
       numPages: numPagesFn,
@@ -409,4 +417,4 @@ export function buildBook(
   };
 }
 
-export type Book = ReturnType<typeof buildBook>;
+export type Book = ReturnType<typeof useBook>;

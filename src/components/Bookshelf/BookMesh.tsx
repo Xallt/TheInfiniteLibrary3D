@@ -1,7 +1,7 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import * as THREE from "three";
 import { BookData } from "../../types/BookData";
-import { Book, buildBook, buildUniformlyOpenedState } from "./Book";
+import { Book, buildUniformlyOpenedState, useBook } from "./Book";
 import { fromPdfPages, getPageParams } from "./Page";
 
 interface BookMeshProps {
@@ -12,22 +12,17 @@ interface BookMeshProps {
 }
 
 export function BookMesh({ data, position, onReady, onUnmount }: BookMeshProps) {
-  const bookRef = useRef<Book | null>(null);
-
-  if (!bookRef.current) {
-    bookRef.current = buildBook(data.params, data.texture, 1, buildUniformlyOpenedState(), 0);
-    bookRef.current.state.mesh.position.copy(position);
-    bookRef.current.state.mesh.rotateY(Math.PI);
-  }
+  const book = useBook(data.params, data.texture, 1, buildUniformlyOpenedState(), 0);
 
   useEffect(() => {
-    onReady(bookRef.current!);
+    book.state.mesh.position.copy(position);
+    book.state.mesh.rotateY(Math.PI);
+    onReady(book);
     return () => onUnmount();
   }, []);
 
   useEffect(() => {
-    if (!data.loadPages || !bookRef.current) return;
-    const book = bookRef.current;
+    if (!data.loadPages) return;
     let cancelled = false;
 
     (async () => {
@@ -52,5 +47,5 @@ export function BookMesh({ data, position, onReady, onUnmount }: BookMeshProps) 
     };
   }, [data.loadPages]);
 
-  return <primitive object={bookRef.current.state.mesh} />;
+  return <primitive object={book.state.mesh} />;
 }

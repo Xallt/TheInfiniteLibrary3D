@@ -67,7 +67,7 @@ export function BookshelfMesh({
               slot.z + shelfWorldPos.z
             );
         const worldRotation = isViewing ? viewRotation : shelfRotation;
-        const openingState = isViewing ? viewingOpeningState : undefined;
+        const openingState = isViewing ? viewingOpeningState : null;
         const pages = pagesByBook[b.id] ?? [];
 
         return (

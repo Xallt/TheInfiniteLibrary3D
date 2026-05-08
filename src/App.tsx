@@ -5,7 +5,7 @@ import { TabSwitcher } from "./components/TabSwitcher";
 import "./styles/panel.css";
 
 export function App() {
-  const [activeTab, setActiveTab] = useState<"bookshelf" | "book">("bookshelf");
+  const [activeTab, setActiveTab] = useState<"bookshelf" | "book">("book");
 
   return (
     <>

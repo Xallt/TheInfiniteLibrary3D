@@ -1,11 +1,7 @@
 import { useFrame } from "@react-three/fiber";
 import { useRef } from "react";
 import * as THREE from "three";
-import {
-  BookMeshParams,
-  BookOpeningState,
-  buildUniformlyOpenedState,
-} from "./Book";
+import { BookMeshParams, BookOpeningState } from "./Book";
 import { BookCover } from "./BookCover";
 import { BookTexture } from "./BookTexture";
 import { Page, PageComponentProps } from "./PageComponent";
@@ -19,7 +15,7 @@ export interface BookProps {
   params: BookMeshParams;
   texture: BookTexture;
   pages: BookPageInput[];
-  openingState?: BookOpeningState;
+  openingState: BookOpeningState | null;
   worldPosition: THREE.Vector3;
   worldRotation: THREE.Euler;
   hoverOffset?: number;
@@ -28,11 +24,7 @@ export interface BookProps {
   onClick?: () => void;
 }
 
-function pageSlotPosition(
-  index: number,
-  numPages: number,
-  params: BookMeshParams
-): THREE.Vector3 {
+function pageSlotPosition(index: number, numPages: number, params: BookMeshParams): THREE.Vector3 {
   const { bookThickness, coverWidth } = params;
   return new THREE.Vector3(
     -coverWidth / 2 + index * (coverWidth / numPages) + coverWidth / numPages / 2,
@@ -49,7 +41,7 @@ export function Book({
   params,
   texture,
   pages,
-  openingState = buildUniformlyOpenedState(0),
+  openingState,
   worldPosition,
   worldRotation,
   hoverOffset = 0,
@@ -67,7 +59,10 @@ export function Book({
   });
 
   const numPages = pages.length;
-  const { coverAngle, pageAngles } = openingState.getPageRotationArgs(numPages);
+  const { coverAngle, pageAngles } = openingState?.getPageRotationArgs(numPages) ?? {
+    coverAngle: 0,
+    pageAngles: Array(numPages).fill(0),
+  };
 
   return (
     <group

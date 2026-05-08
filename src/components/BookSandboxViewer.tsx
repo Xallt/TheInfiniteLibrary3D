@@ -4,16 +4,21 @@ import { defaultBookParams, defaultBookTexture } from "../config/bookConfig";
 import { BookSandboxSceneInner } from "../scenes/BookSandboxSceneInner";
 import { BookData } from "../types/BookData";
 import { PDFResource, URLPDFResource } from "../types/PDFResource";
-import { BookOpeningState, BookMeshParams, TextureLoader, buildUniformlyOpenedState } from "./Bookshelf/Book";
+import { BookSandboxControls } from "./BookSandboxControls";
+import {
+  BookMeshParams,
+  BookOpeningState,
+  buildPageSelectedState,
+  TextureLoader,
+} from "./Bookshelf/Book";
 import { BookTexture } from "./Bookshelf/BookTexture";
 import { useBookPages } from "./Bookshelf/useBookPages";
-import { BookSandboxControls } from "./BookSandboxControls";
 
 const DEFAULT_PDF_URL = "https://arxiv.org/pdf/1706.03762";
 
 export function BookSandboxViewer() {
   const [bookParams, setBookParams] = useState<BookMeshParams>(defaultBookParams);
-  const [openingState, setOpeningState] = useState<BookOpeningState>(buildUniformlyOpenedState(0));
+  const [openingState, setOpeningState] = useState<BookOpeningState>(buildPageSelectedState(0));
   const [pdfResource, setPdfResource] = useState<PDFResource | null>(
     () => new URLPDFResource(DEFAULT_PDF_URL)
   );
@@ -26,7 +31,13 @@ export function BookSandboxViewer() {
 
   const bookData: BookData = pdfResource
     ? { id: bookId, pdfResource, texture, params: bookParams, loadPages: true }
-    : { id: bookId, pdfResource: new URLPDFResource(""), texture, params: bookParams, loadPages: false };
+    : {
+        id: bookId,
+        pdfResource: new URLPDFResource(""),
+        texture,
+        params: bookParams,
+        loadPages: false,
+      };
 
   const pages = useBookPages(bookData, pdfResource !== null);
 

@@ -47,6 +47,84 @@ function SliderRow({ label, value, min, max, step, onChange }: SliderRowProps) {
   );
 }
 
+interface UniformOpeningControlsProps {
+  state: UniformlyOpenedState;
+  onOpeningStateChange: (s: BookOpeningState) => void;
+}
+
+function UniformOpeningControls({ state, onOpeningStateChange }: UniformOpeningControlsProps) {
+  return (
+    <>
+      <input
+        type="range"
+        min={0}
+        max={Math.PI / 2}
+        step={0.01}
+        value={state.angle}
+        onChange={(e) =>
+          onOpeningStateChange(buildUniformlyOpenedState(parseFloat(e.target.value)))
+        }
+        className="angle-slider"
+      />
+      <button
+        className="panel-btn"
+        onClick={() => onOpeningStateChange(buildPageSelectedState(Math.PI / 2, 0))}
+      >
+        Read Book
+      </button>
+    </>
+  );
+}
+
+interface PageSelectedControlsProps {
+  state: PageSelectedState;
+  numPages: number;
+  onOpeningStateChange: (s: BookOpeningState) => void;
+}
+
+function PageSelectedControls({ state, numPages, onOpeningStateChange }: PageSelectedControlsProps) {
+  return (
+    <>
+      <span className="panel-text" style={{ opacity: 0.5 }}>
+        Page {state.selectedPageIndex + 1} / {numPages}
+      </span>
+      <div style={{ display: "flex" }}>
+        <button
+          className="panel-btn"
+          style={{ flex: 1 }}
+          onClick={() =>
+            onOpeningStateChange(
+              buildPageSelectedState(Math.PI / 2, Math.max(state.selectedPageIndex - 1, 0))
+            )
+          }
+        >
+          ←
+        </button>
+        <button
+          className="panel-btn"
+          style={{ flex: 1 }}
+          onClick={() =>
+            onOpeningStateChange(
+              buildPageSelectedState(
+                Math.PI / 2,
+                Math.min(state.selectedPageIndex + 1, numPages - 1)
+              )
+            )
+          }
+        >
+          →
+        </button>
+      </div>
+      <button
+        className="panel-btn"
+        onClick={() => onOpeningStateChange(buildUniformlyOpenedState(Math.PI / 2))}
+      >
+        Uniform Open
+      </button>
+    </>
+  );
+}
+
 export function BookSandboxControls({
   bookParams,
   openingState,
@@ -70,8 +148,6 @@ export function BookSandboxControls({
   }
 
   const isPageSelected = openingState.stateType === "pageSelected";
-  const uniform = openingState as UniformlyOpenedState;
-  const paged = openingState as PageSelectedState;
 
   return (
     <div
@@ -141,64 +217,16 @@ export function BookSandboxControls({
       {/* Opening state section */}
       <span className="panel-label">Opening</span>
       {!isPageSelected ? (
-        <>
-          <input
-            type="range"
-            min={0}
-            max={Math.PI / 2}
-            step={0.01}
-            value={uniform.angle}
-            onChange={(e) =>
-              onOpeningStateChange(buildUniformlyOpenedState(parseFloat(e.target.value)))
-            }
-            className="angle-slider"
-          />
-          <button
-            className="panel-btn"
-            onClick={() => onOpeningStateChange(buildPageSelectedState(Math.PI / 2, 0))}
-          >
-            Read Book
-          </button>
-        </>
+        <UniformOpeningControls
+          state={openingState as UniformlyOpenedState}
+          onOpeningStateChange={onOpeningStateChange}
+        />
       ) : (
-        <>
-          <span className="panel-text" style={{ opacity: 0.5 }}>
-            Page {paged.selectedPageIndex + 1} / {numPages}
-          </span>
-          <div style={{ display: "flex" }}>
-            <button
-              className="panel-btn"
-              style={{ flex: 1 }}
-              onClick={() =>
-                onOpeningStateChange(
-                  buildPageSelectedState(Math.PI / 2, Math.max(paged.selectedPageIndex - 1, 0))
-                )
-              }
-            >
-              ←
-            </button>
-            <button
-              className="panel-btn"
-              style={{ flex: 1 }}
-              onClick={() =>
-                onOpeningStateChange(
-                  buildPageSelectedState(
-                    Math.PI / 2,
-                    Math.min(paged.selectedPageIndex + 1, numPages - 1)
-                  )
-                )
-              }
-            >
-              →
-            </button>
-          </div>
-          <button
-            className="panel-btn"
-            onClick={() => onOpeningStateChange(buildUniformlyOpenedState(Math.PI / 2))}
-          >
-            Uniform Open
-          </button>
-        </>
+        <PageSelectedControls
+          state={openingState as PageSelectedState}
+          numPages={numPages}
+          onOpeningStateChange={onOpeningStateChange}
+        />
       )}
     </div>
   );

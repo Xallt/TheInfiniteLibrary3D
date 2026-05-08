@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { ProceduralMesh } from "../../utils/ProceduralMesh";
 import { BookTexture } from "./BookTexture";
-import { buildPage, Page, PageProps } from "./Page";
+import { buildPage, PageProps } from "./Page";
 
 interface QuadUVs {
   front: number[];
@@ -264,49 +264,61 @@ function createBookMesh(
   };
 }
 
-export function buildBook(
-  params: BookMeshParams,
-  bookTexture: BookTexture,
-  numPages: number,
-  initialState: BookOpeningState = buildUniformlyOpenedState(),
-  id: number
+function buildPageController(
+  pageProps: PageProps,
+  initialRotation: THREE.Euler,
+  initialPosition: THREE.Vector3
 ) {
-  let originalPosition: THREE.Vector3 | undefined;
-  let originalRotation: THREE.Euler | undefined;
-  let pages: (Page | null)[] = new Array(numPages).fill(null);
-
-  function setPageTransform(pageId: string, rotation: THREE.Euler, position: THREE.Vector3): void {
-    const page = pages.find((page) => page?.id === pageId);
-    if (page) {
-      page.mesh.rotation.set(rotation.x, rotation.y, rotation.z);
-      page.mesh.position.set(position.x, position.y, position.z);
-    }
+  const page = buildPage(pageProps);
+  function setPageTransform(rotation: THREE.Euler, position: THREE.Vector3): void {
+    page.mesh.rotation.set(rotation.x, rotation.y, rotation.z);
+    page.mesh.position.set(position.x, position.y, position.z);
   }
-
+  setPageTransform(initialRotation, initialPosition);
   function updatePageTransform(
-    pageId: string,
     transformUpdate: (
       rotation: THREE.Euler,
       transform: THREE.Vector3
     ) => { rotation: THREE.Euler; transform: THREE.Vector3 }
   ): void {
-    const page = pages.find((page) => page?.id === pageId);
-    if (page) {
-      const { rotation, transform } = transformUpdate(page.mesh.rotation, page.mesh.position);
-      setPageTransform(pageId, rotation, transform);
-    }
+    const { rotation, transform } = transformUpdate(page.mesh.rotation, page.mesh.position);
+    setPageTransform(rotation, transform);
+  }
+  return {
+    page,
+    updatePageTransform,
+    setPageTransform,
+  };
+}
+
+type PageController = ReturnType<typeof buildPageController>;
+
+export function buildBook(
+  params: BookMeshParams,
+  bookTexture: BookTexture,
+  numPagesIn: number,
+  initialState: BookOpeningState = buildUniformlyOpenedState(),
+  id: number
+) {
+  let originalPosition: THREE.Vector3 | undefined;
+  let originalRotation: THREE.Euler | undefined;
+  let pageControllers: (PageController | null)[] = new Array(numPagesIn).fill(null);
+
+  function numPagesFn(): number {
+    return pageControllers.length;
   }
 
   let openingState = initialState;
   let { coverMesh, leftSideMesh, rightSideMesh, mesh } = createBookMesh(params, bookTexture);
 
   function updateBookRotations(): void {
-    const { coverAngle, pageAngles } = openingState.getPageRotationArgs(pages.length);
+    const numPages = numPagesFn();
+    const { coverAngle, pageAngles } = openingState.getPageRotationArgs(numPages);
     leftSideMesh.rotation.y = coverAngle;
     rightSideMesh.rotation.y = -coverAngle;
-    pages.forEach((page, index) => {
-      if (page) {
-        updatePageTransform(page.id, (rotation, transform) => {
+    pageControllers.forEach((pageController, index) => {
+      if (pageController) {
+        pageController.updatePageTransform((rotation, transform) => {
           return {
             rotation: new THREE.Euler(rotation.x, pageAngles[index] - Math.PI / 2, rotation.z),
             transform: transform,
@@ -322,40 +334,41 @@ export function buildBook(
   }
 
   function addPage(pageProps: PageProps, index: number): void {
-    if (index < 0 || index >= pages.length) {
-      throw new Error(`Page index ${index} is out of bounds (0-${pages.length - 1})`);
+    const numPages = numPagesFn();
+    if (index < 0 || index >= numPages) {
+      throw new Error(`Page index ${index} is out of bounds (0-${numPages - 1})`);
     }
-    const page = buildPage(pageProps);
     const { bookThickness, coverWidth } = params;
     const pagePosition = new THREE.Vector3(
-      -coverWidth / 2 + index * (coverWidth / pages.length) + coverWidth / pages.length / 2,
+      -coverWidth / 2 + index * (coverWidth / numPages) + coverWidth / numPages / 2,
       0,
       bookThickness / 2
     );
-    const { pageAngles } = openingState.getPageRotationArgs(pages.length);
-    pages[index] = page;
+    const { pageAngles } = openingState.getPageRotationArgs(numPages);
     const pageRotation = new THREE.Euler(0, pageAngles[index] - Math.PI / 2, 0);
-    setPageTransform(page.id, pageRotation, pagePosition);
 
-    if (pages[index]) {
-      mesh.remove(pages[index]!.mesh);
+    if (pageControllers[index]) {
+      mesh.remove(pageControllers[index]!.page.mesh);
     }
-    mesh.add(page.mesh);
+    pageControllers[index] = buildPageController(pageProps, pageRotation, pagePosition);
+    mesh.add(pageControllers[index]!.page.mesh);
   }
 
   function resizePageArray(newSize: number): void {
-    for (let i = 0; i < pages.length; i++) {
-      if (pages[i]) {
-        mesh.remove(pages[i]!.mesh);
+    const numPages = numPagesFn();
+    for (let i = 0; i < numPages; i++) {
+      if (pageControllers[i]) {
+        mesh.remove(pageControllers[i]!.page.mesh);
       }
     }
-    pages.splice(0, pages.length, ...new Array(newSize).fill(null));
+    pageControllers.splice(0, numPages, ...new Array(newSize).fill(null));
     updateBookRotations();
   }
 
   function selectPage(pageIndex: number, angle: number = Math.PI / 2): void {
-    if (pageIndex < 0 || pageIndex > pages.length) {
-      throw new Error(`Page index ${pageIndex} is out of bounds (0-${pages.length - 1})`);
+    const numPages = numPagesFn();
+    if (pageIndex < 0 || pageIndex > numPages) {
+      throw new Error(`Page index ${pageIndex} is out of bounds (0-${numPages - 1})`);
     }
     setState(buildPageSelectedState(angle, pageIndex));
   }
@@ -381,10 +394,10 @@ export function buildBook(
       id,
       params,
       mesh,
-      pages,
       openingState,
     },
     actions: {
+      numPages: numPagesFn,
       setState,
       addPage,
       resizePageArray,

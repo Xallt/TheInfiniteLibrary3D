@@ -63,7 +63,7 @@ function ReadingControls({ book, pageSelectedState, onSwitchToUniform }: Reading
   };
 
   const handleNextPage = () => {
-    const next = Math.min(pageIndex + 1, book.state.pages.length);
+    const next = Math.min(pageIndex + 1, book.actions.numPages());
     if (next !== pageIndex) {
       setPageIndex(next);
       book.actions.setState(buildPageSelectedState(Math.PI / 2, next));

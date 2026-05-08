@@ -1,36 +1,55 @@
 import { Canvas } from "@react-three/fiber";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { BookCollectorSource, fetchBooks } from "../api/BookCollectorAPI";
 import { defaultBookParams, defaultBookTexture } from "../config/bookConfig";
 import { BookshelfSceneInner } from "../scenes/BookshelfSceneInner";
-import { MainScene } from "../scenes/MainScene";
 import { BookData } from "../types/BookData";
 import { PDFResource, createPDFResource } from "../types/PDFResource";
 import { BookCollectorModal } from "./BookCollectorModal";
-import { TextureLoader } from "./Bookshelf/Book";
+import { BookOpeningState, buildUniformlyOpenedState, TextureLoader } from "./Bookshelf/Book";
 import { BookTexture } from "./Bookshelf/BookTexture";
-import { BookStateControlsUI } from "./BookStateControlsUI";
+import { BookPageInput } from "./Bookshelf/BookComponent";
+import { useBookPages } from "./Bookshelf/useBookPages";
+import { BookStateControlsViewerUI } from "./BookStateControlsUI";
 import { PDFSelectionModal } from "./PDFSelectionModal";
 
+function BookPageBridge({
+  book,
+  enabled,
+  onPagesChanged,
+}: {
+  book: BookData;
+  enabled: boolean;
+  onPagesChanged: (id: string, pages: BookPageInput[]) => void;
+}) {
+  const pages = useBookPages(book, enabled);
+  onPagesChanged(book.id, pages);
+  return null;
+}
+
 export function BookshelfViewer() {
-  const mainSceneRef = useRef<MainScene>(null);
   const [books, setBooks] = useState<BookData[]>([]);
+  const [loadFlags, setLoadFlags] = useState<Record<string, boolean>>({});
+  const [pagesByBook, setPagesByBook] = useState<Record<string, BookPageInput[]>>({});
+  const [selectedBookIndex, setSelectedBookIndex] = useState<number | null>(null);
   const [viewingBookIndex, setViewingBookIndex] = useState<number | null>(null);
+  const [viewingOpeningState, setViewingOpeningState] = useState<BookOpeningState>(
+    buildUniformlyOpenedState(0)
+  );
   const [showUrlModal, setShowUrlModal] = useState(false);
   const [showBookCollectorModal, setShowBookCollectorModal] = useState(false);
 
   function returnBook() {
-    if (!mainSceneRef.current) return;
-    mainSceneRef.current.actions.returnBookToShelf();
     setViewingBookIndex(null);
+    setViewingOpeningState(buildUniformlyOpenedState(0));
   }
 
-  async function handleViewBook(bookIndex: number) {
-    if (viewingBookIndex !== null) throw new Error("Book already in view");
+  function handleViewBook(bookIndex: number) {
+    if (viewingBookIndex !== null) return;
     setViewingBookIndex(bookIndex);
-    if (!mainSceneRef.current) return;
-    mainSceneRef.current.actions.viewBook(bookIndex);
-    setBooks((prev) => prev.map((b, i) => (i === bookIndex ? { ...b, loadPages: true } : b)));
+    setViewingOpeningState(buildUniformlyOpenedState(Math.PI / 2));
+    const id = books[bookIndex].id;
+    setLoadFlags((prev) => ({ ...prev, [id]: true }));
   }
 
   async function handlePDFSourcesSubmitted(sources: PDFResource[]) {
@@ -54,8 +73,8 @@ export function BookshelfViewer() {
       const bookSources = await fetchBooks(source);
       const pdfResources = bookSources.map((s) => createPDFResource(s.pdf_path));
       await handlePDFSourcesSubmitted(pdfResources);
-    } catch (error) {
-      console.error("Failed to fetch books from collector:", error);
+    } catch (e) {
+      console.error("Failed to fetch books from collector:", e);
     }
   }
 
@@ -63,36 +82,39 @@ export function BookshelfViewer() {
     if (viewingBookIndex === null) return null;
     const book = books[viewingBookIndex];
     if (!book) return null;
-    const metadata = book.pdfResource.getMetadata();
-    if (!metadata) return null;
+    const m = book.pdfResource.getMetadata();
+    if (!m) return null;
     return {
-      title: metadata.title || "Untitled",
-      author: metadata.author || "Unknown Author",
-      pageCount: metadata.numPages || 0,
+      title: m.title || "Untitled",
+      author: m.author || "Unknown Author",
+      pageCount: m.numPages || 0,
     };
   }
 
   const bookInfo = getCurrentBookInfo();
 
-  const currentBook = (() => {
-    if (viewingBookIndex === null || !mainSceneRef.current) return null;
-    try {
-      return mainSceneRef.current.actions.getBook(viewingBookIndex);
-    } catch {
-      return null;
-    }
-  })();
-
   return (
     <div style={{ position: "relative", width: "100vw", height: "100vh" }}>
       <Canvas gl={{ antialias: true, alpha: true }} flat>
         <BookshelfSceneInner
-          onMainSceneReady={(mainScene) => {
-            mainSceneRef.current = mainScene;
-            mainScene.actions.setOnBookSelectedCallback(handleViewBook);
-          }}
           books={books}
+          pagesByBook={pagesByBook}
+          selectedBookIndex={selectedBookIndex}
+          viewingBookIndex={viewingBookIndex}
+          viewingOpeningState={viewingOpeningState}
+          onBookHover={setSelectedBookIndex}
+          onBookClick={handleViewBook}
         />
+        {books.map((b) => (
+          <BookPageBridge
+            key={b.id}
+            book={b}
+            enabled={!!loadFlags[b.id]}
+            onPagesChanged={(id, pages) =>
+              setPagesByBook((prev) => (prev[id] === pages ? prev : { ...prev, [id]: pages }))
+            }
+          />
+        ))}
       </Canvas>
 
       <div className="controls-panel panel">
@@ -121,7 +143,13 @@ export function BookshelfViewer() {
         )}
       </div>
 
-      {currentBook && <BookStateControlsUI book={currentBook} />}
+      {viewingBookIndex !== null && (
+        <BookStateControlsViewerUI
+          openingState={viewingOpeningState}
+          numPages={pagesByBook[books[viewingBookIndex].id]?.length ?? 0}
+          onChange={setViewingOpeningState}
+        />
+      )}
 
       <PDFSelectionModal
         isOpen={showUrlModal}

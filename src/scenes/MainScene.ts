@@ -143,8 +143,9 @@ export function useMainScene({ sceneConfig, renderer, scene, camera, controls }:
 
     renderer.domElement.style.cursor = "default";
     window.addEventListener("resize", onWindowResize);
-    window.addEventListener("mousemove", onMouseMove);
-    window.addEventListener("click", onMouseClick);
+    // pointer events now handled by R3F on <Book> components
+    // window.addEventListener("mousemove", onMouseMove);
+    // window.addEventListener("click", onMouseClick);
 
     let cancelled = false;
     async function setup() {
@@ -176,8 +177,8 @@ export function useMainScene({ sceneConfig, renderer, scene, camera, controls }:
     return () => {
       cancelled = true;
       window.removeEventListener("resize", onWindowResize);
-      window.removeEventListener("mousemove", onMouseMove);
-      window.removeEventListener("click", onMouseClick);
+      // window.removeEventListener("mousemove", onMouseMove);
+      // window.removeEventListener("click", onMouseClick);
       controls.dispose();
       scene.remove(floor, ambientLight, spotLight, spotLight.target);
       floor.geometry.dispose();

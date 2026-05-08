@@ -56,5 +56,11 @@ export function BookMesh({ data, position, onReady, onUnmount }: BookMeshProps) 
     };
   }, [data.loadPages]);
 
-  return <primitive object={book.state.mesh} />;
+  return (
+    <primitive object={book.state.mesh}>
+      {pageControllerGroup.pageEntries.map(
+        entry => entry && <primitive key={entry.id} object={entry.mesh} />
+      )}
+    </primitive>
+  );
 }

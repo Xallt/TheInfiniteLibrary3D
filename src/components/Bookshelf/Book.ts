@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { ProceduralMesh } from "../../utils/ProceduralMesh";
 import { BookTexture } from "./BookTexture";
@@ -291,28 +291,22 @@ function buildPageController(
     setPageTransform(rotation, transform);
   }
 
-  function addToMesh(mesh: THREE.Mesh): void {
-    mesh.add(page.mesh);
-  }
-
-  function removeFromMesh(mesh: THREE.Mesh): void {
-    mesh.remove(page.mesh);
-  }
-
   return {
     id: page.id,
+    page,
     updatePageTransform,
     setPageTransform,
-    addToMesh,
-    removeFromMesh,
   };
 }
 
 type PageController = ReturnType<typeof buildPageController>;
 
 export function usePageControllerGroup(numPages: number) {
-  const mesh = useRef<THREE.Mesh | null>(null);
   const pageControllers = useRef<(PageController | null)[]>(new Array(numPages).fill(null));
+  const [pageEntries, setPageEntries] = useState<
+    Array<{ id: string; mesh: THREE.Group } | null>
+  >(new Array(numPages).fill(null));
+
   function numPagesFn(): number {
     return pageControllers.current.length;
   }
@@ -331,38 +325,23 @@ export function usePageControllerGroup(numPages: number) {
   function exists(index: number): boolean {
     return pageControllers.current[index] !== null;
   }
-  function addToMesh(index: number): void {
-    if (!mesh.current) return;
-    pageControllers.current[index]!.addToMesh(mesh.current);
-  }
-  function removeFromMesh(index: number): void {
-    if (!mesh.current) return;
-    pageControllers.current[index]!.removeFromMesh(mesh.current);
-  }
   function createPageController(
     pageProps: PageProps,
     index: number,
     initialRotation: THREE.Euler,
     initialPosition: THREE.Vector3
   ): void {
-    pageControllers.current[index] = buildPageController(
-      pageProps,
-      initialRotation,
-      initialPosition
-    );
+    const controller = buildPageController(pageProps, initialRotation, initialPosition);
+    pageControllers.current[index] = controller;
+    setPageEntries(prev => {
+      const next = [...prev];
+      next[index] = { id: controller.id, mesh: controller.page.mesh };
+      return next;
+    });
   }
   function resize(newSize: number): void {
-    const currentLength = pageControllers.current.length;
-    for (let i = 0; i < currentLength; i++) {
-      if (exists(i)) {
-        removeFromMesh(i);
-      }
-    }
     pageControllers.current = new Array(newSize).fill(null);
-  }
-
-  function setMesh(newMesh: THREE.Mesh): void {
-    mesh.current = newMesh;
+    setPageEntries(new Array(newSize).fill(null));
   }
 
   return {
@@ -371,10 +350,8 @@ export function usePageControllerGroup(numPages: number) {
     updatePageTransform,
     createPageController,
     exists,
-    addToMesh,
-    removeFromMesh,
     resize,
-    setMesh,
+    pageEntries,
   };
 }
 
@@ -399,10 +376,6 @@ export function useBook(
   }
 
   const { coverMesh: _coverMesh, leftSideMesh, rightSideMesh, mesh } = meshDataRef.current;
-
-  useEffect(() => {
-    pageControllerGroup.setMesh(mesh);
-  }, [mesh]);
 
   function updateBookRotations(): void {
     const numPages = pageControllerGroup.numPages();
@@ -441,20 +414,10 @@ export function useBook(
     const { pageAngles } = openingStateRef.current.getPageRotationArgs(numPages);
     const pageRotation = new THREE.Euler(0, pageAngles[index] - Math.PI / 2, 0);
 
-    if (pageControllerGroup.exists(index)) {
-      pageControllerGroup.removeFromMesh(index);
-    }
     pageControllerGroup.createPageController(pageProps, index, pageRotation, pagePosition);
-    pageControllerGroup.addToMesh(index);
   }
 
   function resizePageArray(newSize: number): void {
-    const numPages = pageControllerGroup.numPages();
-    for (let i = 0; i < numPages; i++) {
-      if (pageControllerGroup.exists(i)) {
-        pageControllerGroup.removeFromMesh(i);
-      }
-    }
     pageControllerGroup.resize(newSize);
     updateBookRotations();
   }

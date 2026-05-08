@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { XR, createXRStore } from '@react-three/xr';
 import { BookCollectorSource, fetchBooks } from '../api/BookCollectorAPI';
-import { defaultBookParams, defaultBookTexture, defaultBookshelfParams } from '../config/bookConfig';
+import { defaultBookParams, defaultBookTexture } from '../config/bookConfig';
 import { MainScene } from '../scenes/MainScene';
 import { PDFResource, createPDFResource } from '../types/PDFResource';
 import { BookData } from '../types/BookData';
@@ -16,7 +16,7 @@ import { BookshelfSceneInner } from '../scenes/BookshelfSceneInner';
 const xrStore = createXRStore();
 
 export function BookshelfViewer() {
-    const mainScene = useMemo(() => new MainScene(defaultBookshelfParams), []);
+    const mainScene = useMemo(() => new MainScene(), []);
     const [books, setBooks] = useState<BookData[]>([]);
     const [isVRSupported, setIsVRSupported] = useState(false);
     const [isViewingBook, setIsViewingBook] = useState(false);

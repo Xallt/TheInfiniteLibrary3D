@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import { Book, PageSelectedState } from '../components/Bookshelf/Book';
 import { createControls } from '../components/Controls';
-import { Bookshelf, BookshelfParams } from '../components/Bookshelf/Bookshelf';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { XRControllerModelFactory } from 'three/examples/jsm/webxr/XRControllerModelFactory.js';
 import { TransformControls, TransformControlsGizmo } from 'three/examples/jsm/controls/TransformControls';
@@ -39,7 +38,6 @@ export class ControllerWrapper {
 
 export class MainScene {
     private readonly sceneConfig: MainSceneConfig;
-    private readonly bookshelfParams: BookshelfParams;
 
     private sceneInternal!: THREE.Scene;
     private rendererInternal!: THREE.WebGLRenderer;
@@ -51,7 +49,6 @@ export class MainScene {
 
     private camera!: THREE.PerspectiveCamera;
     private controls!: OrbitControls;
-    private bookshelf!: Bookshelf;
     private bookshelfMesh: THREE.Mesh | null = null;
     private sceneElevation!: number;
 
@@ -89,12 +86,8 @@ export class MainScene {
     private readonly boundOnMouseMove: (e: MouseEvent) => void;
     private readonly boundOnMouseClick: (e: MouseEvent) => void;
 
-    constructor(
-        bookshelfParams: BookshelfParams,
-        sceneConfig: MainSceneConfig = defaultMainSceneConfig
-    ) {
+    constructor(sceneConfig: MainSceneConfig = defaultMainSceneConfig) {
         this.sceneConfig = sceneConfig;
-        this.bookshelfParams = bookshelfParams;
         this.raycaster = new THREE.Raycaster();
         this.tempMatrix = new THREE.Matrix4();
         this.mouseRaycaster = new THREE.Raycaster();
@@ -166,19 +159,6 @@ public initialize(isVRSupported: boolean): void {
         floor.position.y = -.2;
         scene.add(floor);
         return floor;
-    }
-
-    private async initBookshelf(scene: THREE.Scene): Promise<Bookshelf> {
-        const bookshelf = new Bookshelf(this.bookshelfParams, "resources/wood.jpeg");
-        const bookshelfMesh = bookshelf.getMesh();
-        const bookshelfOuterSize = bookshelf.getOuterSize();
-        bookshelfMesh.position.set(
-            -bookshelfOuterSize.x / 2,
-            bookshelfOuterSize.y / 2 + this.sceneElevation,
-            0
-        );
-        scene.add(bookshelfMesh);
-        return bookshelf;
     }
 
     private async initLighting(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Promise<void> {
@@ -367,10 +347,6 @@ public initialize(isVRSupported: boolean): void {
         return this.camera ?? null;
     }
 
-    public getBookshelf(): Bookshelf | null {
-        return this.bookshelf ?? null;
-    }
-
     public setBookshelfMesh(mesh: THREE.Mesh): void {
         this.bookshelfMesh = mesh;
     }
@@ -419,7 +395,7 @@ public initialize(isVRSupported: boolean): void {
         }
 
         book.storeOriginalTransform();
-        (this.bookshelfMesh ?? this.bookshelf.getMesh()).remove(bookMesh);
+        this.bookshelfMesh?.remove(bookMesh);
 
         if (this.isVRSupported) {
             bookMesh.position.set(0, this.sceneElevation, 0.5);
@@ -469,7 +445,7 @@ public initialize(isVRSupported: boolean): void {
         }
 
         this.scene.remove(bookMesh);
-        (this.bookshelfMesh ?? this.bookshelf.getMesh()).add(bookMesh);
+        this.bookshelfMesh?.add(bookMesh);
         book.restoreOriginalTransform();
         this.isBookInViewMode = false;
         this.viewingBookIndex = -1;

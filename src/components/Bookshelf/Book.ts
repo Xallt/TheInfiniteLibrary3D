@@ -1,13 +1,7 @@
 import * as THREE from 'three';
-import { Page, PageParams } from './Page';
-import { PdfPage } from 'src/utils/pdfParser';
-import { BookTexture } from './BookTexture';
 import { ProceduralMesh } from '../../utils/ProceduralMesh';
-
-// Add these interfaces at the top of the file
-export interface BookOpeningState {
-    getPageRotationArgs(numPages: number): { coverAngle: number, pageAngles: number[] };
-}
+import { BookTexture } from './BookTexture';
+import { Page } from './Page';
 
 interface QuadUVs {
     front: number[];
@@ -18,56 +12,56 @@ interface QuadUVs {
     bottom: number[];
 }
 
-export class UniformlyOpenedState implements BookOpeningState {
-    constructor(private angle: number = 0) { }
-
-    getPageRotationArgs(numPages: number): { coverAngle: number, pageAngles: number[] } {
+export function buildUniformlyOpenedState(angle: number = 0) {
+    function getPageRotationArgs(numPages: number): { coverAngle: number, pageAngles: number[] } {
         const pageAngles = Array(numPages).fill(0).map((_, index) => {
-            const proportionalAngle = 2 * this.angle * (index + 1) / numPages - this.angle - this.angle / numPages;
+            const proportionalAngle = 2 * angle * (index + 1) / numPages - angle - angle / numPages;
             return proportionalAngle;
         });
 
         return {
-            coverAngle: this.angle,
+            coverAngle: angle,
             pageAngles
         };
     }
 
-    public getAngle(): number {
-        return this.angle;
-    }
+    return {
+        stateType: 'uniformlyOpened',
+        angle,
+        getPageRotationArgs
+    };
 }
 
-// Add this new state class after UniformlyOpenedState
-export class PageSelectedState implements BookOpeningState {
-    private readonly eps = 0.1; // Small angle to separate pages
-
-    constructor(
-        private angle: number = Math.PI / 2,
-        private selectedPageIndex: number = 0
-    ) { }
-
-    getPageRotationArgs(numPages: number): { coverAngle: number, pageAngles: number[] } {
+export function buildPageSelectedState(angle: number = Math.PI / 2, selectedPageIndex: number = 0) {
+    const eps = 0.1; // Small angle to separate pages
+    function getPageRotationArgs(numPages: number): { coverAngle: number, pageAngles: number[] } {
         const pageAngles = Array(numPages).fill(0).map((_, index) => {
-            if (index < this.selectedPageIndex) {
+            if (index < selectedPageIndex) {
                 // Pages before selected page fold back
-                return -this.angle + this.eps;
+                return -angle + eps;
             } else {
                 // Selected page and those after fold forward
-                return this.angle - this.eps;
+                return angle - eps;
             }
         });
 
         return {
-            coverAngle: this.angle,
+            coverAngle: angle,
             pageAngles
         };
     }
 
-    public getSelectedPageIndex(): number {
-        return this.selectedPageIndex;
-    }
+    return {
+        stateType: 'pageSelected',
+        angle,
+        selectedPageIndex,
+        getPageRotationArgs
+    };
 }
+
+export type UniformlyOpenedState = ReturnType<typeof buildUniformlyOpenedState>;
+export type PageSelectedState = ReturnType<typeof buildPageSelectedState>;
+export type BookOpeningState = UniformlyOpenedState | PageSelectedState;
 
 // Add this new class for the singleton texture loader
 export class TextureLoader {
@@ -121,7 +115,7 @@ export class Book {
         params: BookMeshParams,
         bookTexture: BookTexture,
         pages: (Page | null)[],
-        initialState: BookOpeningState = new UniformlyOpenedState(),
+        initialState: BookOpeningState = buildUniformlyOpenedState(),
         id: number
     ) {
         this.params = params;
@@ -137,7 +131,7 @@ export class Book {
         bookTexture: BookTexture,
         numPages: number,
         id: number,
-        initialState: BookOpeningState = new UniformlyOpenedState(),
+        initialState: BookOpeningState = buildUniformlyOpenedState(),
     ): Book {
         return new Book(params, bookTexture, new Array(numPages).fill(null), initialState, id);
     }
@@ -207,7 +201,7 @@ export class Book {
     }
 
     public setCoverAngles(angle: number): void {
-        this.setState(new UniformlyOpenedState(angle));
+        this.setState(buildUniformlyOpenedState(angle));
     }
 
     private createBoxGeometry(boxSize: THREE.Vector3, uvs: QuadUVs): THREE.BufferGeometry {
@@ -419,7 +413,7 @@ export class Book {
         }
 
         // Create new PageSelectedState with the specified angle and page index
-        const newState = new PageSelectedState(angle, pageIndex);
+        const newState = buildPageSelectedState(angle, pageIndex);
         this.setState(newState);
     }
 

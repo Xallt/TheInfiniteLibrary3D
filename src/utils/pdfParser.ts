@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 
 import * as pdfjsLib from 'pdfjs-dist';
-import { PDFMetadata } from 'src/types/PDFResource';
+import { PDFMetadata } from '../types/PDFResource';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
 

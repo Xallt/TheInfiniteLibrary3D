@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Book, PageSelectedState, UniformlyOpenedState } from '../components/Bookshelf/Book';
+import { Book, BookOpeningState, buildPageSelectedState, buildUniformlyOpenedState, PageSelectedState, UniformlyOpenedState } from '../components/Bookshelf/Book';
 
 interface BookStateControlsUIProps {
     book: Book;
@@ -7,16 +7,17 @@ interface BookStateControlsUIProps {
 
 interface UniformControlsProps {
     book: Book;
+    uniformlyOpenedState: UniformlyOpenedState;
     onSwitchToReading: () => void;
 }
 
-function UniformControls({ book, onSwitchToReading }: UniformControlsProps) {
-    const [angle, setAngle] = useState(() => (book.getCurrentState() as UniformlyOpenedState).getAngle());
+function UniformControls({ book, uniformlyOpenedState, onSwitchToReading }: UniformControlsProps) {
+    const [angle, setAngle] = useState(() => uniformlyOpenedState.angle);
 
     const handleAngleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const value = parseFloat(event.target.value);
         setAngle(value);
-        book.setState(new UniformlyOpenedState(value));
+        book.setState(buildUniformlyOpenedState(value));
     };
 
     return (
@@ -37,20 +38,21 @@ function UniformControls({ book, onSwitchToReading }: UniformControlsProps) {
 
 interface ReadingControlsProps {
     book: Book;
+    pageSelectedState: PageSelectedState;
     onSwitchToUniform: () => void;
 }
 
-function ReadingControls({ book, onSwitchToUniform }: ReadingControlsProps) {
-    const getPageNum = () => (book.getCurrentState() as PageSelectedState).getSelectedPageIndex();
+function ReadingControls({ book, pageSelectedState, onSwitchToUniform }: ReadingControlsProps) {
+    const getPageNum = () => pageSelectedState.selectedPageIndex;
 
     const handlePrevPage = () => {
         const prev = Math.max(getPageNum() - 1, 0);
-        if (prev !== getPageNum()) book.setState(new PageSelectedState(Math.PI / 2, prev));
+        if (prev !== getPageNum()) book.setState(buildPageSelectedState(Math.PI / 2, prev));
     };
 
     const handleNextPage = () => {
         const next = Math.min(getPageNum() + 1, book.getNumPages());
-        if (next !== getPageNum()) book.setState(new PageSelectedState(Math.PI / 2, next));
+        if (next !== getPageNum()) book.setState(buildPageSelectedState(Math.PI / 2, next));
     };
 
     return (
@@ -62,11 +64,9 @@ function ReadingControls({ book, onSwitchToUniform }: ReadingControlsProps) {
     );
 }
 
-type BookStateMode = 'uniform' | 'reading';
-
 export function BookStateControlsUI({ book }: BookStateControlsUIProps) {
     const animationFrameRef = useRef<number | undefined>(undefined);
-    const [bookStateMode, setBookStateMode] = useState<BookStateMode>('uniform');
+    const [bookOpeningState, setBookOpeningState] = useState<BookOpeningState>(buildUniformlyOpenedState());
 
     useEffect(() => {
         const animate = () => {
@@ -81,20 +81,20 @@ export function BookStateControlsUI({ book }: BookStateControlsUIProps) {
 
 
     const onSwitchToUniform = () => {
-        setBookStateMode('uniform');
-        book.setState(new UniformlyOpenedState(Math.PI / 2));
+        setBookOpeningState(buildUniformlyOpenedState(Math.PI / 2));
+        book.setState(buildUniformlyOpenedState(Math.PI / 2));
     };
 
     const onSwitchToReading = () => {
-        setBookStateMode('reading');
-        book.setState(new PageSelectedState(Math.PI / 2, 0));
+        setBookOpeningState(buildPageSelectedState(Math.PI / 2, 0));
+        book.setState(buildPageSelectedState(Math.PI / 2, 0));
     };
 
     return (
         <div className="book-controls-panel panel">
-            {bookStateMode === 'reading'
-                ? <ReadingControls book={book} onSwitchToUniform={onSwitchToUniform} />
-                : <UniformControls book={book} onSwitchToReading={onSwitchToReading} />
+            {bookOpeningState.stateType === 'pageSelected'
+                ? <ReadingControls book={book} pageSelectedState={bookOpeningState as PageSelectedState} onSwitchToUniform={onSwitchToUniform} />
+                : <UniformControls book={book} uniformlyOpenedState={bookOpeningState as UniformlyOpenedState} onSwitchToReading={onSwitchToReading} />
             }
         </div>
     );

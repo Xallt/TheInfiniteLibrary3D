@@ -1,9 +1,9 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
-import { Bookshelf, BookshelfParams } from "./Bookshelf";
-import { BookMesh } from "./BookMesh";
 import { BookData } from "../../types/BookData";
 import { Book, getBookOuterSize } from "./Book";
+import { BookComponent } from "./BookMesh";
+import { Bookshelf, BookshelfParams } from "./Bookshelf";
 
 interface BookshelfMeshProps {
   params: BookshelfParams;
@@ -47,7 +47,7 @@ export function BookshelfMesh({
       {books.map(
         (b, i) =>
           positions[i] && (
-            <BookMesh
+            <BookComponent
               key={b.id}
               data={b}
               position={positions[i]!}

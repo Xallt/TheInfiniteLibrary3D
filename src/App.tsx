@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { BookshelfViewer } from "./components/BookshelfViewer";
 import { BookSandboxViewer } from "./components/BookSandboxViewer";
+import { BookshelfViewer } from "./components/BookshelfViewer";
 import { TabSwitcher } from "./components/TabSwitcher";
 import "./styles/panel.css";
 

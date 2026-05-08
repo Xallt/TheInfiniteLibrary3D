@@ -1,4 +1,5 @@
 import React, { useRef } from "react";
+import { PDFResource, UploadedPDFResource } from "../types/PDFResource";
 import {
   BookMeshParams,
   BookOpeningState,
@@ -7,7 +8,6 @@ import {
   buildPageSelectedState,
   buildUniformlyOpenedState,
 } from "./Bookshelf/Book";
-import { PDFResource, UploadedPDFResource } from "../types/PDFResource";
 
 interface Props {
   bookParams: BookMeshParams;
@@ -74,7 +74,10 @@ export function BookSandboxControls({
   const paged = openingState as PageSelectedState;
 
   return (
-    <div className="controls-panel panel" style={{ maxHeight: "calc(100vh - 24px)", overflowY: "auto" }}>
+    <div
+      className="controls-panel panel"
+      style={{ maxHeight: "calc(100vh - 24px)", overflowY: "auto" }}
+    >
       {/* PDF section */}
       <span className="panel-label">PDF</span>
       <span className="panel-text" style={{ opacity: 0.6, fontSize: 10, wordBreak: "break-all" }}>
@@ -127,7 +130,7 @@ export function BookSandboxControls({
       <SliderRow
         label="cover width"
         value={bookParams.coverWidth}
-        min={0.01}
+        min={0.001}
         max={0.1}
         step={0.001}
         onChange={(v) => setParam("coverWidth", v)}
@@ -145,7 +148,9 @@ export function BookSandboxControls({
             max={Math.PI / 2}
             step={0.01}
             value={uniform.angle}
-            onChange={(e) => onOpeningStateChange(buildUniformlyOpenedState(parseFloat(e.target.value)))}
+            onChange={(e) =>
+              onOpeningStateChange(buildUniformlyOpenedState(parseFloat(e.target.value)))
+            }
             className="angle-slider"
           />
           <button
@@ -177,7 +182,10 @@ export function BookSandboxControls({
               style={{ flex: 1 }}
               onClick={() =>
                 onOpeningStateChange(
-                  buildPageSelectedState(Math.PI / 2, Math.min(paged.selectedPageIndex + 1, numPages - 1))
+                  buildPageSelectedState(
+                    Math.PI / 2,
+                    Math.min(paged.selectedPageIndex + 1, numPages - 1)
+                  )
                 )
               }
             >

@@ -1,11 +1,10 @@
-import { useEffect, useRef } from 'react';
-import * as THREE from 'three';
-import { useThree } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
+import { useThree } from '@react-three/fiber';
+import { useEffect, useRef } from 'react';
 import { Book, BookMeshParams, buildEmptyBook } from '../components/Bookshelf/Book';
 import { BookTexture } from '../components/Bookshelf/BookTexture';
+import { fromPdfPages, getPageParams } from '../components/Bookshelf/Page';
 import { PDFResource } from '../types/PDFResource';
-import { Page } from '../components/Bookshelf/Page';
 
 interface BookDesignSceneInnerProps {
     bookTextures: BookTexture[];
@@ -56,10 +55,10 @@ export function BookDesignSceneInner({
 
                     let pageIndex = 0;
                     for await (const [frontPage, backPage] of parseResult.getPairedPages()) {
-                        const physicalPage = Page.fromPdfPages(
+                        const physicalPage = fromPdfPages(
                             frontPage,
                             backPage,
-                            Page.getPageParams(book.state.params)
+                            getPageParams(book.state.params)
                         );
                         book.actions.addPage(physicalPage, pageIndex++);
                     }

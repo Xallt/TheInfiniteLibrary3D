@@ -211,7 +211,7 @@ export function buildBook(
         rightSideMesh.rotation.y = -coverAngle;
         pages.forEach((page, index) => {
             if (page) {
-                page.getMesh().rotation.y = pageAngles[index] - Math.PI / 2;
+                page.mesh.rotation.y = pageAngles[index] - Math.PI / 2;
             }
         });
     }
@@ -275,9 +275,9 @@ export function buildBook(
                 );
                 const { pageAngles } = openingState.getPageRotationArgs(pages.length);
                 const pageRotation = new THREE.Euler(0, pageAngles[index], 0);
-                page.getMesh().position.set(pagePosition.x, pagePosition.y, pagePosition.z);
-                page.getMesh().rotation.set(pageRotation.x, pageRotation.y, pageRotation.z);
-                book.add(page.getMesh());
+                page.mesh.position.set(pagePosition.x, pagePosition.y, pagePosition.z);
+                page.mesh.rotation.set(pageRotation.x, pageRotation.y, pageRotation.z);
+                book.add(page.mesh);
             }
         });
 
@@ -301,20 +301,20 @@ export function buildBook(
         );
         const { pageAngles } = openingState.getPageRotationArgs(pages.length);
         const pageRotation = new THREE.Euler(0, pageAngles[index] - Math.PI / 2, 0);
-        page.getMesh().position.set(pagePosition.x, pagePosition.y, pagePosition.z);
-        page.getMesh().rotation.set(pageRotation.x, pageRotation.y, pageRotation.z);
+        page.mesh.position.set(pagePosition.x, pagePosition.y, pagePosition.z);
+        page.mesh.rotation.set(pageRotation.x, pageRotation.y, pageRotation.z);
 
         if (pages[index]) {
-            mesh.remove(pages[index]!.getMesh());
+            mesh.remove(pages[index]!.mesh);
         }
         pages[index] = page;
-        mesh.add(page.getMesh());
+        mesh.add(page.mesh);
     }
 
     function resizePageArray(newSize: number): void {
         for (let i = 0; i < pages.length; i++) {
             if (pages[i]) {
-                mesh.remove(pages[i]!.getMesh());
+                mesh.remove(pages[i]!.mesh);
             }
         }
         pages.splice(0, pages.length, ...new Array(newSize).fill(null));

@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
-import { Book, buildEmptyBook } from './Book';
-import { Page } from './Page';
 import { BookData } from '../../types/BookData';
+import { Book, buildEmptyBook } from './Book';
+import { fromPdfPages, getPageParams } from './Page';
 
 interface BookMeshProps {
     data: BookData;
@@ -39,7 +39,7 @@ export function BookMesh({ data, position, onReady, onUnmount }: BookMeshProps) 
                 let pageIndex = 0;
                 for await (const [frontPage, backPage] of parseResult.getPairedPages()) {
                     if (cancelled) return;
-                    const physicalPage = Page.fromPdfPages(frontPage, backPage, Page.getPageParams(book.state.params));
+                    const physicalPage = fromPdfPages(frontPage, backPage, getPageParams(book.state.params));
                     book.actions.addPage(physicalPage, pageIndex++);
                 }
             } catch (error) {
